@@ -2,8 +2,8 @@
 
 import { createAdminClient } from "@/lib/appwrite";
 import { ID, Query } from "node-appwrite";
-import { appwriteConfig } from "./config";
 import { parseStringify } from "../utils";
+import { appwriteConfig } from "../appwrite/config";
 
 const getUserByEmail = async (email: string) => {
   const { databases } = await createAdminClient();
