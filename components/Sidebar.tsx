@@ -72,6 +72,11 @@ const Sidebar = () => {
           height={44}
           className="sidebar-user-avatar"
         />
+
+        <div className="hidden lg:block">
+          <p className="subtitle-2 capitalize">{fullName}</p>
+          <p className="caption">{email}</p>
+        </div>
       </div>
     </aside>
   );
