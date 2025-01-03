@@ -55,19 +55,31 @@ const ActionsDropdown = ({ file }: { file: Models.Document }) => {
                 }
               }}
             >
-              <Link
-                href={constructDownloadUrl(file.bucketFileId)}
-                download={file.name}
-                className="flex items-center gap-2"
-              >
-                <Image
-                  src={actionItem.icon}
-                  alt={actionItem.label}
-                  width={30}
-                  height={30}
-                />
-                {actionItem.label}
-              </Link>
+              {actionItem.value === "download" ? (
+                <Link
+                  href={constructDownloadUrl(file.bucketFileId)}
+                  download={file.name}
+                  className="flex items-center gap-2"
+                >
+                  <Image
+                    src={actionItem.icon}
+                    alt={actionItem.label}
+                    width={30}
+                    height={30}
+                  />
+                  {actionItem.label}
+                </Link>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Image
+                    src={actionItem.icon}
+                    alt={actionItem.label}
+                    width={30}
+                    height={30}
+                  />
+                  {actionItem.label}
+                </div>
+              )}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
