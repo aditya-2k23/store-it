@@ -6,6 +6,7 @@ import { parseStringify } from "../utils";
 import { appwriteConfig } from "../appwrite/config";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { avatarPlaceholderUrl } from "@/constants";
 
 const getUserByEmail = async (email: string) => {
   const { databases } = await createAdminClient();
@@ -59,7 +60,7 @@ export const createAccount = async ({
       {
         fullName,
         email,
-        avatar: "https://www.istockphoto.com/photos/avatar",
+        avatar: avatarPlaceholderUrl,
         accountId,
       }
     );
