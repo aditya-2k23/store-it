@@ -41,7 +41,7 @@ export const FileDetails = ({ file }: { file: Models.Document }) => {
 
 interface Props {
   file: Models.Document;
-  onInputChange: (e: React.Dispatch<React.SetStateAction<string[]>>) => void;
+  onInputChange: (emails: string[]) => void;
   onRemove: (email: string) => void;
 }
 
@@ -58,9 +58,7 @@ export const ShareInput = ({ file, onInputChange, onRemove }: Props) => {
         <Input
           type="email"
           placeholder="Enter email address"
-          onChange={(e) =>
-            onInputChange(() => e.target.value.trim().split(","))
-          }
+          onChange={(e) => onInputChange(e.target.value.trim().split(","))}
           className="share-input-field"
         />
 
