@@ -122,7 +122,10 @@ const ActionsDropdown = ({ file }: { file: Models.Document }) => {
             <Button onClick={closeAllModals} className="modal-cancel-button">
               Cancel
             </Button>
-            <Button onClick={handleAction} className="modal-submit-button">
+            <Button
+              onClick={() => handleAction(action)}
+              className="modal-submit-button"
+            >
               <p className="capitalize">{value}</p>
               {isLoading && (
                 <Image
