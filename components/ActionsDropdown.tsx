@@ -23,7 +23,7 @@ import Link from "next/link";
 import { constructDownloadUrl } from "@/lib/utils";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { renameFile } from "@/lib/actions/file.actions";
+import { renameFile, updateFileUsers } from "@/lib/actions/file.actions";
 import { usePathname } from "next/navigation";
 import { FileDetails, ShareInput } from "./ActionsModalContent";
 
@@ -59,7 +59,7 @@ const ActionsDropdown = ({ file }: { file: Models.Document }) => {
           extension: file.extension,
           path,
         }),
-      share: () => console.log("share"),
+      share: () => updateFileUsers({ fileId: file.$id, emails, path }),
       delete: () => console.log("delete"),
     };
 
@@ -70,7 +70,19 @@ const ActionsDropdown = ({ file }: { file: Models.Document }) => {
     setIsLoading(false);
   };
 
-  const handleRemoveUser = () => {};
+  const handleRemoveUser = async (email: string) => {
+    const updatedEmails = emails.filter((e) => e !== email);
+
+    const success = await updateFileUsers({
+      fileId: file.$id,
+      emails: updatedEmails,
+      path,
+    });
+
+    if (success) setEmails(updatedEmails);
+
+    closeAllModals();
+  };
 
   const renderDialogContent = () => {
     if (!action) return null;
