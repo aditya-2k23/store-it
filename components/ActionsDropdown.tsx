@@ -23,7 +23,11 @@ import Link from "next/link";
 import { constructDownloadUrl } from "@/lib/utils";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { renameFile, updateFileUsers } from "@/lib/actions/file.actions";
+import {
+  deleteFileUsers,
+  renameFile,
+  updateFileUsers,
+} from "@/lib/actions/file.actions";
 import { usePathname } from "next/navigation";
 import { FileDetails, ShareInput } from "./ActionsModalContent";
 
@@ -60,7 +64,12 @@ const ActionsDropdown = ({ file }: { file: Models.Document }) => {
           path,
         }),
       share: () => updateFileUsers({ fileId: file.$id, emails, path }),
-      delete: () => console.log("delete"),
+      delete: () =>
+        deleteFileUsers({
+          fileId: file.$id,
+          path,
+          bucketFileId: file.bucketFileId,
+        }),
     };
 
     success = await actions[action.value as keyof typeof actions]();
