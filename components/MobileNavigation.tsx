@@ -29,7 +29,6 @@ const MobileNavigation = ({
   $id: ownerId,
   accountId,
   fullName,
-  avatar,
   email,
 }: Props) => {
   const [open, setOpen] = useState(false);
@@ -58,7 +57,7 @@ const MobileNavigation = ({
           <SheetTitle>
             <div className="header-user">
               <Image
-                src={avatar}
+                src="/assets/images/avatar.png"
                 alt="avatar"
                 width={44}
                 height={44}
