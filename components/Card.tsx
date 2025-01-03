@@ -3,6 +3,7 @@ import { Models } from "node-appwrite";
 import React from "react";
 import Thumbnail from "./Thumbnail";
 import { convertFileSize } from "@/lib/utils";
+import FormattedDateTime from "./FormattedDateTime";
 
 const Card = ({ file }: { file: Models.Document }) => {
   return (
@@ -25,7 +26,10 @@ const Card = ({ file }: { file: Models.Document }) => {
       <div className="file-card-details">
         <p className="subtitle-2 line-clamp-1">{file.name}</p>
 
-        <FormattedDateTime />
+        <FormattedDateTime
+          date={file.$createdAt}
+          className="body-2 text-light-100"
+        />
       </div>
     </Link>
   );
