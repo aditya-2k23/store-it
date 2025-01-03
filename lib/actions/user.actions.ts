@@ -20,7 +20,7 @@ const getUserByEmail = async (email: string) => {
   return result.total > 0 ? result.documents[0] : null;
 };
 
-const handleError = (error: unknown, message: string) => {
+export const handleError = (error: unknown, message: string) => {
   console.log(error, message);
   throw error;
 };
