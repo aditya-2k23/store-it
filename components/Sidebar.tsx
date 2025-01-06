@@ -14,11 +14,10 @@ interface Props {
   email: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const Sidebar = ({ fullName, email }: Props) => {
   const pathname = usePathname();
 
-  const [avatarUrl, setAvatarUrl] = useState<string>(""); // State to store the avatar URL
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
 
   useEffect(() => {
     const loadAvatar = async () => {
