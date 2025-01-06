@@ -3,11 +3,12 @@
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import { Input } from "./ui/input";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { getFiles } from "@/lib/actions/file.actions";
 import { Models } from "node-appwrite";
 import Thumbnail from "./Thumbnail";
 import FormattedDateTime from "./FormattedDateTime";
+import { useRouter } from "next/navigation";
 
 const Search = () => {
   const [query, setQuery] = useState("");
@@ -16,8 +17,17 @@ const Search = () => {
   const [results, setResults] = useState<Models.Document[]>([]);
   const [open, setOpen] = useState(false);
 
+  const router = useRouter();
+  const path = usePathname();
+
   useEffect(() => {
     const fetchFiles = async () => {
+      if (!query) {
+        setResults([]);
+        setOpen(false);
+        return router.push(path.replace(searchParams.toString(), ""));
+      }
+
       const files = await getFiles({ searchText: query });
 
       setResults(files.documents);
@@ -32,6 +42,15 @@ const Search = () => {
       setQuery("");
     }
   }, [searchQuery]);
+
+  const handleClickItem = (file: Models.Document) => {
+    setOpen(false);
+    setResults([]);
+
+    router.push(
+      `/${file.type === "video" || file.type === "audio" ? "media" : file.type + "s"}?query=${query}`
+    );
+  };
 
   return (
     <div className="search">
@@ -57,6 +76,7 @@ const Search = () => {
                 <li
                   key={file.$id}
                   className="flex items-center justify-between"
+                  onClick={() => handleClickItem(file)}
                 >
                   <div className="flex cursor-pointer items-center gap-4">
                     <Thumbnail
