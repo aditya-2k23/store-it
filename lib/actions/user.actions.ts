@@ -1,7 +1,7 @@
 "use server";
 
 import { createAdminClient, createSessionClient } from "@/lib/appwrite";
-import { ID, Query } from "node-appwrite";
+import { Avatars, Client, ID, Query } from "node-appwrite";
 import { parseStringify } from "../utils";
 import { appwriteConfig } from "../appwrite/config";
 import { cookies } from "next/headers";
@@ -140,5 +140,20 @@ export const signInUser = async ({ email }: { email: string }) => {
     return parseStringify({ accountId: null, error: "User not found" });
   } catch (error) {
     handleError(error, "Failed to sign in user");
+  }
+};
+
+export const generateAvatar = async (username: string) => {
+  try {
+    const client = new Client()
+      .setEndpoint(appwriteConfig.endpointUrl)
+      .setProject(appwriteConfig.projectId);
+
+    const avatars = new Avatars(client);
+    const result = await avatars.getInitials(username);
+
+    return result;
+  } catch (error) {
+    handleError(error, "Failed to generate avatar");
   }
 };

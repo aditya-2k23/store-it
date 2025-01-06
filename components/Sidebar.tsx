@@ -1,11 +1,12 @@
 "use client";
 
 import { navItems } from "@/constants";
+import { generateAvatar } from "@/lib/actions/user.actions";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 interface Props {
   fullName: string;
@@ -14,8 +15,29 @@ interface Props {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const Sidebar = ({ fullName, avatar, email }: Props) => {
+const Sidebar = ({ fullName, email }: Props) => {
   const pathname = usePathname();
+
+  const [avatarUrl, setAvatarUrl] = useState<string>(""); // State to store the avatar URL
+
+  useEffect(() => {
+    const loadAvatar = async () => {
+      try {
+        const arrayBuffer = await generateAvatar(fullName);
+
+        if (!arrayBuffer)
+          throw new Error("Avatar generation returned undefined");
+
+        const url = URL.createObjectURL(new Blob([arrayBuffer]));
+
+        setAvatarUrl(url);
+      } catch (error) {
+        console.error("Failed to generate avatar:", error);
+      }
+    };
+
+    loadAvatar();
+  }, [fullName]);
 
   return (
     <aside className="sidebar">
@@ -73,7 +95,7 @@ const Sidebar = ({ fullName, avatar, email }: Props) => {
 
       <div className="sidebar-user-info">
         <Image
-          src={"/assets/images/avatar.png"}
+          src={avatarUrl || "/assets/images/avatar.png"}
           alt="Avatar"
           width={44}
           height={44}
