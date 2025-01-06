@@ -78,3 +78,11 @@ npm run dev
 ```
 
 The project will be available at `http://localhost:3000`.
+
+## Contributing
+
+Contributions are welcome! Feel free to open an issue or submit a pull request for any changes.
+
+## With the guidance of JavaScript Mastery
+
+This project was built with the help of [JavaScript Mastery](https://www.youtube.com/@javascriptmastery) YouTube channel. Check out the [video tutorial](https://www.youtube.com/watch?v=lie0cr3wESQ) to build this project from scratch.
