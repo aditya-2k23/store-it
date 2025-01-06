@@ -28,7 +28,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export const Chart = ({ used = 0 }: { used: number }) => {
+const Chart = ({ used = 0 }: { used: number }) => {
   const chartData = [{ storage: "used", 10: used, fill: "white" }];
 
   return (
@@ -98,3 +98,5 @@ export const Chart = ({ used = 0 }: { used: number }) => {
     </Card>
   );
 };
+
+export default Chart;
