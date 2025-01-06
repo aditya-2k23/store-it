@@ -28,6 +28,7 @@
     "react-dom": "^19.0.0",
     "react-dropzone": "^14.3.5",
     "react-hook-form": "^7.54.2",
+    "recharts": "^2.15.0",
     "tailwind-merge": "^2.6.0",
     "use-debounce": "^10.0.4",
     "zod": "^3.24.1"
