@@ -1,8 +1,8 @@
 # StoreIt - A simple file storage system
 
-A storage management and file sharing platform that lets users effortlessly upload, organize, and share files. Built with Next.js, Appwrite, and Tailwind CSS.
+A storage management and file-sharing platform that lets users effortlessly upload, organize, and share files. Built with Next.js, Appwrite, and Tailwind CSS.
 
-See the app live at [store-it.vercel.app](https://store-it.vercel.app/). <!-- Change this -->
+See the app live at [store-it-aditya-2k23s-projects.vercel.app](https://store-it-aditya-2k23s-projects.vercel.app/).
 
 ## Table of Contents
 
@@ -22,13 +22,13 @@ See the app live at [store-it.vercel.app](https://store-it.vercel.app/). <!-- Ch
 
 ## Features
 
-- **User Authentication with Appwrite**: Users can sign up and log in to their accounts using appwrite authentication system.
-- **File Uploads**: Users can effortlessly upload a variety of file types to their accounts.
-- **View and Manage Files**: Users can view and manage their files in a clean and organized manner, with the ability to view on a new tab, rename or delete files.
+- **User Authentication with Appwrite**: Users can sign up and log in to their accounts using the App Write authentication system.
+- **File Uploads**: Users can effortlessly upload various file types to their accounts.
+- **View and Manage Files**: Users can view and manage their files in a clean and organized manner, with the ability to view on a new tab, and rename or delete files.
 - **Download Files**: Users can download the uploaded files to their local machine.
-- **Share Files**: Users can share files with others by generating a specifying their email address, enabling collaboration and easy access to important content.
+- **Share Files**: Users can share files with others by specifying their email address, enabling collaboration and easy access to important content.
 - **Dashboard**: Users can view their storage usage, recent uploads, and a summary of files grouped by type.
-- **Global Search**: Users can quickly find files and shared content across their account.
+- **Global Search**: Users can quickly find files and share content across their accounts.
 - **Sorting Options**: Organize files efficiently by sorting them by name, size, and date.
 - **Modern Responsive Design**: A clean and modern UI that works seamlessly across all devices.
 
@@ -69,7 +69,7 @@ NEXT_PUBLIC_APPWRITE_BUCKET=""
 NEXT_APPWRITE_KEY=""
 ```
 
-Replace the values with your actual Appwrite credentials. You can sign up for a free account at [Appwrite](https://appwrite.io/) and create a new project.
+Replace the values with your actual Appwrite credentials, you can sign up for a free account at [Appwrite](https://appwrite.io/) and create a new project.
 
 4. **Running the project**
 
