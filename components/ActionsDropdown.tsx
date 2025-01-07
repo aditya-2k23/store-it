@@ -30,6 +30,9 @@ import {
 } from "@/lib/actions/file.actions";
 import { usePathname } from "next/navigation";
 import { FileDetails, ShareInput } from "./ActionsModalContent";
+import { toast } from "@/hooks/use-toast";
+
+type ToastAction = "rename" | "share" | "delete";
 
 const ActionsDropdown = ({ file }: { file: Models.Document }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -53,8 +56,6 @@ const ActionsDropdown = ({ file }: { file: Models.Document }) => {
     if (!action) return;
     setIsLoading(true);
 
-    let success = false;
-
     const actions = {
       rename: () =>
         renameFile({
@@ -72,9 +73,56 @@ const ActionsDropdown = ({ file }: { file: Models.Document }) => {
         }),
     };
 
-    success = await actions[action.value as keyof typeof actions]();
+    try {
+      const success = await actions[action.value as keyof typeof actions]();
 
-    if (success) closeAllModals();
+      if (success) {
+        // Toast messages for successful actions
+        const toastDescription: { [key in ToastAction]: React.ReactNode } = {
+          rename: (
+            <p className="body-2 text-white">
+              File <span className="font-semibold">{file.name}</span> renamed
+              successfully.
+            </p>
+          ),
+          share: (
+            <p className="body-2 text-white">
+              File <span className="font-semibold">{file.name}</span> shared
+              successfully with {emails.join(", ")}.
+            </p>
+          ),
+          delete: (
+            <p className="body-2 text-white">
+              File <span className="font-semibold">{file.name}</span> deleted
+              successfully.
+            </p>
+          ),
+        };
+
+        // Triggering the toast
+        toast({
+          description: toastDescription[action.value as ToastAction],
+          className: "success-toast",
+        });
+
+        closeAllModals(); // Close modals on success
+      } else {
+        // Handle failure explicitly
+        throw new Error("Operation failed.");
+      }
+    } catch (error) {
+      // Error toast
+      toast({
+        description: (
+          <p className="body-2 text-white">
+            Failed to {action.value}{" "}
+            <span className="font-semibold">{file.name}</span>. Please try
+            again.
+          </p>
+        ),
+        className: "error-toast",
+      });
+    }
 
     setIsLoading(false);
   };
