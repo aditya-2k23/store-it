@@ -327,6 +327,10 @@
     @apply bg-red !rounded-[10px] !important;
   }
 
+  .success-toast {
+    @apply bg-green !rounded-[10px] !important;
+  }
+
   /* Header */
   .header {
     @apply hidden items-center justify-between gap-5 p-5 sm:flex lg:py-7 xl:gap-10 !important;
