@@ -19,6 +19,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { createAccount, signInUser } from "@/lib/actions/user.actions";
 import OtpModal from "./OTPModal";
+import { toast } from "@/hooks/use-toast";
 
 type FormType = "sign-in" | "sign-up";
 
@@ -59,9 +60,35 @@ const AuthForm = ({ type }: { type: FormType }) => {
             })
           : await signInUser({ email: values.email });
 
+      if (!user || !user.accountId) {
+        toast({
+          description: (
+            <p className="body-2 text-white">
+              User not found. Please{" "}
+              <Link href="/sign-up" className="underline font-semibold">
+                Sign Up
+              </Link>
+              !
+            </p>
+          ),
+          className: "error-toast",
+        });
+
+        return;
+      }
+
       setAccountId(user.accountId);
+
+      toast({
+        description: (
+          <p className="body-2 !font-bold text-white">
+            An OTP has been sent to your email. Please verify your account.
+          </p>
+        ),
+        className: "success-toast",
+      });
     } catch {
-      setErrorMessage("Failed to create account. Please try again!");
+      setErrorMessage("Failed to create account. Please try again.");
     } finally {
       setIsLoading(false);
     }
