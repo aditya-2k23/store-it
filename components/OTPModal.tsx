@@ -18,8 +18,13 @@ import {
 import React, { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { verifySecret, sendEmailOTP } from "@/lib/actions/user.actions";
+import {
+  verifySecret,
+  sendEmailOTP,
+  getCurrentUser,
+} from "@/lib/actions/user.actions";
 import { useRouter } from "next/navigation";
+import { toast } from "@/hooks/use-toast";
 
 const OtpModal = ({
   accountId,
@@ -42,10 +47,26 @@ const OtpModal = ({
     try {
       const sessionId = await verifySecret({ accountId, password });
 
-      console.log({ sessionId });
-
       if (sessionId) router.push("/");
+
+      const currentUser = await getCurrentUser();
+      toast({
+        description: (
+          <p className="body-2 text-white">
+            Welcome back, <strong>{currentUser.fullName}</strong>!
+          </p>
+        ),
+        className: "success-toast",
+      });
     } catch (error) {
+      toast({
+        description: (
+          <p className="body-2 text-white">
+            Failed to verify OTP. Check again.
+          </p>
+        ),
+        className: "error-toast",
+      });
       console.log("Failed to verify OTP", error);
     }
 
