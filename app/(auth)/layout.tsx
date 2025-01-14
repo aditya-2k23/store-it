@@ -1,3 +1,4 @@
+import { Toaster } from "@/components/ui/toaster";
 import Image from "next/image";
 import React from "react";
 
@@ -43,6 +44,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         </div>
         {children}
       </section>
+
+      <Toaster />
     </div>
   );
 };
