@@ -46,6 +46,8 @@ const Sidebar = ({ fullName, email }: Props) => {
           alt="logo"
           width={160}
           height={50}
+          className="hidden h-auto lg:block"
+          priority
         />
 
         <Image
@@ -53,7 +55,7 @@ const Sidebar = ({ fullName, email }: Props) => {
           alt="logo"
           width={52}
           height={52}
-          className="lg:hidden"
+          className="lg:hidden h-auto w-auto"
         />
       </Link>
 
@@ -90,6 +92,7 @@ const Sidebar = ({ fullName, email }: Props) => {
         width={506}
         height={410}
         className="w-full h-auto"
+        priority
       />
 
       <div className="sidebar-user-info">

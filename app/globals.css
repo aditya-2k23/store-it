@@ -353,7 +353,7 @@
   }
 
   .chart-container {
-    @apply mx-auto aspect-square w-[180px] text-white xl:w-[200px];
+    @apply mx-auto size-45 text-white xl:size-50;
   }
 
   .polar-grid {

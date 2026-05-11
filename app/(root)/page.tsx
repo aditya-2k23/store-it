@@ -41,6 +41,7 @@ const Dashboard = async () => {
                     height={100}
                     alt="uploaded image"
                     className="summary-type-icon"
+                    loading="eager"
                   />
                   <h4 className="summary-type-size">
                     {convertFileSize(summary.size) || 0}
