@@ -1,4 +1,4 @@
-# StoreIt - A simple file storage system
+# Storey - A simple file storage system
 
 A storage management and file-sharing platform that lets users effortlessly upload, organize, and share files. Built with Next.js, Appwrite, and Tailwind CSS.
 
