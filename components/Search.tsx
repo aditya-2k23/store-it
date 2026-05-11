@@ -14,7 +14,6 @@ import { useDebounce } from "use-debounce";
 const Search = () => {
   const [query, setQuery] = useState("");
   const searchParams = useSearchParams();
-  const searchQuery = searchParams.get("query") || "";
   const [results, setResults] = useState<Models.Document[]>([]);
   const [open, setOpen] = useState(false);
 
@@ -28,7 +27,13 @@ const Search = () => {
       if (debouncedQuery.length === 0) {
         setResults([]);
         setOpen(false);
-        return router.push(path.replace(searchParams.toString(), ""));
+
+        // If the current URL has a search param, clear it when the user clears the input.
+        if (searchParams.get("query")) {
+          router.replace(path);
+        }
+
+        return;
       }
 
       const files = await getFiles({ types: [], searchText: debouncedQuery });
@@ -38,13 +43,7 @@ const Search = () => {
     };
 
     fetchFiles();
-  }, [debouncedQuery]);
-
-  useEffect(() => {
-    if (!searchQuery) {
-      setQuery("");
-    }
-  }, [searchQuery]);
+  }, [debouncedQuery, path, router, searchParams]);
 
   const handleClickItem = (file: Models.Document) => {
     setOpen(false);

@@ -6,13 +6,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="flex min-h-screen">
       <section className="bg-brand p-10 hidden w-1/2 items-center justify-center lg:flex xl:w-2/5">
-        <div className="flex max-h-[800px] max-w-[430px] flex-col justify-center space-y-12">
+        <div className="flex max-h-200 max-w-107.5 flex-col justify-center space-y-12">
           <Image
             src="/Logo.svg"
             alt="logo"
             width={224}
             height={82}
-            className="h-auto"
+            className="h-auto w-auto"
           />
 
           <div className="space-y-5 text-white">
@@ -28,6 +28,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             width={342}
             height={342}
             className="transition-all hover:rotate-2 hover:scale-105"
+            priority
           />
         </div>
       </section>
@@ -39,7 +40,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             alt="logo"
             width={224}
             height={82}
-            className="h-auto w-[200px] lg:w-[250px]"
+            className="h-auto w-50 lg:w-62.5"
           />
         </div>
         {children}

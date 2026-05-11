@@ -13,7 +13,7 @@ See the app live at [store-it-aditya-2k23s-projects.vercel.app](https://store-it
 ## Tech Stack
 
 - **React 19**
-- **Next.js 15**
+- **Next.js 16**
 - **Appwrite**
 - **Tailwind CSS**
 - **ShadCN**
@@ -49,13 +49,13 @@ git clone https://github.com/aditya-2k23/store-it.git
 cd store-it
 ```
 
-2. **Install dependencies**
+1. **Install dependencies**
 
 ```bash
 npm install
 ```
 
-3. **Set Up Environment Variables**
+1. **Set Up Environment Variables**
 
 Create a `.env.local` file in the root directory and add the following environment variables:
 
@@ -67,11 +67,15 @@ NEXT_PUBLIC_APPWRITE_USERS_COLLECTION=""
 NEXT_PUBLIC_APPWRITE_FILES_COLLECTION=""
 NEXT_PUBLIC_APPWRITE_BUCKET=""
 NEXT_APPWRITE_KEY=""
+
+# Optional (development only)
+# DEV_BYPASS_AUTH="1"
+# DEV_BYPASS_EMAIL="you@example.com"
 ```
 
 Replace the values with your actual Appwrite credentials, you can sign up for a free account at [Appwrite](https://appwrite.io/) and create a new project.
 
-4. **Running the project**
+1. **Running the project**
 
 ```bash
 npm run dev

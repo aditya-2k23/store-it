@@ -42,8 +42,6 @@ const OtpModal = ({
     e.preventDefault();
     setIsLoading(true);
 
-    console.log({ accountId, password });
-
     try {
       const sessionId = await verifySecret({ accountId, password });
 
@@ -67,7 +65,6 @@ const OtpModal = ({
         ),
         className: "error-toast",
       });
-      console.log("Failed to verify OTP", error);
     }
 
     setIsLoading(false);

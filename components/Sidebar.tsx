@@ -89,7 +89,7 @@ const Sidebar = ({ fullName, email }: Props) => {
         alt="logo"
         width={506}
         height={410}
-        className="w-full"
+        className="w-full h-auto"
       />
 
       <div className="sidebar-user-info">

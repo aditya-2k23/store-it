@@ -21,7 +21,7 @@ const getUserByEmail = async (email: string) => {
 };
 
 const handleError = (error: unknown, message: string) => {
-  console.log(error, message);
+  console.error(message, error);
   throw error;
 };
 
@@ -85,7 +85,7 @@ export const verifySecret = async ({
       path: "/",
       httpOnly: true,
       sameSite: "strict",
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
     });
 
     return parseStringify({ sessionId: session.$id });
@@ -106,18 +106,42 @@ export const getCurrentUser = async () => {
       [Query.equal("accountId", result.$id)]
     );
 
-    if (user.total < 0) return null;
+    if (user.total <= 0) return null;
 
     return parseStringify(user.documents[0]);
   } catch (error) {
-    console.log(error, "Failed to get current user");
+    // Dev-only bypass: allows using the app without signing in repeatedly.
+    // Never enabled in production.
+    if (
+      process.env.NODE_ENV === "development" &&
+      process.env.DEV_BYPASS_AUTH === "1"
+    ) {
+      try {
+        const { databases } = await createAdminClient();
+        const email = process.env.DEV_BYPASS_EMAIL;
+
+        const result = await databases.listDocuments(
+          appwriteConfig.databaseId,
+          appwriteConfig.usersCollectionId,
+          email
+            ? [Query.equal("email", [email]), Query.limit(1)]
+            : [Query.limit(1)]
+        );
+
+        if (result.total > 0) return parseStringify(result.documents[0]);
+      } catch (bypassError) {
+        console.error("Failed to get bypass user", bypassError);
+      }
+    }
+
+    console.error("Failed to get current user", error);
+    return null;
   }
 };
 
 export const signOutUser = async () => {
-  const { account } = await createSessionClient();
-
   try {
+    const { account } = await createSessionClient();
     await account.deleteSession("current");
 
     (await cookies()).delete("appwrite-session");

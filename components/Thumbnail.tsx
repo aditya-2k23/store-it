@@ -18,6 +18,7 @@ const Thumbnail = ({
   className,
 }: Props) => {
   const isImage = type === "image" && extension !== "svg";
+  const unoptimized = process.env.NODE_ENV === "development" && isImage;
 
   return (
     <figure className={cn("thumbnail", className)}>
@@ -26,6 +27,7 @@ const Thumbnail = ({
         alt="thumbnail"
         width={100}
         height={100}
+        unoptimized={unoptimized}
         className={cn(
           "size-8 object-contain",
           imageClassName,

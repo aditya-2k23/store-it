@@ -9,7 +9,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "./user.actions";
 
 const handleError = (error: unknown, message: string) => {
-  console.log(error, message);
+  console.error(message, error);
   throw error;
 };
 
@@ -63,7 +63,7 @@ export const uploadFile = async ({
 };
 
 const createQueries = (
-  currentUser: Models.Document,
+  currentUser: Models.Document & { email: string },
   types: string[],
   searchText: string,
   sort: string,
@@ -72,7 +72,7 @@ const createQueries = (
   const queries = [
     Query.or([
       Query.equal("owner", currentUser.$id),
-      Query.contains("users", currentUser.email),
+      Query.contains("users", [currentUser.email]),
     ]),
   ];
 
@@ -104,15 +104,11 @@ export const getFiles = async ({
 
     const queries = createQueries(currentUser, types, searchText, sort, limit);
 
-    console.log({ currentUser, queries });
-
     const files = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.filesCollectionId,
       queries
     );
-
-    console.log(files);
 
     return parseStringify(files);
   } catch (error) {
