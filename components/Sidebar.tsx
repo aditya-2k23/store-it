@@ -1,12 +1,11 @@
 "use client";
 
 import { navItems } from "@/constants";
-import { generateAvatar } from "@/lib/actions/user.actions";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React from "react";
 
 interface Props {
   fullName: string;
@@ -14,29 +13,10 @@ interface Props {
   email: string;
 }
 
-const Sidebar = ({ fullName, email }: Props) => {
+const Sidebar = ({ fullName, email, avatar }: Props) => {
   const pathname = usePathname();
 
-  const [avatarUrl, setAvatarUrl] = useState<string>("");
-
-  useEffect(() => {
-    const loadAvatar = async () => {
-      try {
-        const arrayBuffer = await generateAvatar(fullName);
-
-        if (!arrayBuffer)
-          throw new Error("Avatar generation returned undefined");
-
-        const url = URL.createObjectURL(new Blob([arrayBuffer]));
-
-        setAvatarUrl(url);
-      } catch (error) {
-        console.error("Failed to generate avatar:", error);
-      }
-    };
-
-    loadAvatar();
-  }, [fullName]);
+  const avatarUrl = avatar || "/assets/images/avatar.png";
 
   return (
     <aside className="sidebar">
@@ -97,7 +77,7 @@ const Sidebar = ({ fullName, email }: Props) => {
 
       <div className="sidebar-user-info">
         <Image
-          src={avatarUrl || "/assets/images/avatar.png"}
+          src={avatarUrl}
           alt="Avatar"
           width={44}
           height={44}

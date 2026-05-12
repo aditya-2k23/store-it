@@ -1,23 +1,17 @@
 "use server";
 
-import { createAdminClient, createSessionClient } from "@/lib/appwrite";
-import { Avatars, Client, ID, Query } from "node-appwrite";
-import { parseStringify } from "../utils";
-import { appwriteConfig } from "../appwrite/config";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { createAdminClient } from "@/lib/appwrite";
 import { avatarPlaceholderUrl } from "@/constants";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { ID, Models, Query } from "node-appwrite";
+import { appwriteConfig } from "../appwrite/config";
+import { parseStringify } from "../utils";
 
-const getUserByEmail = async (email: string) => {
-  const { databases } = await createAdminClient();
-
-  const result = await databases.listDocuments(
-    appwriteConfig.databaseId,
-    appwriteConfig.usersCollectionId,
-    [Query.equal("email", [email])]
-  );
-
-  return result.total > 0 ? result.documents[0] : null;
+type AppwriteUser = Models.Document & {
+  fullName?: string;
+  email?: string;
+  avatar?: string;
+  accountId?: string;
 };
 
 const handleError = (error: unknown, message: string) => {
@@ -25,159 +19,90 @@ const handleError = (error: unknown, message: string) => {
   throw error;
 };
 
-export const sendEmailOTP = async ({ email }: { email: string }) => {
-  const { account } = await createAdminClient();
-
+export const getCurrentUser = async () => {
   try {
-    const session = await account.createEmailToken(ID.unique(), email);
+    const { userId } = await auth();
 
-    return session.userId;
-  } catch (error) {
-    handleError(error, "Failed to send email OTP");
-  }
-};
+    if (!userId) return null;
 
-export const createAccount = async ({
-  fullName,
-  email,
-}: {
-  fullName: string;
-  email: string;
-}) => {
-  const existingUser = await getUserByEmail(email);
+    const clerkUser = await currentUser();
 
-  const accountId = await sendEmailOTP({ email });
+    if (!clerkUser) return null;
 
-  if (!accountId) throw new Error("Failed to send an OTP");
+    const email =
+      clerkUser.primaryEmailAddress?.emailAddress ||
+      clerkUser.emailAddresses[0]?.emailAddress;
 
-  if (!existingUser) {
+    if (!email) throw new Error("Clerk user has no email address");
+
+    const fullName =
+      [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
+      clerkUser.username ||
+      "User";
+    const avatar = clerkUser.imageUrl || avatarPlaceholderUrl;
+
     const { databases } = await createAdminClient();
 
-    await databases.createDocument(
+    const byAccountId = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.usersCollectionId,
+      [Query.equal("accountId", [userId])]
+    );
+
+    let userDoc: AppwriteUser | null =
+      byAccountId.total > 0
+        ? (byAccountId.documents[0] as AppwriteUser)
+        : null;
+
+    if (!userDoc) {
+      const byEmail = await databases.listDocuments(
+        appwriteConfig.databaseId,
+        appwriteConfig.usersCollectionId,
+        [Query.equal("email", [email])]
+      );
+
+      userDoc =
+        byEmail.total > 0 ? (byEmail.documents[0] as AppwriteUser) : null;
+    }
+
+    if (userDoc) {
+      const needsUpdate =
+        userDoc.fullName !== fullName ||
+        userDoc.email !== email ||
+        userDoc.avatar !== avatar ||
+        userDoc.accountId !== userId;
+
+      if (!needsUpdate) return parseStringify(userDoc);
+
+      const updatedUser = await databases.updateDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.usersCollectionId,
+        userDoc.$id,
+        {
+          fullName,
+          email,
+          avatar,
+          accountId: userId,
+        }
+      );
+
+      return parseStringify(updatedUser);
+    }
+
+    const newUser = await databases.createDocument(
       appwriteConfig.databaseId,
       appwriteConfig.usersCollectionId,
       ID.unique(),
       {
         fullName,
         email,
-        avatar: avatarPlaceholderUrl,
-        accountId,
+        avatar,
+        accountId: userId,
       }
     );
-  }
 
-  return parseStringify({ accountId });
-};
-
-export const verifySecret = async ({
-  accountId,
-  password,
-}: {
-  accountId: string;
-  password: string;
-}) => {
-  try {
-    const { account } = await createAdminClient();
-
-    const session = await account.createSession(accountId, password);
-
-    (await cookies()).set("appwrite-session", session.secret, {
-      path: "/",
-      httpOnly: true,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
-    });
-
-    return parseStringify({ sessionId: session.$id });
+    return parseStringify(newUser);
   } catch (error) {
-    handleError(error, "Failed to verify OTP");
-  }
-};
-
-export const getCurrentUser = async () => {
-  try {
-    const { databases, account } = await createSessionClient();
-
-    const result = await account.get();
-
-    const user = await databases.listDocuments(
-      appwriteConfig.databaseId,
-      appwriteConfig.usersCollectionId,
-      [Query.equal("accountId", result.$id)]
-    );
-
-    if (user.total <= 0) return null;
-
-    return parseStringify(user.documents[0]);
-  } catch (error) {
-    // Dev-only bypass: allows using the app without signing in repeatedly.
-    // Never enabled in production.
-    if (
-      process.env.NODE_ENV === "development" &&
-      process.env.DEV_BYPASS_AUTH === "1"
-    ) {
-      try {
-        const { databases } = await createAdminClient();
-        const email = process.env.DEV_BYPASS_EMAIL;
-
-        const result = await databases.listDocuments(
-          appwriteConfig.databaseId,
-          appwriteConfig.usersCollectionId,
-          email
-            ? [Query.equal("email", [email]), Query.limit(1)]
-            : [Query.limit(1)]
-        );
-
-        if (result.total > 0) return parseStringify(result.documents[0]);
-      } catch (bypassError) {
-        console.error("Failed to get bypass user", bypassError);
-      }
-    }
-
-    console.error("Failed to get current user", error);
-    return null;
-  }
-};
-
-export const signOutUser = async () => {
-  try {
-    const { account } = await createSessionClient();
-    await account.deleteSession("current");
-
-    (await cookies()).delete("appwrite-session");
-  } catch (error) {
-    handleError(error, "Failed to sign out user");
-  } finally {
-    redirect("/sign-in");
-  }
-};
-
-export const signInUser = async ({ email }: { email: string }) => {
-  try {
-    const existingUser = await getUserByEmail(email);
-
-    if (existingUser) {
-      await sendEmailOTP({ email });
-      return parseStringify({ accountId: existingUser.accountId });
-    }
-
-    return parseStringify({ accountId: null, error: "User not found" });
-  } catch (error) {
-    handleError(error, "Failed to sign in user");
-  }
-};
-
-export const generateAvatar = async (username: string) => {
-  try {
-    const client = new Client()
-      .setEndpoint(appwriteConfig.endpointUrl)
-      .setProject(appwriteConfig.projectId);
-
-    const avatars = new Avatars(client);
-    const result = await avatars.getInitials(username);
-
-    return result;
-  } catch (error) {
-    handleError(error, "Failed to generate avatar");
+    handleError(error, "Failed to get current user");
   }
 };

@@ -3,22 +3,37 @@ import MobileNavigation from "@/components/MobileNavigation";
 import Sidebar from "@/components/Sidebar";
 import { Toaster } from "@/components/ui/toaster";
 import { getCurrentUser } from "@/lib/actions/user.actions";
+import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import React from "react";
 
 export const dynamic = "force-dynamic";
 
 const Layout = async ({ children }: { children: React.ReactNode }) => {
+  const { userId } = await auth();
+
+  if (!userId) return redirect("/sign-in");
+
   const currentUser = await getCurrentUser();
 
   if (!currentUser) return redirect("/sign-in");
 
   return (
     <main className="flex h-screen">
-      <Sidebar {...currentUser} />
+      <Sidebar
+        fullName={currentUser.fullName}
+        email={currentUser.email}
+        avatar={currentUser.avatar}
+      />
       <section className="flex h-full flex-1 flex-col">
-        <MobileNavigation {...currentUser} />{" "}
-        <Header userId={currentUser.$id} accountId={currentUser.accountId} />
+        <MobileNavigation
+          ownerId={currentUser.$id}
+          accountId={currentUser.accountId}
+          fullName={currentUser.fullName}
+          email={currentUser.email}
+          avatar={currentUser.avatar}
+        />
+        <Header ownerId={currentUser.$id} accountId={currentUser.accountId} />
         <div className="main-content">{children}</div>
       </section>
 

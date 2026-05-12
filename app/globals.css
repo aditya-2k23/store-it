@@ -321,23 +321,6 @@
     @apply aspect-square rounded-full;
   }
 
-  /* AuthForm */
-  .auth-form {
-    @apply flex max-h-[800px] w-full max-w-[580px] flex-col justify-center space-y-6 transition-all lg:h-full lg:space-y-8;
-  }
-
-  .form-title {
-    @apply text-[34px] leading-[42px] font-bold text-center text-light-100 md:text-left;
-  }
-
-  .form-submit-button {
-    @apply bg-brand hover:bg-brand-100 transition-all rounded-full text-[14px] leading-[20px] font-medium h-[66px];
-  }
-
-  .error-message {
-    @apply text-[14px] leading-[20px] font-normal mx-auto w-fit rounded-xl bg-error/5 px-8 py-4 text-center text-error;
-  }
-
   /* Card */
   .file-card {
     @apply flex cursor-pointer flex-col gap-6 rounded-[18px] bg-white p-5 shadow-sm transition-all hover:shadow-drop-3;

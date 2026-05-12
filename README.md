@@ -1,6 +1,6 @@
 # Storey - A simple file storage system
 
-A storage management and file-sharing platform that lets users effortlessly upload, organize, and share files. Built with Next.js, Appwrite, and Tailwind CSS.
+A storage management and file-sharing platform that lets users effortlessly upload, organize, and share files. Built with Next.js, Clerk, Appwrite, and Tailwind CSS.
 
 See the app live at [store-it-aditya-2k23s-projects.vercel.app](https://store-it-aditya-2k23s-projects.vercel.app/).
 
@@ -14,6 +14,7 @@ See the app live at [store-it-aditya-2k23s-projects.vercel.app](https://store-it
 
 - **React 19**
 - **Next.js 16**
+- **Clerk**
 - **Appwrite**
 - **Tailwind CSS**
 - **ShadCN**
@@ -22,7 +23,7 @@ See the app live at [store-it-aditya-2k23s-projects.vercel.app](https://store-it
 
 ## Features
 
-- **User Authentication with Appwrite**: Users can sign up and log in to their accounts using the App Write authentication system.
+- **User Authentication with Clerk**: Users can sign up and log in to their accounts using Clerk authentication.
 - **File Uploads**: Users can effortlessly upload various file types to their accounts.
 - **View and Manage Files**: Users can view and manage their files in a clean and organized manner, with the ability to view on a new tab, and rename or delete files.
 - **Download Files**: Users can download the uploaded files to their local machine.
@@ -60,6 +61,13 @@ npm install
 Create a `.env.local` file in the root directory and add the following environment variables:
 
 ```bash
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=""
+CLERK_SECRET_KEY=""
+NEXT_PUBLIC_CLERK_SIGN_IN_URL="/sign-in"
+NEXT_PUBLIC_CLERK_SIGN_UP_URL="/sign-up"
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL="/"
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL="/"
+
 NEXT_PUBLIC_APPWRITE_ENDPOINT="https://cloud.appwrite.io/v1"
 NEXT_PUBLIC_APPWRITE_PROJECT=""
 NEXT_PUBLIC_APPWRITE_DATABASE=""
@@ -67,10 +75,6 @@ NEXT_PUBLIC_APPWRITE_USERS_COLLECTION=""
 NEXT_PUBLIC_APPWRITE_FILES_COLLECTION=""
 NEXT_PUBLIC_APPWRITE_BUCKET=""
 NEXT_APPWRITE_KEY=""
-
-# Optional (development only)
-# DEV_BYPASS_AUTH="1"
-# DEV_BYPASS_EMAIL="you@example.com"
 ```
 
 Replace the values with your actual Appwrite credentials, you can sign up for a free account at [Appwrite](https://appwrite.io/) and create a new project.

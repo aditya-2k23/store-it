@@ -8,17 +8,15 @@ import {
 } from "@/components/ui/sheet";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Separator } from "./ui/separator";
 import { navItems } from "@/constants";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Button } from "./ui/button";
 import FileUploader from "./FileUploader";
-import { generateAvatar, signOutUser } from "@/lib/actions/user.actions";
 
 interface Props {
-  $id: string;
+  ownerId: string;
   accountId: string;
   fullName: string;
   avatar: string;
@@ -26,34 +24,16 @@ interface Props {
 }
 
 const MobileNavigation = ({
-  $id: ownerId,
+  ownerId,
   accountId,
   fullName,
+  avatar,
   email,
 }: Props) => {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  const [avatarUrl, setAvatarUrl] = useState<string>("");
-
-  useEffect(() => {
-    const loadAvatar = async () => {
-      try {
-        const arrayBuffer = await generateAvatar(fullName);
-
-        if (!arrayBuffer)
-          throw new Error("Avatar generation returned undefined");
-
-        const url = URL.createObjectURL(new Blob([arrayBuffer]));
-
-        setAvatarUrl(url);
-      } catch (error) {
-        console.error("Failed to generate avatar:", error);
-      }
-    };
-
-    loadAvatar();
-  }, [fullName]);
+  const avatarUrl = avatar || "/assets/images/avatar.png";
 
   return (
     <header className="mobile-header">
@@ -79,7 +59,7 @@ const MobileNavigation = ({
           <SheetTitle>
             <div className="header-user">
               <Image
-                src={avatarUrl || "/assets/images/avatar.png"}
+                src={avatarUrl}
                 alt="avatar"
                 width={44}
                 height={44}
@@ -124,20 +104,6 @@ const MobileNavigation = ({
 
           <div className="flex flex-col justify-between gap-5 pb-5">
             <FileUploader ownerId={ownerId} accountId={accountId} />
-
-            <Button
-              type="submit"
-              onClick={async () => await signOutUser()}
-              className="mobile-sign-out-button"
-            >
-              <Image
-                src="/assets/icons/logout.svg"
-                alt="logo"
-                width={24}
-                height={24}
-              />
-              <p>Logout</p>
-            </Button>
           </div>
         </SheetContent>
       </Sheet>
