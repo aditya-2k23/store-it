@@ -2,7 +2,7 @@
 
 import { createAdminClient } from "@/lib/appwrite";
 import { avatarPlaceholderUrl } from "@/constants";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { ID, Models, Query } from "node-appwrite";
 import { appwriteConfig } from "../appwrite/config";
 import { parseStringify } from "../utils";
@@ -25,9 +25,9 @@ export const getCurrentUser = async () => {
 
     if (!userId) return null;
 
-    const clerkUser = await currentUser();
-
-    if (!clerkUser) return null;
+    const client = await clerkClient();
+    const clerkUser =
+      (await currentUser()) ?? (await client.users.getUser(userId));
 
     const email =
       clerkUser.primaryEmailAddress?.emailAddress ||

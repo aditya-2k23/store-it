@@ -1,5 +1,6 @@
 @config "../tailwind.config.ts";
 @import "tailwindcss";
+@import "@clerk/ui/themes/shadcn.css";
 
 @layer base {
   * {
@@ -336,7 +337,7 @@
   }
 
   .chart-container {
-    @apply mx-auto size-45 text-white xl:size-50;
+    @apply mx-auto aspect-square w-full max-w-[240px] min-h-[220px] min-w-[220px] text-white xl:max-w-[280px] xl:min-h-[260px] xl:min-w-[260px];
   }
 
   .polar-grid {

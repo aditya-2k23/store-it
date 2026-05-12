@@ -12,7 +12,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             alt="logo"
             width={224}
             height={82}
-            className="h-auto w-auto"
           />
 
           <div className="space-y-5 text-white">
@@ -27,7 +26,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             alt="Files"
             width={342}
             height={342}
-            className="h-auto w-auto transition-all hover:rotate-2 hover:scale-105"
             priority
           />
         </div>
@@ -40,7 +38,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             alt="logo"
             width={224}
             height={82}
-            className="h-auto w-50 lg:w-62.5"
           />
         </div>
         {children}
