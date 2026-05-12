@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
-import {
-  ClerkProvider,
-  Show,
-  SignInButton,
-  SignUpButton,
-  UserButton,
-} from "@clerk/nextjs";
+import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/ui/themes";
 import "./globals.css";
 import { Poppins } from "next/font/google";
+import Navbar from "@/components/Navbar";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -63,33 +58,7 @@ export default function RootLayout({
     <html lang="en" data-scroll-behavior="smooth">
       <body className={`${poppins.variable} antialiased`}>
         <ClerkProvider appearance={clerkAppearance}>
-          <header className="flex items-center justify-end gap-3 px-6 py-4">
-            <Show when="signed-out">
-              <SignInButton
-                children={
-                  <button
-                    type="button"
-                    className="primary-btn px-4 py-2 text-white"
-                  >
-                    Sign In
-                  </button>
-                }
-              />
-              <SignUpButton
-                children={
-                  <button
-                    type="button"
-                    className="rounded-full border border-brand px-4 py-2 text-[14px] leading-[20px] font-medium text-brand transition-all hover:bg-brand/10"
-                  >
-                    Sign Up
-                  </button>
-                }
-              />
-            </Show>
-            <Show when="signed-in">
-              <UserButton />
-            </Show>
-          </header>
+          <Navbar />
           {children}
         </ClerkProvider>
       </body>

@@ -10,6 +10,14 @@ import { Separator } from "@/components/ui/separator";
 import { getFiles, getTotalSpaceUsed } from "@/lib/actions/file.actions";
 import { convertFileSize, getUsageSummary } from "@/lib/utils";
 
+type DashboardFile = Models.Document & {
+  url: string;
+  type: string;
+  extension: string;
+  name: string;
+  $createdAt: string;
+};
+
 const Dashboard = async () => {
   // Parallel requests
   const [files, totalSpace] = await Promise.all([
@@ -65,7 +73,7 @@ const Dashboard = async () => {
         <h2 className="h3 xl:h2 text-light-100">Recent files uploaded</h2>
         {files.documents.length > 0 ? (
           <ul className="mt-5 flex flex-col gap-5">
-            {files.documents.map((file: Models.Document) => (
+            {files.documents.map((file: DashboardFile) => (
               <Link
                 href={file.url}
                 target="_blank"

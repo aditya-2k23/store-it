@@ -1,10 +1,5 @@
 export const navItems = [
   {
-    name: "Dashboard",
-    icon: "/assets/icons/dashboard.svg",
-    url: "/",
-  },
-  {
     name: "Documents",
     icon: "/assets/icons/documents.svg",
     url: "/documents",
