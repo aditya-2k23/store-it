@@ -46,19 +46,17 @@ export const getCurrentUser = async () => {
     const byAccountId = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.usersCollectionId,
-      [Query.equal("accountId", [userId])]
+      [Query.equal("accountId", [userId])],
     );
 
     let userDoc: AppwriteUser | null =
-      byAccountId.total > 0
-        ? (byAccountId.documents[0] as AppwriteUser)
-        : null;
+      byAccountId.total > 0 ? (byAccountId.documents[0] as AppwriteUser) : null;
 
     if (!userDoc) {
       const byEmail = await databases.listDocuments(
         appwriteConfig.databaseId,
         appwriteConfig.usersCollectionId,
-        [Query.equal("email", [email])]
+        [Query.equal("email", [email])],
       );
 
       userDoc =
@@ -78,12 +76,7 @@ export const getCurrentUser = async () => {
         appwriteConfig.databaseId,
         appwriteConfig.usersCollectionId,
         userDoc.$id,
-        {
-          fullName,
-          email,
-          avatar,
-          accountId: userId,
-        }
+        { fullName, email, avatar, accountId: userId },
       );
 
       return parseStringify(updatedUser);
@@ -93,12 +86,7 @@ export const getCurrentUser = async () => {
       appwriteConfig.databaseId,
       appwriteConfig.usersCollectionId,
       ID.unique(),
-      {
-        fullName,
-        email,
-        avatar,
-        accountId: userId,
-      }
+      { fullName, email, avatar, accountId: userId },
     );
 
     return parseStringify(newUser);
