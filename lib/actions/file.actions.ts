@@ -1,11 +1,10 @@
 "use server";
 
-import { ID, Models, Query } from "node-appwrite";
-import { createAdminClient } from "../appwrite";
+import type { Models } from "node-appwrite";
+import { createAdminClient, getAppwrite, getAppwriteFile } from "../appwrite";
 import { appwriteConfig } from "../appwrite/config";
-import { InputFile } from "node-appwrite/file";
 import { constructFileUrl, getFileType, parseStringify } from "../utils";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { getCurrentUser } from "./user.actions";
 
 const handleError = (error: unknown, message: string) => {
@@ -13,12 +12,17 @@ const handleError = (error: unknown, message: string) => {
   throw error;
 };
 
+const TOTAL_SPACE_CACHE_TAG = "total-space-used";
+const TOTAL_SPACE_PAGE_SIZE = 200;
+
 export const uploadFile = async ({
   file,
   ownerId,
   accountId,
   path,
 }: UploadFileProps) => {
+  const { ID } = await getAppwrite();
+  const { InputFile } = await getAppwriteFile();
   const { storage, databases } = await createAdminClient();
 
   try {
@@ -27,7 +31,7 @@ export const uploadFile = async ({
     const bucketFile = await storage.createFile(
       appwriteConfig.bucketId,
       ID.unique(),
-      inputFile
+      inputFile,
     );
 
     const fileDocument = {
@@ -47,7 +51,7 @@ export const uploadFile = async ({
         appwriteConfig.databaseId,
         appwriteConfig.filesCollectionId,
         ID.unique(),
-        fileDocument
+        fileDocument,
       )
       .catch(async (error: unknown) => {
         await storage.deleteFile(appwriteConfig.bucketId, bucketFile.$id);
@@ -55,6 +59,7 @@ export const uploadFile = async ({
       });
 
     revalidatePath(path);
+    revalidateTag(TOTAL_SPACE_CACHE_TAG);
 
     return parseStringify(newFile);
   } catch (error) {
@@ -63,11 +68,13 @@ export const uploadFile = async ({
 };
 
 const createQueries = (
+  Query: typeof import("node-appwrite").Query,
   currentUser: Models.Document & { email: string },
   types: string[],
   searchText: string,
   sort: string,
-  limit?: number
+  limit?: number,
+  offset?: number,
 ) => {
   const queries = [
     Query.or([
@@ -78,12 +85,13 @@ const createQueries = (
 
   if (types.length > 0) queries.push(Query.equal("type", types));
   if (searchText) queries.push(Query.contains("name", searchText));
-  if (limit) queries.push(Query.limit(limit));
+  if (limit !== undefined) queries.push(Query.limit(limit));
+  if (offset !== undefined) queries.push(Query.offset(offset));
 
   const [sortBy, orderBy] = sort.split("-");
 
   queries.push(
-    orderBy === "asc" ? Query.orderAsc(sortBy) : Query.orderDesc(sortBy)
+    orderBy === "asc" ? Query.orderAsc(sortBy) : Query.orderDesc(sortBy),
   );
 
   return queries;
@@ -94,7 +102,9 @@ export const getFiles = async ({
   searchText = "",
   sort = "$createdAt-desc",
   limit,
+  offset,
 }: GetFilesProps) => {
+  const { Query } = await getAppwrite();
   const { databases } = await createAdminClient();
 
   try {
@@ -102,12 +112,20 @@ export const getFiles = async ({
 
     if (!currentUser) throw new Error("User not found");
 
-    const queries = createQueries(currentUser, types, searchText, sort, limit);
+    const queries = createQueries(
+      Query,
+      currentUser,
+      types,
+      searchText,
+      sort,
+      limit,
+      offset,
+    );
 
     const files = await databases.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.filesCollectionId,
-      queries
+      queries,
     );
 
     return parseStringify(files);
@@ -132,7 +150,7 @@ export const renameFile = async ({
       fileId,
       {
         name: newName,
-      }
+      },
     );
     revalidatePath(path);
 
@@ -156,7 +174,7 @@ export const updateFileUsers = async ({
       fileId,
       {
         users: emails,
-      }
+      },
     );
     revalidatePath(path);
 
@@ -177,7 +195,7 @@ export const deleteFileUsers = async ({
     const deletedFile = await databases.deleteDocument(
       appwriteConfig.databaseId,
       appwriteConfig.filesCollectionId,
-      fileId
+      fileId,
     );
 
     if (deletedFile) {
@@ -185,6 +203,7 @@ export const deleteFileUsers = async ({
     }
 
     revalidatePath(path);
+    revalidateTag(TOTAL_SPACE_CACHE_TAG);
 
     return parseStringify({ status: "success" });
   } catch (error) {
@@ -194,41 +213,84 @@ export const deleteFileUsers = async ({
 
 export async function getTotalSpaceUsed() {
   try {
-    const { databases } = await createAdminClient();
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User is not authenticated.");
 
-    const files = await databases.listDocuments(
-      appwriteConfig.databaseId,
-      appwriteConfig.filesCollectionId,
-      [Query.equal("owner", [currentUser.$id])]
-    );
-
-    const totalSpace = {
-      image: { size: 0, latestDate: "" },
-      document: { size: 0, latestDate: "" },
-      video: { size: 0, latestDate: "" },
-      audio: { size: 0, latestDate: "" },
-      other: { size: 0, latestDate: "" },
-      used: 0,
-      all: 2 * 1024 * 1024 * 1024 /* 2GB available bucket storage */,
-    };
-
-    files.documents.forEach((file) => {
-      const fileType = file.type as FileType;
-      totalSpace[fileType].size += file.size;
-      totalSpace.used += file.size;
-
-      if (
-        !totalSpace[fileType].latestDate ||
-        new Date(file.$updatedAt) > new Date(totalSpace[fileType].latestDate)
-      ) {
-        totalSpace[fileType].latestDate = file.$updatedAt;
-      }
-    });
+    const totalSpace = await getCachedTotalSpaceUsed(currentUser.$id);
 
     return parseStringify(totalSpace);
   } catch (error) {
     handleError(error, "Error calculating total space used:, ");
   }
 }
+
+const listOwnerFiles = async (ownerId: string) => {
+  const { Query } = await getAppwrite();
+  const { databases } = await createAdminClient();
+
+  const documents: Models.Document[] = [];
+  let cursor: string | undefined;
+
+  while (true) {
+    const queries = [
+      Query.equal("owner", [ownerId]),
+      Query.select(["$id", "type", "size", "$updatedAt"]),
+      Query.orderAsc("$id"),
+      Query.limit(TOTAL_SPACE_PAGE_SIZE),
+    ];
+
+    if (cursor) queries.push(Query.cursorAfter(cursor));
+
+    const page = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.filesCollectionId,
+      queries,
+    );
+
+    documents.push(...page.documents);
+
+    if (page.documents.length < TOTAL_SPACE_PAGE_SIZE) break;
+
+    cursor = page.documents[page.documents.length - 1].$id;
+  }
+
+  return documents;
+};
+
+const computeTotalSpaceUsed = async (ownerId: string) => {
+  const files = await listOwnerFiles(ownerId);
+
+  const totalSpace = {
+    image: { size: 0, latestDate: "" },
+    document: { size: 0, latestDate: "" },
+    video: { size: 0, latestDate: "" },
+    audio: { size: 0, latestDate: "" },
+    other: { size: 0, latestDate: "" },
+    used: 0,
+    all: 2 * 1024 * 1024 * 1024 /* 2GB available bucket storage */,
+  };
+
+  files.forEach((file) => {
+    const fileType = (file.type as FileType) || "other";
+    if (!totalSpace[fileType]) return;
+
+    const size = typeof file.size === "number" ? file.size : 0;
+    totalSpace[fileType].size += size;
+    totalSpace.used += size;
+
+    if (
+      !totalSpace[fileType].latestDate ||
+      new Date(file.$updatedAt) > new Date(totalSpace[fileType].latestDate)
+    ) {
+      totalSpace[fileType].latestDate = file.$updatedAt;
+    }
+  });
+
+  return totalSpace;
+};
+
+const getCachedTotalSpaceUsed = unstable_cache(
+  async (ownerId: string) => computeTotalSpaceUsed(ownerId),
+  [TOTAL_SPACE_CACHE_TAG],
+  { revalidate: 300, tags: [TOTAL_SPACE_CACHE_TAG] },
+);

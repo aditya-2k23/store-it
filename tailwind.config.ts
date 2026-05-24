@@ -2,7 +2,7 @@ import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
 
 const config: Config = {
-  darkMode: ["class"],
+  darkMode: "class",
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -42,8 +42,15 @@ const config: Config = {
           "0%,70%,100%": { opacity: "1" },
           "20%,50%": { opacity: "0" },
         },
+        dashboardFloat: {
+          "0%, 100%": { transform: "translateY(0) scale(1)" },
+          "50%": { transform: "translateY(-10px) scale(1.05)" },
+        },
       },
-      animation: { "caret-blink": "caret-blink 1.25s ease-out infinite" },
+      animation: {
+        "caret-blink": "caret-blink 1.25s ease-out infinite",
+        dashboardFloat: "dashboardFloat 9s ease-in-out infinite",
+      },
     },
   },
   plugins: [tailwindcssAnimate],

@@ -19,22 +19,29 @@ const Layout = async ({ children }: { children: React.ReactNode }) => {
   if (!currentUser) return redirect("/sign-in");
 
   return (
-    <main className="flex h-screen">
-      <Sidebar />
-      <section className="flex h-full flex-1 flex-col">
-        <MobileNavigation
-          ownerId={currentUser.$id}
-          accountId={currentUser.accountId}
-          fullName={currentUser.fullName}
-          email={currentUser.email}
-          avatar={currentUser.avatar}
-        />
-        <Header ownerId={currentUser.$id} accountId={currentUser.accountId} />
-        <div className="main-content">{children}</div>
-      </section>
+    <>
+      <main className="app-shell">
+        <Sidebar fullName={currentUser.fullName} avatar={currentUser.avatar} />
+        <section className="app-shell-content">
+          <MobileNavigation
+            ownerId={currentUser.$id}
+            accountId={currentUser.accountId}
+            fullName={currentUser.fullName}
+            email={currentUser.email}
+            avatar={currentUser.avatar}
+          />
+          <Header
+            ownerId={currentUser.$id}
+            accountId={currentUser.accountId}
+            fullName={currentUser.fullName}
+            avatar={currentUser.avatar}
+          />
+          <div className="main-content">{children}</div>
+        </section>
 
-      <Toaster />
-    </main>
+        <Toaster />
+      </main>
+    </>
   );
 };
 

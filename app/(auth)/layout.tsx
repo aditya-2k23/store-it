@@ -4,7 +4,7 @@ import React from "react";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen overflow-hidden">
       <section className="bg-brand p-10 hidden w-1/2 items-center justify-center lg:flex xl:w-2/5">
         <div className="flex max-h-200 max-w-107.5 flex-col justify-center space-y-12">
           <Image
@@ -26,6 +26,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             alt="Files"
             width={342}
             height={342}
+            style={{ width: "auto", height: "auto" }}
             priority
           />
         </div>

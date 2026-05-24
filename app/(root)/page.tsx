@@ -15,6 +15,7 @@ type DashboardFile = Models.Document & {
   type: string;
   extension: string;
   name: string;
+  bucketFileId: string;
   $createdAt: string;
 };
 
@@ -31,7 +32,10 @@ const Dashboard = async () => {
   return (
     <div className="dashboard-container">
       <section>
-        <Chart used={totalSpace.used} />
+        <Chart
+          used={totalSpace.used}
+          insightText={convertFileSize(totalSpace.used ?? 0) || "0 B"}
+        />
 
         {/* Uploaded file type summaries */}
         <ul className="dashboard-summary-list">
@@ -70,7 +74,7 @@ const Dashboard = async () => {
 
       {/* Recent files uploaded */}
       <section className="dashboard-recent-files">
-        <h2 className="h3 xl:h2 text-light-100">Recent files uploaded</h2>
+        <h2 className="h3 xl:h2 text-light-100">Recently uploaded files</h2>
         {files.documents.length > 0 ? (
           <ul className="mt-5 flex flex-col gap-5">
             {files.documents.map((file: DashboardFile) => (

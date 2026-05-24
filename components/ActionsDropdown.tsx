@@ -34,7 +34,13 @@ import { toast } from "@/hooks/use-toast";
 
 type ToastAction = "rename" | "share" | "delete";
 
-const ActionsDropdown = ({ file }: { file: Models.Document }) => {
+type FileDocument = Models.Document & {
+  name: string;
+  extension: string;
+  bucketFileId: string;
+};
+
+const ActionsDropdown = ({ file }: { file: FileDocument }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [action, setAction] = useState<ActionType | null>(null);
@@ -212,7 +218,7 @@ const ActionsDropdown = ({ file }: { file: Models.Document }) => {
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuLabel className="max-w-[200px] truncate">
+          <DropdownMenuLabel className="max-w-50 truncate">
             {file.name}
           </DropdownMenuLabel>
 

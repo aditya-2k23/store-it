@@ -3,7 +3,6 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/ui/themes";
 import "./globals.css";
 import { Poppins } from "next/font/google";
-import Navbar from "@/components/Navbar";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -58,7 +57,6 @@ export default function RootLayout({
     <html lang="en" data-scroll-behavior="smooth">
       <body className={`${poppins.variable} antialiased`}>
         <ClerkProvider appearance={clerkAppearance}>
-          <Navbar />
           {children}
         </ClerkProvider>
       </body>

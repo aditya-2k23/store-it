@@ -1,9 +1,9 @@
 "use server";
 
-import { createAdminClient } from "@/lib/appwrite";
+import { createAdminClient, getAppwrite } from "@/lib/appwrite";
 import { avatarPlaceholderUrl } from "@/constants";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
-import { ID, Models, Query } from "node-appwrite";
+import type { Models } from "node-appwrite";
 import { appwriteConfig } from "../appwrite/config";
 import { parseStringify } from "../utils";
 
@@ -24,6 +24,8 @@ export const getCurrentUser = async () => {
     const { userId } = await auth();
 
     if (!userId) return null;
+
+    const { ID, Query } = await getAppwrite();
 
     const client = await clerkClient();
     const clerkUser =
