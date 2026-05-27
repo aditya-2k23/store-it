@@ -9,6 +9,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "cloud.appwrite.io" },
       { protocol: "https", hostname: "img.clerk.com" },
       { protocol: "https", hostname: "images.clerk.dev" },
+      { protocol: "https", hostname: "i.pravatar.cc" },
     ],
   },
 };
