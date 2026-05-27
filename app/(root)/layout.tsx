@@ -21,21 +21,17 @@ const Layout = async ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       <main className="app-shell">
-        <Sidebar fullName={currentUser.fullName} avatar={currentUser.avatar} />
+        <Sidebar
+          fullName={currentUser.fullName}
+          avatar={currentUser.avatarUrl}
+        />
         <section className="app-shell-content">
           <MobileNavigation
-            ownerId={currentUser.$id}
-            accountId={currentUser.accountId}
             fullName={currentUser.fullName}
             email={currentUser.email}
-            avatar={currentUser.avatar}
+            avatar={currentUser.avatarUrl}
           />
-          <Header
-            ownerId={currentUser.$id}
-            accountId={currentUser.accountId}
-            fullName={currentUser.fullName}
-            avatar={currentUser.avatar}
-          />
+          <Header />
           <div className="main-content">{children}</div>
         </section>
 

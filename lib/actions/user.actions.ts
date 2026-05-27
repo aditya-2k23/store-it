@@ -1,18 +1,9 @@
 "use server";
 
-import { createAdminClient, getAppwrite } from "@/lib/appwrite";
 import { avatarPlaceholderUrl } from "@/constants";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
-import type { Models } from "node-appwrite";
-import { appwriteConfig } from "../appwrite/config";
 import { parseStringify } from "../utils";
-
-type AppwriteUser = Models.Document & {
-  fullName?: string;
-  email?: string;
-  avatar?: string;
-  accountId?: string;
-};
 
 const handleError = (error: unknown, message: string) => {
   console.error(message, error);
@@ -24,8 +15,6 @@ export const getCurrentUser = async () => {
     const { userId } = await auth();
 
     if (!userId) return null;
-
-    const { ID, Query } = await getAppwrite();
 
     const client = await clerkClient();
     const clerkUser =
@@ -41,57 +30,76 @@ export const getCurrentUser = async () => {
       [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
       clerkUser.username ||
       "User";
-    const avatar = clerkUser.imageUrl || avatarPlaceholderUrl;
 
-    const { databases } = await createAdminClient();
+    const avatarUrl = clerkUser.imageUrl || avatarPlaceholderUrl;
 
-    const byAccountId = await databases.listDocuments(
-      appwriteConfig.databaseId,
-      appwriteConfig.usersCollectionId,
-      [Query.equal("accountId", [userId])],
-    );
+    const supabase = createSupabaseAdmin();
 
-    let userDoc: AppwriteUser | null =
-      byAccountId.total > 0 ? (byAccountId.documents[0] as AppwriteUser) : null;
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .upsert(
+        {
+          clerk_id: userId,
+          email,
+          full_name: fullName,
+          avatar_url: avatarUrl,
+        },
+        { onConflict: "clerk_id" },
+      )
+      .select()
+      .single();
 
-    if (!userDoc) {
-      const byEmail = await databases.listDocuments(
-        appwriteConfig.databaseId,
-        appwriteConfig.usersCollectionId,
-        [Query.equal("email", [email])],
-      );
+    if (userError) throw userError;
 
-      userDoc =
-        byEmail.total > 0 ? (byEmail.documents[0] as AppwriteUser) : null;
+    const { data: existingWorkspace, error: workspaceError } = await supabase
+      .from("workspaces")
+      .select("id")
+      .eq("owner_id", user.id)
+      .eq("type", "personal")
+      .maybeSingle();
+
+    if (workspaceError) throw workspaceError;
+
+    let workspaceId = existingWorkspace?.id;
+
+    if (!workspaceId) {
+      const { data: newWorkspace, error: createWorkspaceError } = await supabase
+        .from("workspaces")
+        .insert({
+          name: `${fullName}'s Workspace`,
+          type: "personal",
+          owner_id: user.id,
+        })
+        .select("id")
+        .single();
+
+      if (createWorkspaceError) throw createWorkspaceError;
+
+      workspaceId = newWorkspace.id;
     }
 
-    if (userDoc) {
-      const needsUpdate =
-        userDoc.fullName !== fullName ||
-        userDoc.email !== email ||
-        userDoc.avatar !== avatar ||
-        userDoc.accountId !== userId;
-
-      if (!needsUpdate) return parseStringify(userDoc);
-
-      const updatedUser = await databases.updateDocument(
-        appwriteConfig.databaseId,
-        appwriteConfig.usersCollectionId,
-        userDoc.$id,
-        { fullName, email, avatar, accountId: userId },
+    const { error: membershipError } = await supabase
+      .from("workspace_members")
+      .upsert(
+        {
+          workspace_id: workspaceId,
+          user_id: user.id,
+          role: "owner",
+        },
+        { onConflict: "workspace_id,user_id" },
       );
 
-      return parseStringify(updatedUser);
-    }
+    if (membershipError) throw membershipError;
 
-    const newUser = await databases.createDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.usersCollectionId,
-      ID.unique(),
-      { fullName, email, avatar, accountId: userId },
-    );
-
-    return parseStringify(newUser);
+    return parseStringify({
+      id: user.id,
+      clerkId: user.clerk_id,
+      email: user.email,
+      fullName: user.full_name || fullName,
+      avatarUrl: user.avatar_url || avatarUrl,
+      plan: user.plan,
+      workspaceId,
+    });
   } catch (error) {
     handleError(error, "Failed to get current user");
   }

@@ -23,8 +23,6 @@ import { useState } from "react";
 import FileUploader from "./FileUploader";
 
 interface Props {
-  ownerId: string;
-  accountId: string;
   fullName: string;
   avatar: string;
   email: string;
@@ -38,13 +36,7 @@ const mobileLinks = [
   { name: "Others", href: "/others", icon: Ellipsis },
 ];
 
-const MobileNavigation = ({
-  ownerId,
-  accountId,
-  fullName,
-  avatar,
-  email,
-}: Props) => {
+const MobileNavigation = ({ fullName, avatar, email }: Props) => {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -111,11 +103,7 @@ const MobileNavigation = ({
           </nav>
 
           <div className="mt-6 border-t border-white/75 pt-6">
-            <FileUploader
-              ownerId={ownerId}
-              accountId={accountId}
-              className="h-12 w-full rounded-2xl bg-linear-to-r from-[#ff6b6b] to-[#ff8e7e] px-6 text-[15px] font-semibold text-white"
-            />
+            <FileUploader className="h-12 w-full rounded-2xl bg-linear-to-r from-[#ff6b6b] to-[#ff8e7e] px-6 text-[15px] font-semibold text-white" />
           </div>
         </SheetContent>
       </Sheet>

@@ -3,7 +3,6 @@ import FormattedDateTime from "./FormattedDateTime";
 import { Input } from "./ui/input";
 import { getFiles } from "@/lib/actions/file.actions";
 import { Mic, Search as SearchIcon } from "lucide-react";
-import { Models } from "node-appwrite";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import Thumbnail from "./Thumbnail";
@@ -12,7 +11,7 @@ import { useDebounce } from "use-debounce";
 const Search = () => {
   const [query, setQuery] = useState("");
   const searchParams = useSearchParams();
-  const [results, setResults] = useState<Models.Document[]>([]);
+  const [results, setResults] = useState<FileItem[]>([]);
   const [open, setOpen] = useState(false);
   const minQueryLength = 2;
 
@@ -62,7 +61,7 @@ const Search = () => {
     };
   }, [debouncedQuery, path, router, searchParams]);
 
-  const handleClickItem = (file: Models.Document) => {
+  const handleClickItem = (file: FileItem) => {
     setOpen(false);
     setResults([]);
 
@@ -95,7 +94,7 @@ const Search = () => {
             {results.length > 0 ? (
               results.map((file) => (
                 <li
-                  key={file.$id}
+                  key={file.id}
                   className="rounded-xl transition-colors hover:bg-slate-100/80"
                 >
                   <button
@@ -116,7 +115,7 @@ const Search = () => {
                     </div>
 
                     <FormattedDateTime
-                      date={file.$createdAt}
+                      date={file.createdAt}
                       className="caption line-clamp-1 text-light-200"
                     />
                   </button>

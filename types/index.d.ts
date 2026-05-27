@@ -11,12 +11,44 @@ declare interface SearchParamProps {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
+declare interface CurrentUser {
+  id: string;
+  clerkId: string;
+  email: string;
+  fullName: string;
+  avatarUrl: string;
+  plan: string;
+  workspaceId: string;
+}
+
+declare interface FileOwner {
+  id: string;
+  fullName: string;
+  email: string;
+  avatarUrl: string | null;
+}
+
+declare interface FileItem {
+  id: string;
+  name: string;
+  originalName: string;
+  extension: string;
+  type: FileType;
+  size: number;
+  url: string;
+  downloadUrl: string;
+  createdAt: string;
+  updatedAt: string;
+  storageKey: string;
+  owner: FileOwner;
+  sharedWith: string[];
+}
+
 declare interface UploadFileProps {
   file: File;
-  ownerId: string;
-  accountId: string;
   path: string;
 }
+
 declare interface GetFilesProps {
   types: FileType[];
   searchText?: string;
@@ -24,40 +56,38 @@ declare interface GetFilesProps {
   limit?: number;
   offset?: number;
 }
+
 declare interface RenameFileProps {
   fileId: string;
   name: string;
   extension: string;
   path: string;
 }
+
 declare interface UpdateFileUsersProps {
   fileId: string;
   emails: string[];
   path: string;
 }
+
 declare interface DeleteFileProps {
   fileId: string;
-  bucketFileId: string;
   path: string;
 }
 
 declare interface FileUploaderProps {
-  ownerId: string;
-  accountId: string;
   className?: string;
 }
 
 declare interface MobileNavigationProps {
-  ownerId: string;
-  accountId: string;
   fullName: string;
   avatar: string;
   email: string;
 }
+
 declare interface SidebarProps {
   fullName: string;
   avatar: string;
-  email: string;
 }
 
 declare interface ThumbnailProps {
@@ -69,7 +99,7 @@ declare interface ThumbnailProps {
 }
 
 declare interface ShareInputProps {
-  file: Models.Document;
-  onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  file: FileItem;
+  onInputChange: (emails: string[]) => void;
   onRemove: (email: string) => void;
 }

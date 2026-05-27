@@ -13,12 +13,10 @@ import { uploadFile } from "@/lib/actions/file.actions";
 import { usePathname } from "next/navigation";
 
 interface Props {
-  ownerId: string;
-  accountId: string;
   className?: string;
 }
 
-const FileUploader = ({ ownerId, accountId, className }: Props) => {
+const FileUploader = ({ className }: Props) => {
   const path = usePathname();
   const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
@@ -44,7 +42,7 @@ const FileUploader = ({ ownerId, accountId, className }: Props) => {
           });
         }
 
-        return uploadFile({ file, ownerId, accountId, path }).then(
+        return uploadFile({ file, path }).then(
           (uploadedFile) => {
             if (uploadedFile) {
               setFiles((prevFiles) =>
@@ -57,7 +55,7 @@ const FileUploader = ({ ownerId, accountId, className }: Props) => {
 
       await Promise.all(uploadPromises);
     },
-    [ownerId, accountId, path, toast]
+    [path, toast]
   );
 
   const { getRootProps, getInputProps } = useDropzone({ onDrop });

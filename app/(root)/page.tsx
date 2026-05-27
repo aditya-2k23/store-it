@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Models } from "node-appwrite";
 
 import ActionsDropdown from "@/components/ActionsDropdown";
 import Chart from "@/components/Chart";
@@ -9,15 +8,6 @@ import Thumbnail from "@/components/Thumbnail";
 import { Separator } from "@/components/ui/separator";
 import { getFiles, getTotalSpaceUsed } from "@/lib/actions/file.actions";
 import { convertFileSize, getUsageSummary } from "@/lib/utils";
-
-type DashboardFile = Models.Document & {
-  url: string;
-  type: string;
-  extension: string;
-  name: string;
-  bucketFileId: string;
-  $createdAt: string;
-};
 
 const Dashboard = async () => {
   // Parallel requests
@@ -77,12 +67,12 @@ const Dashboard = async () => {
         <h2 className="h3 xl:h2 text-light-100">Recently uploaded files</h2>
         {files.documents.length > 0 ? (
           <ul className="mt-5 flex flex-col gap-5">
-            {files.documents.map((file: DashboardFile) => (
+            {files.documents.map((file: FileItem) => (
               <Link
                 href={file.url}
                 target="_blank"
                 className="flex items-center gap-3"
-                key={file.$id}
+                key={file.id}
               >
                 <Thumbnail
                   type={file.type}
@@ -94,7 +84,7 @@ const Dashboard = async () => {
                   <div className="flex flex-col gap-1">
                     <p className="recent-file-name">{file.name}</p>
                     <FormattedDateTime
-                      date={file.$createdAt}
+                      date={file.createdAt}
                       className="caption"
                     />
                   </div>
