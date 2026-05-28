@@ -12,15 +12,6 @@ const handleError = (error: unknown, message: string) => {
 };
 
 const TOTAL_SPACE_CACHE_TAG = "total-space-used";
-const FILE_URL_TTL_SECONDS = 60 * 60;
-
-const getStorageBucket = () => {
-  const bucket = process.env.SUPABASE_STORAGE_BUCKET;
-  if (!bucket) {
-    throw new Error("Missing SUPABASE_STORAGE_BUCKET env var.");
-  }
-  return bucket;
-};
 
 type FileRow = Database["public"]["Tables"]["files"]["Row"];
 type UserRow = Database["public"]["Tables"]["users"]["Row"];
@@ -31,36 +22,11 @@ type FileRowWithOwner = FileRow & {
 const FILE_SELECT =
   "id, name, original_name, extension, mime_type, type, size, storage_key, thumbnail_key, preview_status, owner_id, workspace_id, created_at, updated_at, owner:users!files_owner_id_fkey(id, full_name, email, avatar_url)";
 
-const getSignedUrl = async (
-  supabase: ReturnType<typeof createSupabaseAdmin>,
-  key: string | null,
-) => {
-  if (!key) return null;
-
-  const { data, error } = await supabase.storage
-    .from(getStorageBucket())
-    .createSignedUrl(key, FILE_URL_TTL_SECONDS);
-
-  if (error) return null;
-
-  return data.signedUrl;
-};
-
-const mapRowToFileItem = async (
-  supabase: ReturnType<typeof createSupabaseAdmin>,
+const mapRowToFileItem = (
   row: FileRowWithOwner,
   sharedWith: string[],
-): Promise<FileItem> => {
+): FileItem => {
   const extension = row.extension || getFileType(row.name).extension;
-  const previewKey =
-    row.thumbnail_key && row.preview_status === "completed"
-      ? row.thumbnail_key
-      : row.storage_key;
-
-  const [url, downloadUrl] = await Promise.all([
-    getSignedUrl(supabase, previewKey),
-    getSignedUrl(supabase, row.storage_key),
-  ]);
 
   return {
     id: row.id,
@@ -69,8 +35,8 @@ const mapRowToFileItem = async (
     extension,
     type: row.type as FileType,
     size: row.size,
-    url: url || "",
-    downloadUrl: downloadUrl || "",
+    url: "",
+    downloadUrl: "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     storageKey: row.storage_key,
@@ -217,17 +183,6 @@ export const uploadFile = async ({ file, path }: UploadFileProps) => {
     const fileId = crypto.randomUUID();
     const storageKey = `${currentUser.workspaceId}/${fileId}-${file.name}`;
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-
-    const { error: uploadError } = await supabase.storage
-      .from(getStorageBucket())
-      .upload(storageKey, buffer, {
-        contentType: file.type || "application/octet-stream",
-        upsert: false,
-      });
-
-    if (uploadError) throw uploadError;
-
     const { data: insertedFile, error: insertError } = await supabase
       .from("files")
       .insert({
@@ -245,17 +200,9 @@ export const uploadFile = async ({ file, path }: UploadFileProps) => {
       .select(FILE_SELECT)
       .single();
 
-    if (insertError) {
-      await supabase.storage.from(getStorageBucket()).remove([storageKey]);
-      throw insertError;
-    }
+    if (insertError) throw insertError;
 
-    const shareMap = new Map<string, string[]>();
-    const fileItem = await mapRowToFileItem(
-      supabase,
-      insertedFile as FileRowWithOwner,
-      shareMap.get(insertedFile.id) || [],
-    );
+    const fileItem = mapRowToFileItem(insertedFile as FileRowWithOwner, []);
 
     revalidatePath(path);
     revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });
@@ -316,10 +263,8 @@ export const getFiles = async ({
       pagedFiles.map((file) => file.id),
     );
 
-    const documents = await Promise.all(
-      pagedFiles.map((file) =>
-        mapRowToFileItem(supabase, file, shareMap.get(file.id) || []),
-      ),
+    const documents = pagedFiles.map((file) =>
+      mapRowToFileItem(file, shareMap.get(file.id) || []),
     );
 
     return parseStringify({ documents, total });
@@ -450,10 +395,6 @@ export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
       .eq("id", fileId);
 
     if (deleteError) throw deleteError;
-
-    await supabase.storage
-      .from(getStorageBucket())
-      .remove([fileRecord.storage_key]);
 
     revalidatePath(path);
     revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });

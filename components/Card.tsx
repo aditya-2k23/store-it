@@ -6,8 +6,10 @@ import FormattedDateTime from "./FormattedDateTime";
 import ActionsDropdown from "./ActionsDropdown";
 
 const Card = ({ file }: { file: FileItem }) => {
+  const fileHref = file.downloadUrl || file.url || "#";
+
   return (
-    <Link href={file.url} target="_blank" className="file-card">
+    <Link href={fileHref} target="_blank" className="file-card">
       <div className="flex justify-between">
         <Thumbnail
           type={file.type}
