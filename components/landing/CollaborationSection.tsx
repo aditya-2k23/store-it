@@ -6,7 +6,10 @@ import { MousePointer2, FileText } from "lucide-react";
 
 export const CollaborationSection = () => {
   return (
-    <section id="collaboration" className="py-24 bg-white overflow-hidden text-center">
+    <section
+      id="collaboration"
+      className="py-24 bg-white overflow-hidden text-center"
+    >
       <div className="max-w-4xl mx-auto px-6 mb-16 relative">
         <h2 className="text-3xl md:text-5xl font-bold text-dark-100 mb-6 tracking-tight">
           Built for teams, not just storage.
@@ -20,7 +23,6 @@ export const CollaborationSection = () => {
       <div className="max-w-5xl mx-auto relative h-120 flex justify-center items-center px-4">
         {/* Abstract collaborative workspace */}
         <div className="w-full max-w-3xl aspect-video bg-light-400/30 rounded-3xl border border-light-300 relative shadow-inner overflow-hidden flex flex-col pt-14">
-          
           {/* Header */}
           <div className="absolute top-0 left-0 right-0 h-14 border-b border-light-300 bg-white/70 backdrop-blur flex justify-between items-center px-6 z-30">
             <div className="flex gap-2">
@@ -43,15 +45,16 @@ export const CollaborationSection = () => {
 
           {/* Main workspace layout */}
           <div className="flex-1 p-6 flex gap-6 relative z-10 text-left h-full">
-            
             {/* Left side: Simulated Markdown Editor */}
-            <div className="flex-[2] bg-white rounded-2xl p-5 shadow-sm border border-light-300 relative overflow-hidden flex flex-col justify-between h-full">
+            <div className="flex-2 bg-white rounded-2xl p-5 shadow-sm border border-light-300 relative overflow-hidden flex flex-col justify-between h-full">
               <div className="space-y-4">
                 <div className="flex items-center gap-2 border-b border-light-300 pb-3">
                   <FileText className="w-4 h-4 text-brand" />
-                  <span className="font-bold text-slate-800 text-xs tracking-tight">Q3_Marketing_Campaign.md</span>
+                  <span className="font-bold text-slate-800 text-xs tracking-tight">
+                    Q3_Marketing_Campaign.md
+                  </span>
                 </div>
-                
+
                 {/* Simulated Paragraph Lines */}
                 <div className="space-y-2.5">
                   <div className="h-3.5 bg-slate-100 rounded w-11/12 relative overflow-hidden">
@@ -67,7 +70,7 @@ export const CollaborationSection = () => {
                         times: [0, 0.08, 0.2, 0.916, 0.958, 1.0],
                         ease: "easeInOut",
                       }}
-                      className="absolute inset-0 bg-[#FA7275]"
+                      className="absolute inset-0 bg-brand"
                     />
                   </div>
                   <div className="h-3.5 bg-slate-100 rounded w-full"></div>
@@ -89,26 +92,44 @@ export const CollaborationSection = () => {
                   times: [0, 0.1, 0.22, 0.916, 0.958, 1.0],
                   ease: "easeInOut",
                 }}
-                className="absolute top-1/2 left-6 right-6 bg-[#FA7275] text-white p-3.5 rounded-xl shadow-drop-2 border border-brand/20 text-[11px] z-20"
+                className="absolute top-1/2 left-6 right-6 bg-brand text-white p-3.5 rounded-xl shadow-drop-2 border border-brand/20 text-[11px] z-20"
               >
                 <div className="font-bold mb-0.5 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                   Alex L. added a comment:
                 </div>
-                <p className="opacity-90 leading-relaxed">&quot;Let&apos;s update this title to sound more user-focused!&quot;</p>
+                <p className="opacity-90 leading-relaxed">
+                  &quot;Let&apos;s update this title to sound more
+                  user-focused!&quot;
+                </p>
               </motion.div>
             </div>
 
             {/* Right side: Interactive Task list Sidebar */}
             <div className="flex-1 bg-white rounded-2xl p-4 shadow-sm border border-light-300 flex flex-col h-full">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Tasks</h4>
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
+                Tasks
+              </h4>
               <div className="space-y-2">
-                
                 {/* Simulated task items */}
                 <motion.div
                   animate={{
-                    borderColor: ["#F2F5F9", "#F2F5F9", "#56B8FF", "#56B8FF", "#F2F5F9", "#F2F5F9"],
-                    backgroundColor: ["rgba(255,255,255,1)", "rgba(255,255,255,1)", "rgba(86,184,255,0.08)", "rgba(86,184,255,0.08)", "rgba(255,255,255,1)", "rgba(255,255,255,1)"],
+                    borderColor: [
+                      "#F2F5F9",
+                      "#F2F5F9",
+                      "#56B8FF",
+                      "#56B8FF",
+                      "#F2F5F9",
+                      "#F2F5F9",
+                    ],
+                    backgroundColor: [
+                      "rgba(255,255,255,1)",
+                      "rgba(255,255,255,1)",
+                      "rgba(86,184,255,0.08)",
+                      "rgba(86,184,255,0.08)",
+                      "rgba(255,255,255,1)",
+                      "rgba(255,255,255,1)",
+                    ],
                   }}
                   transition={{
                     duration: 12,
@@ -121,8 +142,22 @@ export const CollaborationSection = () => {
                   {/* Checkbox animation */}
                   <motion.div
                     animate={{
-                      backgroundColor: ["#ffffff", "#ffffff", "#56B8FF", "#56B8FF", "#ffffff", "#ffffff"],
-                      borderColor: ["#A3B2C7", "#A3B2C7", "#56B8FF", "#56B8FF", "#A3B2C7", "#A3B2C7"],
+                      backgroundColor: [
+                        "#ffffff",
+                        "#ffffff",
+                        "#56B8FF",
+                        "#56B8FF",
+                        "#ffffff",
+                        "#ffffff",
+                      ],
+                      borderColor: [
+                        "#A3B2C7",
+                        "#A3B2C7",
+                        "#56B8FF",
+                        "#56B8FF",
+                        "#A3B2C7",
+                        "#A3B2C7",
+                      ],
                     }}
                     transition={{
                       duration: 12,
@@ -145,20 +180,31 @@ export const CollaborationSection = () => {
                       stroke="currentColor"
                       strokeWidth="4"
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 13l4 4L19 7"
+                      />
                     </motion.svg>
                   </motion.div>
-                  
+
                   {/* Task Text Strikethrough Animation */}
                   <motion.span
                     animate={{
-                      textDecoration: ["none", "none", "line-through", "line-through", "none", "none"],
-                      opacity: [1, 1, 0.5, 0.5, 1, 1]
+                      textDecoration: [
+                        "none",
+                        "none",
+                        "line-through",
+                        "line-through",
+                        "none",
+                        "none",
+                      ],
+                      opacity: [1, 1, 0.5, 0.5, 1, 1],
                     }}
                     transition={{
                       duration: 12,
                       repeat: Infinity,
-                      times: [0, 0.64, 0.68, 0.916, 0.958, 1.0]
+                      times: [0, 0.64, 0.68, 0.916, 0.958, 1.0],
                     }}
                     className="truncate"
                   >
@@ -168,8 +214,18 @@ export const CollaborationSection = () => {
 
                 <div className="flex items-center gap-2 p-2.5 rounded-xl border border-light-300 text-[11px] text-slate-400 font-medium line-through opacity-60">
                   <div className="w-3.5 h-3.5 rounded bg-slate-200 flex items-center justify-center shrink-0">
-                    <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="4">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-2 h-2 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   </div>
                   <span className="truncate">Create layout</span>

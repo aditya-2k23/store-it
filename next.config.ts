@@ -16,11 +16,11 @@ const nextConfig: NextConfig = {
   experimental: { serverActions: { bodySizeLimit: "100MB" } },
   images: {
     remotePatterns: [
-      { protocol: "https", hostname: "www.istockphoto.com" },
-      ...(supabaseHost ? [{ protocol: "https", hostname: supabaseHost }] : []),
-      { protocol: "https", hostname: "img.clerk.com" },
-      { protocol: "https", hostname: "images.clerk.dev" },
-      { protocol: "https", hostname: "i.pravatar.cc" },
+      { protocol: "https" as const, hostname: "www.istockphoto.com" },
+      ...(supabaseHost ? [{ protocol: "https" as const, hostname: supabaseHost }] : []),
+      { protocol: "https" as const, hostname: "img.clerk.com" },
+      { protocol: "https" as const, hostname: "images.clerk.dev" },
+      { protocol: "https" as const, hostname: "i.pravatar.cc" },
     ],
   },
 };

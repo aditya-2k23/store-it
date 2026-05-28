@@ -258,7 +258,7 @@ export const uploadFile = async ({ file, path }: UploadFileProps) => {
     );
 
     revalidatePath(path);
-    revalidateTag(TOTAL_SPACE_CACHE_TAG);
+    revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });
 
     return parseStringify(fileItem);
   } catch (error) {
@@ -456,7 +456,7 @@ export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
       .remove([fileRecord.storage_key]);
 
     revalidatePath(path);
-    revalidateTag(TOTAL_SPACE_CACHE_TAG);
+    revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });
 
     return parseStringify({ status: "success" });
   } catch (error) {
