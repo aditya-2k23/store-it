@@ -165,7 +165,10 @@ export const PreviewsSection = () => {
     <section className="py-24 bg-light-400 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 text-center mb-16">
         <h2 className="text-3xl md:text-5xl font-bold text-dark-100 tracking-tight">
-          Everything in its right place.
+          <span className="font-medium font-dynapuff text-brand">
+            Everything
+          </span>{" "}
+          in its right place.
         </h2>
         <p className="text-lg text-light-100 mt-4">
           Native previews for every file format you care about.

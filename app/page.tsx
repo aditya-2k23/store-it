@@ -9,7 +9,6 @@ import {
   StoryTimeline,
   PreviewsSection,
   StatsSection,
-  Testimonials,
   FinalCTA,
   Footer,
 } from "@/components/landing";
@@ -25,7 +24,6 @@ export default function LandingPage() {
       <StoryTimeline />
       <PreviewsSection />
       <StatsSection />
-      <Testimonials />
       <FinalCTA />
       <Footer />
     </main>

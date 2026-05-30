@@ -12,7 +12,10 @@ export const CollaborationSection = () => {
     >
       <div className="max-w-4xl mx-auto px-6 mb-16 relative">
         <h2 className="text-3xl md:text-5xl font-bold text-dark-100 mb-6 tracking-tight">
-          Built for teams, not just storage.
+          Built for{" "}
+          <span className="font-dynapuff font-medium text-brand">teams</span>,
+          not just{" "}
+          <span className="font-dynapuff font-medium text-brand">storage</span>.
         </h2>
         <p className="text-lg text-light-100 max-w-2xl mx-auto">
           Work seamlessly with granular permissions, live cursors, and unified

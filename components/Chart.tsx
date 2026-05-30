@@ -13,7 +13,6 @@ const Chart = ({
 }) => {
   const percentage = Number(calculatePercentage(used));
   const clampedPercentage = Math.min(Math.max(percentage, 0), 100);
-  const progress = Math.max(clampedPercentage, 1.4);
   const totalCapacity = 2 * 1024 * 1024 * 1024;
   const remaining = Math.max(totalCapacity - used, 0);
   const statusLabel =
@@ -39,7 +38,7 @@ const Chart = ({
 
       <div className="relative w-full grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)] lg:items-center">
         <div className="space-y-4">
-          <p className="font-semibold uppercase tracking-[0.2em] text-white/70">
+          <p className="font-medium font-dynapuff uppercase tracking-[0.2em] text-white/70">
             Storage usage
           </p>
 
@@ -68,7 +67,9 @@ const Chart = ({
           <div className="grid gap-3 rounded-2xl bg-white/10 p-4 shadow-inner">
             <div className="flex items-center justify-between text-sm text-white/85">
               <span>Usage status</span>
-              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}
+              >
                 {statusLabel}
               </span>
             </div>

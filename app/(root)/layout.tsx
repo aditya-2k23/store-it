@@ -1,6 +1,7 @@
 import Header from "@/components/Header";
 import MobileNavigation from "@/components/MobileNavigation";
 import Sidebar from "@/components/Sidebar";
+import GlobalDropzoneWrapper from "@/components/GlobalDropzoneWrapper";
 import { Toaster } from "@/components/ui/toaster";
 import { getCurrentUser } from "@/lib/actions/user.actions";
 import { auth } from "@clerk/nextjs/server";
@@ -32,7 +33,11 @@ const Layout = async ({ children }: { children: React.ReactNode }) => {
             avatar={currentUser.avatarUrl}
           />
           <Header />
-          <div className="main-content">{children}</div>
+          <GlobalDropzoneWrapper className="flex-1 min-h-0 relative flex flex-col">
+            <div className="main-content">
+              {children}
+            </div>
+          </GlobalDropzoneWrapper>
         </section>
 
         <Toaster />

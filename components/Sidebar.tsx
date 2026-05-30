@@ -129,8 +129,9 @@ const Sidebar = ({ fullName, avatar }: SidebarProps) => {
                   <Link
                     href={href}
                     className={cn(
-                      "group flex items-center py-3 font-medium text-slate-600 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35",
-                      isActive && "bg-[#ff6b6b]/15 text-[#ff6b6b]",
+                      "group flex items-center py-3 font-semibold text-slate-600 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35",
+                      isActive &&
+                        "bg-[#ff6b6b]/15 text-[#ff6b6b] font-dynapuff font-medium",
                       displayCollapsed
                         ? "justify-center px-2 rounded-xl"
                         : "gap-3 px-4 rounded-full",

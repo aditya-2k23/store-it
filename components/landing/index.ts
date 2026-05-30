@@ -6,7 +6,6 @@ export * from "./CollaborationSection";
 export * from "./StoryTimeline";
 export * from "./PreviewsSection";
 export * from "./StatsSection";
-export * from "./Testimonials";
 export * from "./FinalCTA";
 export * from "./Footer";
 export * from "./animations";

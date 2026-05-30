@@ -138,19 +138,21 @@ export const HeroSection = () => {
             <div className="grid grid-cols-3 gap-4 mb-6">
               <div className="col-span-2 bg-brand rounded-xl p-5 text-white shadow-drop-3 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/4"></div>
-                <h3 className="font-semibold mb-1 opacity-90">
+                <h3 className="font-medium font-dynapuff mb-1 opacity-90">
                   Available Storage
                 </h3>
-                <div className="text-3xl font-bold mb-4">1.4%</div>
+                <div className="text-3xl font-medium font-dynapuff mb-4">
+                  67.3%
+                </div>
                 <div className="w-full bg-white/20 rounded-full h-1.5 mb-2">
                   <motion.div
                     initial={{ width: "0%" }}
-                    animate={{ width: "1.4%" }}
+                    animate={{ width: "67.3%" }}
                     transition={{ duration: 1.2, ease: "easeOut", delay: 0.8 }}
                     className="bg-white rounded-full h-1.5"
                   />
                 </div>
-                <p className="text-xs opacity-70">28.4MB / 2.00GB Used</p>
+                <p className="text-xs opacity-70">1.34GB / 2.00GB Used</p>
               </div>
 
               <motion.div
@@ -158,7 +160,7 @@ export const HeroSection = () => {
                 transition={{ type: "spring", stiffness: 300, damping: 15 }}
                 className="bg-[#FEECEE] rounded-xl p-5 border border-white shadow-sm flex flex-col justify-between relative group cursor-pointer"
               >
-                <h3 className="font-semibold text-brand text-sm">
+                <h3 className="font-medium font-dynapuff text-brand text-sm">
                   AI Insights
                 </h3>
                 <p className="text-xs text-brand/70 leading-relaxed">

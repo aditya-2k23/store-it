@@ -174,7 +174,11 @@ export const FeaturesBento = () => {
       <div className="max-w-7xl mx-auto px-6 md:px-12">
         <div className="mb-16">
           <h2 className="text-3xl md:text-5xl font-bold text-dark-100 mb-4 tracking-tight">
-            Features designed to get <br />
+            Features{" "}
+            <span className="font-dynapuff font-medium text-brand">
+              designed
+            </span>{" "}
+            to get <br />
             out of your way.
           </h2>
           <p className="text-light-100 text-lg">

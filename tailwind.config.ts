@@ -50,10 +50,17 @@ const config: Config = {
           "0%, 100%": { transform: "translateY(0) scale(1)" },
           "50%": { transform: "translateY(-10px) scale(1.05)" },
         },
+        float: {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
       },
       animation: {
         "caret-blink": "caret-blink 1.25s ease-out infinite",
         dashboardFloat: "dashboardFloat 9s ease-in-out infinite",
+        "float-slow": "float 4s ease-in-out infinite",
+        "float-medium": "float 3s ease-in-out infinite",
+        "float-fast": "float 2s ease-in-out infinite",
       },
     },
   },

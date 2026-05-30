@@ -8,6 +8,7 @@ import Thumbnail from "@/components/Thumbnail";
 import { Separator } from "@/components/ui/separator";
 import { getFiles, getTotalSpaceUsed } from "@/lib/actions/file.actions";
 import { convertFileSize, getUsageSummary } from "@/lib/utils";
+import EmptyState from "@/components/EmptyState";
 
 const Dashboard = async () => {
   // Parallel requests
@@ -64,7 +65,9 @@ const Dashboard = async () => {
 
       {/* Recent files uploaded */}
       <section className="dashboard-recent-files">
-        <h2 className="h3 xl:h2 text-light-100 font-dynapuff">Recently uploaded files</h2>
+        <h2 className="h3 xl:h2 text-light-100 font-dynapuff tracking-wider">
+          Recently uploaded files
+        </h2>
         {files.documents.length > 0 ? (
           <ul className="mt-5 flex flex-col gap-5">
             {files.documents.map((file: FileItem) => (
@@ -94,7 +97,7 @@ const Dashboard = async () => {
             ))}
           </ul>
         ) : (
-          <p className="empty-list">No files uploaded</p>
+          <EmptyState />
         )}
       </section>
     </div>

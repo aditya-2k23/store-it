@@ -2,7 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, CheckCircle2, ImageIcon, FileText, ChevronRight } from "lucide-react";
+import {
+  Search,
+  CheckCircle2,
+  ImageIcon,
+  FileText,
+  ChevronRight,
+} from "lucide-react";
 
 export const InteractiveAISearch = () => {
   const [searchValue, setSearchValue] = useState("");
@@ -85,7 +91,10 @@ export const InteractiveAISearch = () => {
       <div className="max-w-7xl mx-auto px-6 md:px-12 grid md:grid-cols-2 gap-12 items-center">
         <div>
           <h2 className="text-3xl md:text-5xl font-bold text-dark-100 mb-6 tracking-tight">
-            AI Search that just works.
+            <span className="text-brand font-dynapuff font-medium">
+              AI Search
+            </span>{" "}
+            that just works.
           </h2>
           <p className="text-lg text-light-100 mb-8 max-w-md">
             Stop remembering file names. Ask Storey naturally and it retrieves
@@ -137,7 +146,8 @@ export const InteractiveAISearch = () => {
                       Search naturally by content
                     </p>
                     <p className="text-[10px] text-light-200 mb-4 max-w-[240px]">
-                      Storey indexes files, OCR texts, and metadata automatically.
+                      Storey indexes files, OCR texts, and metadata
+                      automatically.
                     </p>
                     <div className="flex gap-2 justify-center">
                       {["invoice", "notes.txt", "design png"].map((tag) => (

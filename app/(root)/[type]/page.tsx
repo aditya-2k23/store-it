@@ -8,6 +8,7 @@ import {
 } from "@/lib/utils";
 import Link from "next/link";
 import React from "react";
+import EmptyState from "@/components/EmptyState";
 
 const Page = async ({ searchParams, params }: SearchParamProps) => {
   const type = ((await params)?.type as string) || "";
@@ -79,7 +80,7 @@ const Page = async ({ searchParams, params }: SearchParamProps) => {
           ))}
         </section>
       ) : (
-        <p className="empty-list">No files uploaded</p>
+        <EmptyState type={type} />
       )}
       {totalPages > 1 && (
         <div className="flex w-full items-center justify-between">

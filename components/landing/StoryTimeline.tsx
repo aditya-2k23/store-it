@@ -102,7 +102,8 @@ export const StoryTimeline = () => {
 
       <div className="max-w-5xl mx-auto px-6 text-center relative z-10">
         <h2 className="text-3xl md:text-5xl font-bold mb-12 tracking-tight">
-          Your files tell a story.
+          Your files tell a{" "}
+          <span className="font-dynapuff font-medium text-brand">story</span>.
         </h2>
 
         <div className="relative">
