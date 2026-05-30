@@ -4,18 +4,56 @@ import { avatarPlaceholderUrl } from "@/constants";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { parseStringify } from "../utils";
+import type { Database } from "@/types/database.types";
+
+import { cache } from "react";
 
 const handleError = (error: unknown, message: string) => {
   console.error(message, error);
   throw error;
 };
 
-export const getCurrentUser = async () => {
+export const getCurrentUser = cache(async () => {
   try {
     const { userId } = await auth();
 
     if (!userId) return null;
 
+    const supabase = createSupabaseAdmin();
+
+    // 1. Fetch user from Supabase first
+    const { data: existingUser, error: findError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("clerk_id", userId)
+      .maybeSingle();
+
+    if (findError) throw findError;
+
+    if (existingUser) {
+      // Fetch workspace member ownership to get their workspace
+      const { data: membership, error: memberError } = await supabase
+        .from("workspace_members")
+        .select("workspace_id")
+        .eq("user_id", existingUser.id)
+        .eq("role", "owner")
+        .maybeSingle();
+
+      if (membership?.workspace_id) {
+        return parseStringify({
+          id: existingUser.id,
+          clerkId: existingUser.clerk_id,
+          email: existingUser.email,
+          fullName: existingUser.full_name,
+          avatarUrl: existingUser.avatar_url,
+          username: existingUser.username,
+          plan: existingUser.plan,
+          workspaceId: membership.workspace_id,
+        });
+      }
+    }
+
+    // If user does not exist in Supabase yet, proceed with Clerk fetch & database setup
     const client = await clerkClient();
     const clerkUser =
       (await currentUser()) ?? (await client.users.getUser(userId));
@@ -26,30 +64,60 @@ export const getCurrentUser = async () => {
 
     if (!email) throw new Error("Clerk user has no email address");
 
+    const username =
+      clerkUser.username || (email.includes("@") ? email.split("@")[0] : null);
+
     const fullName =
       [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
-      clerkUser.username ||
+      username ||
       "User";
 
     const avatarUrl = clerkUser.imageUrl || avatarPlaceholderUrl;
 
-    const supabase = createSupabaseAdmin();
+    const upsertPayload: Database["public"]["Tables"]["users"]["Insert"] = {
+      clerk_id: userId,
+      email,
+      full_name: fullName,
+      avatar_url: avatarUrl,
+      username,
+    };
 
-    const { data: user, error: userError } = await supabase
+    let user: Database["public"]["Tables"]["users"]["Row"] | null = null;
+
+    const { data: upsertedUser, error: userError } = await supabase
       .from("users")
-      .upsert(
-        {
-          clerk_id: userId,
-          email,
-          full_name: fullName,
-          avatar_url: avatarUrl,
-        },
-        { onConflict: "clerk_id" },
-      )
+      .upsert(upsertPayload, { onConflict: "clerk_id" })
       .select()
       .single();
 
-    if (userError) throw userError;
+    if (userError?.code === "23505") {
+      const { data: existingUser, error: existingUserError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("email", email)
+        .single();
+
+      if (existingUserError) throw existingUserError;
+
+      const { data: mergedUser, error: mergeError } = await supabase
+        .from("users")
+        .update({ ...upsertPayload, clerk_id: userId })
+        .eq("id", existingUser.id)
+        .select()
+        .single();
+
+      if (mergeError) throw mergeError;
+
+      user = mergedUser;
+    } else if (userError) {
+      throw userError;
+    } else {
+      user = upsertedUser;
+    }
+
+    if (!user) {
+      throw new Error("User upsert failed");
+    }
 
     const { data: existingWorkspace, error: workspaceError } = await supabase
       .from("workspaces")
@@ -97,10 +165,11 @@ export const getCurrentUser = async () => {
       email: user.email,
       fullName: user.full_name || fullName,
       avatarUrl: user.avatar_url || avatarUrl,
+      username: user.username || username,
       plan: user.plan,
       workspaceId,
     });
   } catch (error) {
     handleError(error, "Failed to get current user");
   }
-};
+});

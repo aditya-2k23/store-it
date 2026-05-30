@@ -374,7 +374,7 @@
 
   /* FileUploader */
   .uploader-button {
-    @apply bg-brand hover:bg-brand-100 transition-all rounded-full text-[14px] leading-5 font-medium h-13 gap-2 px-10 shadow-drop-1;
+    @apply transition-all gap-2;
   }
 
   .uploader-preview-list {
@@ -507,4 +507,47 @@
   .thumbnail-image {
     @apply size-full object-cover object-center;
   }
+}
+
+/* Hide Clerk branding & development mode banner */
+.cl-userButtonPopoverFooter,
+.cl-developmentBadge,
+.cl-internal-badge,
+.cl-userButtonPopoverFooterPages,
+.cl-footer,
+.cl-footerAction,
+.cl-footerActionLink,
+.cl-userProfile-footer,
+.cl-userProfile-footerAction,
+.cl-logoBox,
+.cl-logoImage,
+.cl-navbar > div:last-child,
+.cl-userProfile-navbar > div:last-child {
+  display: none !important;
+}
+
+/* Force Clerk UserButton size and shape to align with the upload button */
+.cl-userButtonAvatarBox,
+.cl-userButtonTrigger {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 12px !important;
+}
+
+/* Force Clerk UserProfile modal elements to have solid backgrounds and correct visibility */
+.cl-modalContent {
+  background-color: #ffffff !important;
+  overflow: hidden !important;
+}
+
+.cl-userProfile-navbar,
+.cl-navbar {
+  background-color: #F2F4F8 !important; /* light-400 equivalent */
+  border-right: 1px solid #F2F5F9 !important; /* light-300 equivalent */
+}
+
+.cl-userProfile-pageScrollBox,
+.cl-pageScrollBox,
+.cl-userProfile-page {
+  background-color: #ffffff !important;
 }

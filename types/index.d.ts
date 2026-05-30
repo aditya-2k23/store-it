@@ -17,6 +17,7 @@ declare interface CurrentUser {
   email: string;
   fullName: string;
   avatarUrl: string;
+  username: string | null;
   plan: string;
   workspaceId: string;
 }

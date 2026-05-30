@@ -1,12 +1,13 @@
 "use client";
 
-import { useSignIn } from "@clerk/nextjs/legacy";
+import { useSignIn } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -31,12 +32,11 @@ const signInSchema = z.object({
 type SignInValues = z.infer<typeof signInSchema>;
 
 export default function SignInPage() {
-  const { signIn, isLoaded, setActive } = useSignIn();
+  const { signIn } = useSignIn();
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [ssoLoading, setSsoLoading] = useState<string | null>(null);
-  const isSubmittingRef = useRef(false);
 
   const form = useForm<SignInValues>({
     resolver: zodResolver(signInSchema),
@@ -47,35 +47,53 @@ export default function SignInPage() {
   });
 
   const onSubmit = async (values: SignInValues) => {
-    if (!isLoaded || isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
+    if (!signIn || isLoading) return;
     setIsLoading(true);
 
     try {
-      const result = await signIn.create({
+      const { error: signInError } = await signIn.password({
         identifier: values.identifier,
         password: values.password,
       });
 
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
+      if (signInError) {
+        throw signInError;
+      }
+
+      if (signIn.status === "complete") {
         toast({
           title: "Welcome back!",
           description: "Successfully signed in to Storey.",
           variant: "default",
         });
-        window.location.href = "/";
+        await signIn.finalize({
+          navigate: ({ session, decorateUrl }) => {
+            if (session?.currentTask) {
+              console.warn("Pending session task:", session.currentTask);
+              return;
+            }
+
+            const url = decorateUrl("/");
+            if (url.startsWith("http")) {
+              window.location.href = url;
+            } else {
+              router.push(url);
+            }
+          },
+        });
       } else {
-        console.warn("Uncompleted auth status:", result.status);
+        console.warn("Uncompleted auth status:", signIn.status);
         toast({
           title: "Authentication Incomplete",
-          description: `Status is: ${result.status}. Please check your credentials or account configuration.`,
+          description: `Status is: ${signIn.status}. Please check your credentials or account configuration.`,
           variant: "destructive",
         });
       }
     } catch (err: any) {
       console.error("Sign in error:", err);
       const errorMessage =
+        err?.longMessage ||
+        err?.message ||
         err?.errors?.[0]?.longMessage ||
         err?.errors?.[0]?.message ||
         "Failed to sign in. Please verify your credentials.";
@@ -85,25 +103,31 @@ export default function SignInPage() {
         variant: "destructive",
       });
     } finally {
-      isSubmittingRef.current = false;
       setIsLoading(false);
     }
   };
 
   const handleSSO = async (strategy: "oauth_google" | "oauth_microsoft") => {
-    if (!isLoaded) return;
+    if (!signIn || isLoading) return;
     setSsoLoading(strategy);
 
     try {
-      await signIn.authenticateWithRedirect({
+      const { error: ssoError } = await signIn.sso({
         strategy,
-        redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/",
+        redirectUrl: "/sso-continue",
+        redirectCallbackUrl: "/sso-callback",
       });
+
+      if (ssoError) {
+        throw ssoError;
+      }
     } catch (err: any) {
       console.error(`${strategy} sign in error:`, err);
       const errorMessage =
-        err?.errors?.[0]?.message || "Failed to initiate social login.";
+        err?.longMessage ||
+        err?.message ||
+        err?.errors?.[0]?.message ||
+        "Failed to initiate social login.";
       toast({
         title: "OAuth Failed",
         description: errorMessage,
@@ -114,7 +138,7 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="w-full max-w-[400px] px-4 py-8 md:py-12 flex flex-col justify-center min-h-screen lg:min-h-0 bg-white">
+    <div className="w-full max-w-100 px-4 py-8 md:py-12 flex flex-col justify-center min-h-screen lg:min-h-0 bg-white">
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
@@ -142,7 +166,7 @@ export default function SignInPage() {
             {ssoLoading === "oauth_google" ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <img
+              <Image
                 src="https://img.icons8.com/color/48/000000/google-logo.png"
                 alt="Google"
                 width={20}
@@ -162,7 +186,7 @@ export default function SignInPage() {
             {ssoLoading === "oauth_microsoft" ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <img
+              <Image
                 src="https://img.icons8.com/color/48/000000/microsoft.png"
                 alt="Microsoft"
                 width={20}
@@ -201,6 +225,9 @@ export default function SignInPage() {
                       {...field}
                     />
                   </FormControl>
+                  <p className="text-[11px] text-slate-500 pl-1">
+                    Use your username or email.
+                  </p>
                   <FormMessage className="text-red text-xs pl-1" />
                 </FormItem>
               )}
@@ -252,7 +279,7 @@ export default function SignInPage() {
 
         {/* Footer */}
         <div className="mt-8 text-center text-sm text-slate-500">
-          <span>Don't have an account? </span>
+          <span>Don&apos;t have an account? </span>
           <Link
             href="/sign-up"
             className="text-brand hover:text-brand-100 font-semibold transition-colors cursor-pointer"

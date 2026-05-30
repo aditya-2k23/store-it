@@ -1,12 +1,13 @@
 "use client";
 
-import { useSignUp } from "@clerk/nextjs/legacy";
+import { useSignUp } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +29,7 @@ import {
 
 const signUpSchema = z.object({
   fullName: z.string().min(2, { message: "Full name is required" }),
+  username: z.string().min(3, { message: "Username must be at least 3 characters" }),
   email: z.string().email({ message: "Invalid email address" }),
   password: z
     .string()
@@ -37,7 +39,7 @@ const signUpSchema = z.object({
 type SignUpValues = z.infer<typeof signUpSchema>;
 
 export default function SignUpPage() {
-  const { signUp, isLoaded, setActive } = useSignUp();
+  const { signUp } = useSignUp();
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -45,20 +47,38 @@ export default function SignUpPage() {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [userEmail, setUserEmail] = useState("");
-  const isSubmittingRef = useRef(false);
 
   const form = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
       fullName: "",
+      username: "",
       email: "",
       password: "",
     },
   });
 
+  const getRequirementDetails = (resource: {
+    missingFields?: string[];
+    unverifiedFields?: string[];
+  }) => {
+    const missingFields = resource.missingFields ?? [];
+    const unverifiedFields = resource.unverifiedFields ?? [];
+    const details: string[] = [];
+
+    if (missingFields.length > 0) {
+      details.push(`Missing: ${missingFields.join(", ")}`);
+    }
+
+    if (unverifiedFields.length > 0) {
+      details.push(`Unverified: ${unverifiedFields.join(", ")}`);
+    }
+
+    return details.join(" | ");
+  };
+
   const onSubmit = async (values: SignUpValues) => {
-    if (!isLoaded || isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
+    if (!signUp || isLoading) return;
     setIsLoading(true);
 
     try {
@@ -66,26 +86,89 @@ export default function SignUpPage() {
       const firstName = nameParts[0] || "";
       const lastName = nameParts.slice(1).join(" ") || "";
 
-      await signUp.create({
+      const { error: signUpError } = await signUp.password({
         emailAddress: values.email,
         password: values.password,
+        username: values.username,
         firstName,
         lastName,
       });
 
-      // Send verification code to email
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      if (signUpError) {
+        throw signUpError;
+      }
 
-      setUserEmail(values.email);
-      setPendingVerification(true);
-      toast({
-        title: "Code Sent",
-        description: `We've sent a 6-digit verification code to ${values.email}.`,
-        variant: "default",
-      });
+      const missingFields = signUp.missingFields ?? [];
+      const unverifiedFields = signUp.unverifiedFields ?? [];
+      const needsEmailVerification = unverifiedFields.includes("email_address");
+
+      if (signUp.status === "complete") {
+        await signUp.finalize({
+          navigate: ({ session, decorateUrl }) => {
+            if (session?.currentTask) {
+              console.warn("Pending session task:", session.currentTask);
+              return;
+            }
+
+            const url = decorateUrl("/");
+            if (url.startsWith("http")) {
+              window.location.href = url;
+            } else {
+              router.push(url);
+            }
+          },
+        });
+        return;
+      }
+
+      if (missingFields.length > 0) {
+        const details = getRequirementDetails(signUp as {
+          missingFields?: string[];
+          unverifiedFields?: string[];
+        });
+        toast({
+          title: "Additional info required",
+          description:
+            details ||
+            "Your account needs additional details before verification.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (needsEmailVerification) {
+        const { error: emailCodeError } =
+          await signUp.verifications.sendEmailCode();
+
+        if (emailCodeError) {
+          throw emailCodeError;
+        }
+
+        setUserEmail(values.email);
+        setPendingVerification(true);
+        toast({
+          title: "Code Sent",
+          description: `We've sent a 6-digit verification code to ${values.email}.`,
+          variant: "default",
+        });
+      } else {
+        const details = getRequirementDetails(signUp as {
+          missingFields?: string[];
+          unverifiedFields?: string[];
+        });
+        toast({
+          title: "Sign up incomplete",
+          description:
+            details ||
+            `Status is: ${signUp.status}. Please try again.`,
+          variant: "destructive",
+        });
+      }
     } catch (err: any) {
       console.error("Sign up creation error:", err);
       const errorMessage =
+        err?.longMessage ||
+        err?.message ||
         err?.errors?.[0]?.longMessage ||
         err?.errors?.[0]?.message ||
         "Failed to create account. Please try again.";
@@ -95,53 +178,86 @@ export default function SignUpPage() {
         variant: "destructive",
       });
     } finally {
-      isSubmittingRef.current = false;
       setIsLoading(false);
     }
   };
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isLoaded || verificationCode.length < 6 || isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
+    if (!signUp || verificationCode.length < 6 || isLoading) return;
     setIsLoading(true);
 
     try {
-      const completeSignUp = await signUp.attemptEmailAddressVerification({
-        code: verificationCode,
-      });
+      const { error: verifyError } =
+        await signUp.verifications.verifyEmailCode({ code: verificationCode });
 
-      if (completeSignUp.status === "complete") {
-        await setActive({ session: completeSignUp.createdSessionId });
+      if (verifyError) {
+        throw verifyError;
+      }
+
+      if (signUp.status === "complete") {
         toast({
           title: "Account Created!",
           description: "Welcome to Storey! Your account has been verified.",
           variant: "default",
         });
-        window.location.href = "/";
+        await signUp.finalize({
+          navigate: ({ session, decorateUrl }) => {
+            if (session?.currentTask) {
+              console.warn("Pending session task:", session.currentTask);
+              return;
+            }
+
+            const url = decorateUrl("/");
+            if (url.startsWith("http")) {
+              window.location.href = url;
+            } else {
+              router.push(url);
+            }
+          },
+        });
       } else {
-        console.warn("Uncompleted verification status:", completeSignUp.status);
+        const details = getRequirementDetails(signUp as {
+          missingFields?: string[];
+          unverifiedFields?: string[];
+        });
+        console.warn("Uncompleted verification status:", signUp.status);
         toast({
           title: "Verification Incomplete",
-          description: `Status is: ${completeSignUp.status}. Contact support if this persists.`,
+          description:
+            details ||
+            `Status is: ${signUp.status}. Contact support if this persists.`,
           variant: "destructive",
         });
       }
     } catch (err: any) {
       console.error("OTP verification error:", err);
       const firstError = err?.errors?.[0];
-      
+
       if (firstError?.code === "verification_already_verified") {
         try {
-          await signUp.reload();
-          if (signUp.status === "complete" && signUp.createdSessionId) {
-            await setActive({ session: signUp.createdSessionId });
+          await (signUp as any).reload();
+          if (signUp.status === "complete") {
             toast({
               title: "Account Created!",
               description: "Welcome to Storey! Your account has been verified.",
               variant: "default",
             });
-            window.location.href = "/";
+            await signUp.finalize({
+              navigate: ({ session, decorateUrl }) => {
+                if (session?.currentTask) {
+                  console.warn("Pending session task:", session.currentTask);
+                  return;
+                }
+
+                const url = decorateUrl("/");
+                if (url.startsWith("http")) {
+                  window.location.href = url;
+                } else {
+                  router.push(url);
+                }
+              },
+            });
             return;
           }
         } catch (reloadErr) {
@@ -152,6 +268,8 @@ export default function SignUpPage() {
       const errorMessage =
         firstError?.longMessage ||
         firstError?.message ||
+        err?.longMessage ||
+        err?.message ||
         "Failed to verify code. Please try again.";
       toast({
         title: "Verification Failed",
@@ -159,15 +277,19 @@ export default function SignUpPage() {
         variant: "destructive",
       });
     } finally {
-      isSubmittingRef.current = false;
       setIsLoading(false);
     }
   };
 
   const handleResendCode = async () => {
-    if (!isLoaded) return;
+    if (!signUp) return;
     try {
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      const { error: resendError } =
+        await signUp.verifications.sendEmailCode();
+
+      if (resendError) {
+        throw resendError;
+      }
       toast({
         title: "New Code Sent",
         description: "A new 6-digit code has been sent to your email.",
@@ -184,19 +306,26 @@ export default function SignUpPage() {
   };
 
   const handleSSO = async (strategy: "oauth_google" | "oauth_microsoft") => {
-    if (!isLoaded) return;
+    if (!signUp || isLoading) return;
     setSsoLoading(strategy);
 
     try {
-      await signUp.authenticateWithRedirect({
+      const { error: ssoError } = await signUp.sso({
         strategy,
-        redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/",
+        redirectUrl: "/sso-continue",
+        redirectCallbackUrl: "/sso-callback",
       });
+
+      if (ssoError) {
+        throw ssoError;
+      }
     } catch (err: any) {
       console.error(`${strategy} sign up error:`, err);
       const errorMessage =
-        err?.errors?.[0]?.message || "Failed to initiate social sign-up.";
+        err?.longMessage ||
+        err?.message ||
+        err?.errors?.[0]?.message ||
+        "Failed to initiate social sign-up.";
       toast({
         title: "OAuth Failed",
         description: errorMessage,
@@ -207,7 +336,7 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="w-full max-w-[400px] px-4 py-8 md:py-12 flex flex-col justify-center min-h-screen lg:min-h-0 bg-white">
+    <div className="w-full max-w-100 px-4 py-8 md:py-12 flex flex-col justify-center min-h-screen lg:min-h-0 bg-white">
       <AnimatePresence mode="wait">
         {!pendingVerification ? (
           <motion.div
@@ -239,7 +368,7 @@ export default function SignUpPage() {
                 {ssoLoading === "oauth_google" ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  <img
+                  <Image
                     src="https://img.icons8.com/color/48/000000/google-logo.png"
                     alt="Google"
                     width={18}
@@ -259,7 +388,7 @@ export default function SignUpPage() {
                 {ssoLoading === "oauth_microsoft" ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  <img
+                  <Image
                     src="https://img.icons8.com/color/48/000000/microsoft.png"
                     alt="Microsoft"
                     width={18}
@@ -291,6 +420,27 @@ export default function SignUpPage() {
                       <FormControl>
                         <Input
                           placeholder="Enter your full name"
+                          className="w-full h-11 px-4 border border-light-300 rounded-xl bg-white text-slate-800 placeholder:text-slate-400/80 outline-none focus-visible:ring-1 focus-visible:ring-brand focus-visible:border-brand shadow-sm text-sm"
+                          disabled={isLoading || ssoLoading !== null}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-red text-xs pl-1" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="username"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="text-xs font-semibold text-slate-700">
+                        Username
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Choose a username"
                           className="w-full h-11 px-4 border border-light-300 rounded-xl bg-white text-slate-800 placeholder:text-slate-400/80 outline-none focus-visible:ring-1 focus-visible:ring-brand focus-visible:border-brand shadow-sm text-sm"
                           disabled={isLoading || ssoLoading !== null}
                           {...field}

@@ -52,29 +52,60 @@ export async function POST(req: Request) {
           first_name: string | null;
           last_name: string | null;
           image_url: string | null;
+          username?: string | null;
         };
 
         const email = data.email_addresses?.[0]?.email_address;
         const fullName =
           `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim();
         const avatarUrl = data.image_url ?? null;
+        const username = data.username ?? null;
+
+        const upsertPayload = {
+          clerk_id: data.id,
+          email,
+          full_name: fullName,
+          avatar_url: avatarUrl,
+          username,
+        };
+
+        let userRecord: { id: string; full_name: string | null } | null = null;
 
         const { data: user, error: userError } = await supabase
           .from("users")
-          .upsert(
-            {
-              clerk_id: data.id,
-              email,
-              full_name: fullName,
-              avatar_url: avatarUrl,
-            },
-            { onConflict: "clerk_id" },
-          )
+          .upsert(upsertPayload, { onConflict: "clerk_id" })
           .select("id, full_name")
           .single();
 
-        if (userError) {
+        if (userError?.code === "23505") {
+          const { data: mergedUser, error: mergeError } = await supabase
+            .from("users")
+            .update(upsertPayload)
+            .eq("email", email)
+            .select("id, full_name")
+            .single();
+
+          if (mergeError) {
+            console.error("user.created: users merge failed", mergeError);
+            return NextResponse.json(
+              { error: "Database error" },
+              { status: 500 },
+            );
+          }
+
+          userRecord = mergedUser;
+        } else if (userError) {
           console.error("user.created: users upsert failed", userError);
+          return NextResponse.json(
+            { error: "Database error" },
+            { status: 500 },
+          );
+        } else {
+          userRecord = user;
+        }
+
+        if (!userRecord) {
+          console.error("user.created: user record missing");
           return NextResponse.json(
             { error: "Database error" },
             { status: 500 },
@@ -85,7 +116,7 @@ export async function POST(req: Request) {
           await supabase
             .from("workspaces")
             .select("id")
-            .eq("owner_id", user.id)
+            .eq("owner_id", userRecord.id)
             .eq("type", "personal")
             .maybeSingle();
 
@@ -106,9 +137,9 @@ export async function POST(req: Request) {
           const { data: workspace, error: workspaceError } = await supabase
             .from("workspaces")
             .insert({
-              name: `${user.full_name ?? "My"}'s Workspace`,
+              name: `${userRecord.full_name ?? "My"}'s Workspace`,
               type: "personal",
-              owner_id: user.id,
+              owner_id: userRecord.id,
             })
             .select("id")
             .single();
@@ -132,7 +163,7 @@ export async function POST(req: Request) {
           .upsert(
             {
               workspace_id: workspaceId,
-              user_id: user.id,
+              user_id: userRecord.id,
               role: "owner",
             },
             { onConflict: "workspace_id,user_id" },
@@ -158,16 +189,23 @@ export async function POST(req: Request) {
           first_name: string | null;
           last_name: string | null;
           image_url: string | null;
+          username?: string | null;
         };
 
         const email = data.email_addresses?.[0]?.email_address;
         const fullName =
           `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim();
         const avatarUrl = data.image_url ?? null;
+        const username = data.username ?? null;
 
         const { error } = await supabase
           .from("users")
-          .update({ email, full_name: fullName, avatar_url: avatarUrl })
+          .update({
+            email,
+            full_name: fullName,
+            avatar_url: avatarUrl,
+            username,
+          })
           .eq("clerk_id", data.id);
 
         if (error) {

@@ -17,6 +17,9 @@ export const metadata: Metadata = {
 
 const clerkAppearance = {
   theme: [shadcn],
+  layout: {
+    unsafe_disableDevelopmentModeWarnings: true,
+  },
   variables: {
     colorPrimary: "#FA7275",
     colorText: "#333F4E",
@@ -30,7 +33,9 @@ const clerkAppearance = {
     fontFamily: "var(--font-poppins), ui-sans-serif, system-ui",
   },
   elements: {
-    card: "shadow-drop-1 border border-light-300",
+    card: "shadow-drop-1 border border-light-300 bg-white",
+    navbar: "bg-light-400 border-r border-light-300",
+    pageScrollBox: "bg-white",
     headerTitle: "text-light-100",
     headerSubtitle: "text-light-200",
     formFieldInput:
@@ -43,8 +48,8 @@ const clerkAppearance = {
     dividerLine: "bg-light-300",
     footerActionLink: "text-brand hover:text-brand-100",
     userButtonPopoverCard: "shadow-drop-1 border border-light-300",
-    userProfileCard: "shadow-drop-1 border border-light-300",
-    modalContent: "rounded-[30px] border border-light-300",
+    userProfileCard: "shadow-drop-1 border border-light-300 bg-white",
+    modalContent: "rounded-[30px] border border-light-300 bg-white overflow-hidden",
   },
 };
 
@@ -56,7 +61,7 @@ export default function RootLayout({
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <body className={`${poppins.variable} antialiased`}>
-        <ClerkProvider appearance={clerkAppearance}>
+        <ClerkProvider appearance={clerkAppearance} afterSignOutUrl="/sign-in">
           {children}
         </ClerkProvider>
       </body>

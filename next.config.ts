@@ -23,6 +23,7 @@ const nextConfig: NextConfig = {
       { protocol: "https" as const, hostname: "img.clerk.com" },
       { protocol: "https" as const, hostname: "images.clerk.dev" },
       { protocol: "https" as const, hostname: "i.pravatar.cc" },
+      { protocol: "https" as const, hostname: "img.icons8.com" },
     ],
   },
 };
