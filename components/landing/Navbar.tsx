@@ -88,7 +88,7 @@ export const Navbar = () => {
             </Button>
           </Link>
           <Link href="/sign-up">
-            <Button className="bg-brand hover:bg-brand-100 text-white rounded-full px-6 shadow-lg cursor-pointer">
+            <Button className="bg-brand hover:bg-brand-100 text-white rounded-full px-6 shadow-lg cursor-pointer font-dynapuff">
               Get Started
             </Button>
           </Link>
@@ -129,7 +129,7 @@ export const Navbar = () => {
                 </Button>
               </Link>
               <Link href="/sign-up" className="w-full cursor-pointer">
-                <Button className="w-full bg-brand hover:bg-brand-100 text-white justify-center">
+                <Button className="w-full bg-brand hover:bg-brand-100 text-white justify-center font-dynapuff">
                   Get Started
                 </Button>
               </Link>

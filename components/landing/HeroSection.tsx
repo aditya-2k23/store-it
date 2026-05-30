@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
@@ -46,7 +45,10 @@ export const HeroSection = () => {
             style={{ fontFamily: "Inter, sans-serif" }}
           >
             Storage that <br className="hidden md:block" />
-            <span className="text-brand">understands</span> your files.
+            <span className="text-brand font-dynapuff font-medium">
+              understands
+            </span>{" "}
+            your files.
           </motion.h1>
 
           <motion.p
@@ -62,38 +64,17 @@ export const HeroSection = () => {
             className="flex flex-wrap items-center gap-4"
           >
             <Link href="/sign-up">
-              <Button className="bg-brand hover:bg-brand-100 text-white rounded-full px-8 py-6 text-lg font-medium shadow-drop-2 hover:shadow-drop-1 transition-all flex items-center gap-2">
+              <Button className="bg-brand hover:bg-brand-100 text-white rounded-full px-8 py-6 text-lg font-medium shadow-drop-2 hover:shadow-drop-4 transition-all flex items-center gap-2 cursor-pointer font-dynapuff">
                 Get Started for Free <ArrowRight className="w-5 h-5" />
               </Button>
             </Link>
             <Button
               variant="outline"
-              className="rounded-full px-8 py-6 text-lg font-medium border-light-300 text-dark-100 hover:bg-light-400 transition-all flex items-center gap-2 bg-white/50 backdrop-blur-sm"
+              className="rounded-full px-8 py-6 text-lg font-medium border-light-300 text-dark-100 hover:bg-light-400 transition-all flex items-center gap-2 bg-white/50 backdrop-blur-sm cursor-pointer"
             >
-              <Play className="w-5 h-5 text-brand" /> Watch Demo
+              <Play className="w-5 h-5 text-brand" />{" "}
+              <span className="font-dynapuff">Watch Demo</span>
             </Button>
-          </motion.div>
-
-          <motion.div
-            variants={fadeIn}
-            className="mt-10 flex items-center gap-4 text-sm text-light-200"
-          >
-            <div className="flex -space-x-3">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="w-8 h-8 rounded-full border-2 border-white bg-light-300 flex items-center justify-center overflow-hidden relative"
-                >
-                  <Image
-                    src={`https://i.pravatar.cc/100?img=${i + 10}`}
-                    alt="avatar"
-                    fill
-                    sizes="32px"
-                  />
-                </div>
-              ))}
-            </div>
-            <p>Join 10,000+ teams organizing smarter</p>
           </motion.div>
         </motion.div>
 

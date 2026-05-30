@@ -3,12 +3,18 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ui } from "@clerk/ui";
 import { shadcn } from "@clerk/ui/themes";
 import "./globals.css";
-import { Poppins } from "next/font/google";
+import { Poppins, DynaPuff } from "next/font/google";
 
 const poppins = Poppins({
   subsets: ["latin"],
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
   variable: "--font-poppins",
+});
+
+const dynaPuff = DynaPuff({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-dynapuff",
 });
 
 export const metadata: Metadata = {
@@ -61,7 +67,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body className={`${poppins.variable} antialiased`}>
+      <body className={`${poppins.variable} ${dynaPuff.variable} antialiased`}>
         <ClerkProvider appearance={clerkAppearance} afterSignOutUrl="/sign-in" ui={ui}>
           {children}
         </ClerkProvider>

@@ -48,7 +48,7 @@ const Layout = async ({ children }: { children: React.ReactNode }) => {
           </div>
 
           <div className="space-y-5 text-white">
-            <h1 className="h1">Manage your files the best way</h1>
+            <h1 className="h1 font-dynapuff">Manage your files the best way</h1>
             <p className="body-1">
               Storey is the place where you can store and organize all your
               documents.

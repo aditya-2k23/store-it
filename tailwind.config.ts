@@ -26,11 +26,15 @@ const config: Config = {
         },
         dark: { "100": "#04050C", "200": "#131524" },
       },
-      fontFamily: { poppins: ["var(--font-poppins)"] },
+      fontFamily: {
+        poppins: ["var(--font-poppins)"],
+        dynapuff: ["var(--font-dynapuff)", "system-ui"],
+      },
       boxShadow: {
         "drop-1": "0px 10px 30px 0px rgba(66, 71, 97, 0.1)",
-        "drop-2": "0 8px 30px 0 rgba(65, 89, 214, 0.3)",
-        "drop-3": "0 8px 30px 0 rgba(65, 89, 214, 0.1)",
+        "drop-2": "0 8px 30px 0 rgba(250, 114, 117, 0.3)",
+        "drop-3": "0 8px 30px 0 rgba(250, 114, 117, 0.1)",
+        "drop-4": "0 8px 36px 0 rgba(250, 114, 117, 0.45)",
       },
       borderRadius: {
         lg: "var(--radius)",
