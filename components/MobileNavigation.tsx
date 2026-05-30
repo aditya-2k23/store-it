@@ -28,7 +28,7 @@ interface Props {
   email: string;
 }
 const mobileLinks = [
-  { name: "Dashboard", href: "/", icon: LayoutGrid },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Images", href: "/images", icon: ImageIcon },
   { name: "AI Collections", href: "/ai-collections", icon: BrainCircuit },
@@ -79,8 +79,8 @@ const MobileNavigation = ({ fullName, avatar, email }: Props) => {
             <ul className="mobile-nav-list">
               {mobileLinks.map(({ name, href, icon: Icon }) => {
                 const isActive =
-                  href === "/"
-                    ? pathname === "/"
+                  href === "/dashboard"
+                    ? pathname === "/dashboard"
                     : pathname.startsWith(href);
 
                 return (

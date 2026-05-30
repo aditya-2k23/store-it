@@ -37,7 +37,7 @@ export const HeroSection = () => {
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 text-brand text-sm font-semibold mb-6"
           >
             <Sparkles className="w-4 h-4" />
-            <span>Introducing Storey AI 2.0</span>
+            <span>Introducing Storey AI 1.0</span>
           </motion.div>
 
           <motion.h1

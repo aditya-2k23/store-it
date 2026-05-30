@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
+import { ui } from "@clerk/ui";
 import { shadcn } from "@clerk/ui/themes";
 import "./globals.css";
 import { Poppins } from "next/font/google";
@@ -61,7 +62,7 @@ export default function RootLayout({
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <body className={`${poppins.variable} antialiased`}>
-        <ClerkProvider appearance={clerkAppearance} afterSignOutUrl="/sign-in">
+        <ClerkProvider appearance={clerkAppearance} afterSignOutUrl="/sign-in" ui={ui}>
           {children}
         </ClerkProvider>
       </body>
