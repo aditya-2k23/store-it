@@ -1,101 +1,99 @@
 "use client";
-
-import {
-  Label,
-  PolarGrid,
-  PolarRadiusAxis,
-  RadialBar,
-  RadialBarChart,
-} from "recharts";
-
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { ChartConfig, ChartContainer } from "@/components/ui/chart";
 import { calculatePercentage, convertFileSize } from "@/lib/utils";
+import { Sparkles } from "lucide-react";
+import { Button } from "./ui/button";
+import type { CSSProperties } from "react";
 
-const chartConfig = {
-  size: {
-    label: "Size",
-  },
-  used: {
-    label: "Used",
-    color: "white",
-  },
-} satisfies ChartConfig;
-
-const Chart = ({ used = 0 }: { used: number }) => {
-  const chartData = [{ storage: "used", 10: used, fill: "white" }];
+const Chart = ({
+  used = 0,
+  insightText,
+}: {
+  used: number;
+  insightText: string;
+}) => {
+  const percentage = Number(calculatePercentage(used));
+  const clampedPercentage = Math.min(Math.max(percentage, 0), 100);
+  const totalCapacity = 2 * 1024 * 1024 * 1024;
+  const remaining = Math.max(totalCapacity - used, 0);
+  const statusLabel =
+    clampedPercentage >= 90
+      ? "Critical"
+      : clampedPercentage >= 70
+        ? "Getting full"
+        : "Healthy";
+  const statusTone =
+    clampedPercentage >= 90
+      ? "bg-white/25 text-white"
+      : clampedPercentage >= 70
+        ? "bg-white/20 text-white"
+        : "bg-white/15 text-white";
+  const circleStyle = {
+    background: `conic-gradient(rgba(255,255,255,0.95) ${clampedPercentage * 3.6}deg, rgba(255,255,255,0.2) 0deg)`,
+  } as CSSProperties;
 
   return (
-    <Card className="chart">
-      <CardContent className="flex-1 p-0">
-        <ChartContainer config={chartConfig} className="chart-container">
-          <RadialBarChart
-            data={chartData}
-            startAngle={90}
-            endAngle={Number(calculatePercentage(used)) + 90}
-            innerRadius={80}
-            outerRadius={110}
-          >
-            <PolarGrid
-              gridType="circle"
-              radialLines={false}
-              stroke="none"
-              className="polar-grid"
-              polarRadius={[86, 74]}
+    <section className="chart" aria-label="Storage overview">
+      <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-white/40 blur-[80px]" />
+      <div className="pointer-events-none absolute -bottom-14 left-18 h-52 w-52 rounded-full bg-white/40 blur-[60px]" />
+
+      <div className="relative w-full grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)] lg:items-center">
+        <div className="space-y-4">
+          <p className="font-medium font-dynapuff uppercase tracking-[0.2em] text-white/70">
+            Storage usage
+          </p>
+
+          {/* <div className=""> */}
+          <div className="relative size-40 shrink-0">
+            <div
+              className="absolute inset-0 rounded-full"
+              style={circleStyle}
+              aria-hidden="true"
             />
-            <RadialBar dataKey="storage" background cornerRadius={10} />
-            <PolarRadiusAxis tick={false} tickLine={false} axisLine={false}>
-              <Label
-                content={({ viewBox }) => {
-                  if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                    return (
-                      <text
-                        x={viewBox.cx}
-                        y={viewBox.cy}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                      >
-                        <tspan
-                          x={viewBox.cx}
-                          y={viewBox.cy}
-                          className="chart-total-percentage"
-                        >
-                          {used && calculatePercentage(used)
-                            ? calculatePercentage(used)
-                                .toString()
-                                .replace(/^0+/, "")
-                            : "0"}
-                          %
-                        </tspan>
-                        <tspan
-                          x={viewBox.cx}
-                          y={(viewBox.cy || 0) + 24}
-                          className="fill-white/70"
-                        >
-                          Space used
-                        </tspan>
-                      </text>
-                    );
-                  }
-                }}
-              />
-            </PolarRadiusAxis>
-          </RadialBarChart>
-        </ChartContainer>
-      </CardContent>
-      <CardHeader className="chart-details">
-        <CardTitle className="chart-title">Available Storage</CardTitle>
-        <CardDescription className="chart-description">
-          {used ? convertFileSize(used) : "2GB"} / 2GB
-        </CardDescription>
-      </CardHeader>
-    </Card>
+            <div className="absolute inset-2 flex items-center justify-center rounded-full bg-brand">
+              <p className="text-3xl font-semibold text-white">
+                {clampedPercentage.toFixed(1)}%
+              </p>
+              {/* </div> */}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex h-full flex-col justify-center gap-4">
+          <div className="inline-flex w-fit items-center gap-2 rounded-4xl bg-white/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white">
+            <Sparkles className="size-4" />
+            AI Insights
+          </div>
+
+          <div className="grid gap-3 rounded-2xl bg-white/10 p-4 shadow-inner">
+            <div className="flex items-center justify-between text-sm text-white/85">
+              <span>Usage status</span>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}
+              >
+                {statusLabel}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm text-white/85">
+              <span>Used space</span>
+              <span className="font-semibold text-white">{insightText}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm text-white/85">
+              <span>Remaining</span>
+              <span className="font-semibold text-white">
+                {convertFileSize(remaining)}
+              </span>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            className="h-10 w-fit rounded-xl bg-white/95 px-4 text-sm font-semibold text-slate-700 shadow-lg transition-transform duration-300 hover:-translate-y-0.5 hover:bg-white cursor-pointer"
+          >
+            Review AI Insights
+          </Button>
+        </div>
+      </div>
+    </section>
   );
 };
 

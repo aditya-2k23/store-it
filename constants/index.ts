@@ -1,10 +1,5 @@
 export const navItems = [
   {
-    name: "Dashboard",
-    icon: "/assets/icons/dashboard.svg",
-    url: "/",
-  },
-  {
     name: "Documents",
     icon: "/assets/icons/documents.svg",
     url: "/documents",
@@ -57,11 +52,11 @@ export const actionsDropdownItems = [
 export const sortTypes = [
   {
     label: "Date created (newest)",
-    value: "$createdAt-desc",
+    value: "created_at-desc",
   },
   {
     label: "Created Date (oldest)",
-    value: "$createdAt-asc",
+    value: "created_at-asc",
   },
   {
     label: "Name (A-Z)",

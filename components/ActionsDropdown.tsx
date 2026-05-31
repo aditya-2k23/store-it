@@ -1,6 +1,5 @@
 "use client";
 
-import { Models } from "node-appwrite";
 import React, { useState } from "react";
 import {
   DropdownMenu,
@@ -20,7 +19,6 @@ import {
 import Image from "next/image";
 import { actionsDropdownItems } from "@/constants";
 import Link from "next/link";
-import { constructDownloadUrl } from "@/lib/utils";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import {
@@ -34,7 +32,7 @@ import { toast } from "@/hooks/use-toast";
 
 type ToastAction = "rename" | "share" | "delete";
 
-const ActionsDropdown = ({ file }: { file: Models.Document }) => {
+const ActionsDropdown = ({ file }: { file: FileItem }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [action, setAction] = useState<ActionType | null>(null);
@@ -59,17 +57,16 @@ const ActionsDropdown = ({ file }: { file: Models.Document }) => {
     const actions = {
       rename: () =>
         renameFile({
-          fileId: file.$id,
+          fileId: file.id,
           name,
           extension: file.extension,
           path,
         }),
-      share: () => updateFileUsers({ fileId: file.$id, emails, path }),
+      share: () => updateFileUsers({ fileId: file.id, emails, path }),
       delete: () =>
         deleteFileUsers({
-          fileId: file.$id,
+          fileId: file.id,
           path,
-          bucketFileId: file.bucketFileId,
         }),
     };
 
@@ -131,7 +128,7 @@ const ActionsDropdown = ({ file }: { file: Models.Document }) => {
     const updatedEmails = emails.filter((e) => e !== email);
 
     const success = await updateFileUsers({
-      fileId: file.$id,
+      fileId: file.id,
       emails: updatedEmails,
       path,
     });
@@ -212,7 +209,7 @@ const ActionsDropdown = ({ file }: { file: Models.Document }) => {
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
-          <DropdownMenuLabel className="max-w-[200px] truncate">
+          <DropdownMenuLabel className="max-w-50 truncate">
             {file.name}
           </DropdownMenuLabel>
 
@@ -236,7 +233,7 @@ const ActionsDropdown = ({ file }: { file: Models.Document }) => {
             >
               {actionItem.value === "download" ? (
                 <Link
-                  href={constructDownloadUrl(file.bucketFileId)}
+                  href={file.downloadUrl || file.url || "#"}
                   download={file.name}
                   className="flex items-center gap-2"
                 >

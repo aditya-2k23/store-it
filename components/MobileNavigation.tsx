@@ -6,137 +6,104 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Separator } from "./ui/separator";
-import { navItems } from "@/constants";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Button } from "./ui/button";
+import {
+  BrainCircuit,
+  Clapperboard,
+  Ellipsis,
+  FileText,
+  ImageIcon,
+  LayoutGrid,
+  Menu,
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 import FileUploader from "./FileUploader";
-import { generateAvatar, signOutUser } from "@/lib/actions/user.actions";
 
 interface Props {
-  $id: string;
-  accountId: string;
   fullName: string;
   avatar: string;
   email: string;
 }
+const mobileLinks = [
+  { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+  { name: "Documents", href: "/documents", icon: FileText },
+  { name: "Images", href: "/images", icon: ImageIcon },
+  { name: "AI Collections", href: "/ai-collections", icon: BrainCircuit },
+  { name: "Media", href: "/media", icon: Clapperboard },
+  { name: "Others", href: "/others", icon: Ellipsis },
+];
 
-const MobileNavigation = ({
-  $id: ownerId,
-  accountId,
-  fullName,
-  email,
-}: Props) => {
+const MobileNavigation = ({ fullName, avatar, email }: Props) => {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  const [avatarUrl, setAvatarUrl] = useState<string>("");
-
-  useEffect(() => {
-    const loadAvatar = async () => {
-      try {
-        const arrayBuffer = await generateAvatar(fullName);
-
-        if (!arrayBuffer)
-          throw new Error("Avatar generation returned undefined");
-
-        const url = URL.createObjectURL(new Blob([arrayBuffer]));
-
-        setAvatarUrl(url);
-      } catch (error) {
-        console.error("Failed to generate avatar:", error);
-      }
-    };
-
-    loadAvatar();
-  }, [fullName]);
+  const avatarUrl = avatar || "/assets/images/avatar.png";
 
   return (
     <header className="mobile-header">
-      <Image
-        src={"/assets/icons/logo-full-brand.svg"}
-        alt="logo"
-        width={120}
-        height={52}
-        className="h-auto"
-      />
+      <Image src="/assets/icons/logo_brand.png" alt="Storey" width={132} height={40} className="h-auto w-auto" priority />
 
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetTrigger>
-          <Image
-            src={"/assets/icons/menu.svg"}
-            alt="Search"
-            width={30}
-            height={30}
-          />
+        <SheetTrigger asChild>
+          <button
+            type="button"
+            aria-label="Open navigation menu"
+            className="inline-flex size-10 items-center justify-center rounded-xl border border-white/75 bg-white/80 text-slate-700 shadow-[0_12px_24px_-18px_rgba(15,23,42,0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35"
+          >
+            <Menu className="size-5" />
+          </button>
         </SheetTrigger>
-        <SheetContent className="shad-sheet h-screen px-3">
-          <SheetTitle>
-            <div className="header-user">
-              <Image
-                src={avatarUrl || "/assets/images/avatar.png"}
-                alt="avatar"
-                width={44}
-                height={44}
-                className="header-user-avatar"
-              />
-              <div className="sm:hidden lg:block">
-                <p className="subtitle-2 capitalize">{fullName}</p>
-                <p className="caption">{email}</p>
-              </div>
+        <SheetContent side="left" className="shad-sheet h-screen w-[84%] max-w-[320px] border-r border-white/70 bg-[#f4f6fa] px-4 py-6">
+          <SheetTitle className="sr-only">Navigation menu</SheetTitle>
+
+          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-white/75 bg-white/80 p-3">
+            <Image
+              src={avatarUrl}
+              alt={fullName}
+              width={40}
+              height={40}
+              className="size-10 rounded-full object-cover"
+            />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold capitalize text-slate-800">
+                {fullName}
+              </p>
+              <p className="truncate text-xs text-slate-500">{email}</p>
             </div>
-            <Separator className="mb-4 bg-light-200/20" />
-          </SheetTitle>
+          </div>
 
           <nav className="mobile-nav">
             <ul className="mobile-nav-list">
-              {navItems.map(({ url, name, icon }) => (
-                <Link key={name} href={url} className="lg:w-full">
-                  <li
-                    className={cn(
-                      "mobile-nav-item",
-                      pathname === url && "shad-active"
-                    )}
-                  >
-                    <Image
-                      src={icon}
-                      alt={name}
-                      width={24}
-                      height={24}
+              {mobileLinks.map(({ name, href, icon: Icon }) => {
+                const isActive =
+                  href === "/dashboard"
+                    ? pathname === "/dashboard"
+                    : pathname.startsWith(href);
+
+                return (
+                  <li key={name}>
+                    <Link
+                      href={href}
+                      onClick={() => setOpen(false)}
                       className={cn(
-                        "nav-icon",
-                        pathname === url && "nav-icon-active"
+                        "mobile-nav-item",
+                        isActive && "shad-active"
                       )}
-                    />
-                    <p>{name}</p>
+                    >
+                      <Icon className="size-4.5" />
+                      <p>{name}</p>
+                    </Link>
                   </li>
-                </Link>
-              ))}
+                );
+              })}
             </ul>
           </nav>
 
-          <Separator className="my-5 bg-light-200/20" />
-
-          <div className="flex flex-col justify-between gap-5 pb-5">
-            <FileUploader ownerId={ownerId} accountId={accountId} />
-
-            <Button
-              type="submit"
-              onClick={async () => await signOutUser()}
-              className="mobile-sign-out-button"
-            >
-              <Image
-                src="/assets/icons/logout.svg"
-                alt="logo"
-                width={24}
-                height={24}
-              />
-              <p>Logout</p>
-            </Button>
+          <div className="mt-6 border-t border-white/75 pt-6">
+            <FileUploader className="h-12 w-full rounded-2xl bg-linear-to-r from-[#ff6b6b] to-[#ff8e7e] px-6 text-[15px] font-semibold text-white" />
           </div>
         </SheetContent>
       </Sheet>
