@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/actions/user.actions";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import SplashScreen from "@/components/SplashScreen";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ const Layout = async ({ children }: { children: React.ReactNode }) => {
 
   return (
     <>
+      <SplashScreen />
       <main className="app-shell">
         <Sidebar />
 
