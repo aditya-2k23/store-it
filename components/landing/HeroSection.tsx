@@ -70,7 +70,7 @@ export const HeroSection = () => {
             </Link>
             <Button
               variant="outline"
-              className="rounded-full px-8 py-6 text-lg font-medium border-light-300 text-dark-100 hover:bg-light-400 transition-all flex items-center gap-2 bg-white/50 backdrop-blur-sm cursor-pointer"
+              className="rounded-full px-8 py-6 text-lg font-light border-light-400 text-dark-100 hover:bg-light-400 transition-all flex items-center gap-2 bg-white/50 backdrop-blur-xs cursor-pointer shadow-drop-1 hover:shadow-drop-2"
             >
               <Play className="w-5 h-5 text-brand" />{" "}
               <span className="font-dynapuff">Watch Demo</span>
@@ -116,8 +116,8 @@ export const HeroSection = () => {
                   src="/assets/icons/logo_brand.png"
                   alt="Storey Logo"
                   width={100}
-                  height={36}
-                  className="h-8 w-auto"
+                  height={100}
+                  loading="eager"
                 />
               </div>
               <div className="flex items-center bg-light-400 rounded-full px-3 py-1.5 w-1/2 justify-between">
@@ -180,19 +180,19 @@ export const HeroSection = () => {
               {[
                 {
                   t: "Project_Alpha.pdf",
-                  i: <FileText className="w-4 h-4 text-brand" />,
+                  i: "/assets/images/project_alpha.jpg",
                 },
                 {
                   t: "Q3_Report.xlsx",
-                  i: <Files className="w-4 h-4 text-blue" />,
+                  i: "/assets/images/q3_report.jpg",
                 },
                 {
                   t: "Hero_Design.png",
-                  i: <ImageIcon className="w-4 h-4 text-orange" />,
+                  i: "/assets/images/hero_section.jpg",
                 },
                 {
                   t: "server.ts",
-                  i: <FileCode className="w-4 h-4 text-green" />,
+                  i: "/assets/images/server.jpg",
                 },
               ].map((f, i) => (
                 <motion.div
@@ -207,12 +207,17 @@ export const HeroSection = () => {
                   className="bg-light-400 rounded-lg p-3 cursor-pointer hidden md:block group"
                 >
                   <div className="bg-white w-full h-16 rounded-md shadow-sm border border-light-300 mb-2 flex items-center justify-center overflow-hidden">
-                    <motion.span
-                      whileHover={{ scale: 1.2, rotate: 5 }}
-                      className="opacity-50 text-slate-600 block"
+                    <motion.div
+                      whileHover={{ scale: 1.1, rotate: 2 }}
+                      className="w-full h-full"
                     >
-                      {f.i}
-                    </motion.span>
+                      <Image
+                        src={f.i}
+                        alt={f.t}
+                        width={200}
+                        height={200}
+                      />
+                    </motion.div>
                   </div>
                   <p className="text-[10px] font-medium text-dark-100 truncate">
                     {f.t}
