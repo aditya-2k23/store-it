@@ -1,12 +1,11 @@
 import Header from "@/components/Header";
 import MobileNavigation from "@/components/MobileNavigation";
-import Sidebar from "@/components/Sidebar";
 import GlobalDropzoneWrapper from "@/components/GlobalDropzoneWrapper";
 import { Toaster } from "@/components/ui/toaster";
 import { getCurrentUser } from "@/lib/actions/user.actions";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import React from "react";
+import Sidebar from "@/components/Sidebar";
 
 export const dynamic = "force-dynamic";
 
@@ -22,15 +21,12 @@ const Layout = async ({ children }: { children: React.ReactNode }) => {
   return (
     <>
       <main className="app-shell">
-        <Sidebar
-          fullName={currentUser.fullName}
-          avatar={currentUser.avatarUrl}
-        />
+        <Sidebar />
+
         <section className="app-shell-content">
           <MobileNavigation
             fullName={currentUser.fullName}
             email={currentUser.email}
-            avatar={currentUser.avatarUrl}
           />
           <Header />
           <GlobalDropzoneWrapper className="flex-1 min-h-0 relative flex flex-col">

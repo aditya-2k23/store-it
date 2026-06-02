@@ -86,11 +86,6 @@ declare interface MobileNavigationProps {
   email: string;
 }
 
-declare interface SidebarProps {
-  fullName: string;
-  avatar: string;
-}
-
 declare interface ThumbnailProps {
   type: string;
   extension: string;

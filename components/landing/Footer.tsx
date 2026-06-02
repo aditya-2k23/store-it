@@ -57,8 +57,8 @@ export const Footer = () => {
                 src="/assets/icons/logo_brand.png"
                 alt="Storey Logo"
                 width={140}
-                height={40}
-                className="h-auto w-auto object-contain"
+                height={140}
+                loading="eager"
                 priority
               />
             </div>
@@ -137,7 +137,7 @@ export const Footer = () => {
           </div>
 
           {/* Newsletter Subscription */}
-          <div className="flex-1 min-w-[240px] md:ml-auto md:max-w-xs">
+          <div className="flex-1 min-w-60 md:ml-auto md:max-w-xs">
             <h4 className="font-bold text-dark-100 mb-4 text-xs uppercase tracking-wider select-none">
               Stay Updated
             </h4>

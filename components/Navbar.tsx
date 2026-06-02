@@ -24,8 +24,8 @@ const Navbar = () => {
             src="/assets/icons/logo_brand.png"
             alt="Storey"
             width={150}
-            height={96}
-            style={{ width: "auto", height: "auto" }}
+            height={150}
+            loading="eager"
           />
         </Link>
 

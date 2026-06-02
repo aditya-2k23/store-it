@@ -24,7 +24,6 @@ import FileUploader from "./FileUploader";
 
 interface Props {
   fullName: string;
-  avatar: string;
   email: string;
 }
 const mobileLinks = [
@@ -36,15 +35,13 @@ const mobileLinks = [
   { name: "Others", href: "/others", icon: Ellipsis },
 ];
 
-const MobileNavigation = ({ fullName, avatar, email }: Props) => {
+const MobileNavigation = ({ fullName, email }: Props) => {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
-  const avatarUrl = avatar || "/assets/images/avatar.png";
-
   return (
     <header className="mobile-header">
-      <Image src="/assets/icons/logo_brand.png" alt="Storey" width={132} height={40} className="h-auto w-auto" priority />
+      <Image src="/assets/icons/logo_brand.png" alt="Storey" width={132} height={132} loading="eager" priority />
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
@@ -60,13 +57,6 @@ const MobileNavigation = ({ fullName, avatar, email }: Props) => {
           <SheetTitle className="sr-only">Navigation menu</SheetTitle>
 
           <div className="mb-6 flex items-center gap-3 rounded-2xl border border-white/75 bg-white/80 p-3">
-            <Image
-              src={avatarUrl}
-              alt={fullName}
-              width={40}
-              height={40}
-              className="size-10 rounded-full object-cover"
-            />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold capitalize text-slate-800">
                 {fullName}
