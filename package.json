@@ -1,6 +1,6 @@
 {
   "name": "storey",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "private": true,
   "scripts": {
@@ -35,6 +35,7 @@
     "react-dropzone": "^15.0.0",
     "react-hook-form": "^7.75.0",
     "recharts": "^3.8.1",
+    "sharp": "^0.34.5",
     "svix": "^1.94.0",
     "tailwind-merge": "^3.6.0",
     "use-debounce": "^10.1.1",
@@ -59,5 +60,8 @@
     "tailwindcss": "^4.3.0",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^6.0.3"
+  },
+  "allowScripts": {
+    "sharp@0.34.5": true
   }
 }
