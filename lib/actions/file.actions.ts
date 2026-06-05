@@ -4,6 +4,7 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { getFileType, parseStringify } from "@/lib/utils";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { getCurrentUser } from "./user.actions";
+
 import type { Database } from "@/types/database.types";
 
 const handleError = (error: unknown, message: string) => {
@@ -22,11 +23,29 @@ type FileRowWithOwner = FileRow & {
 const FILE_SELECT =
   "id, name, original_name, extension, mime_type, type, size, storage_key, thumbnail_key, preview_status, owner_id, workspace_id, created_at, updated_at, owner:users!files_owner_id_fkey(id, full_name, email, avatar_url)";
 
+/**
+ * Generates a 1-hour signed URL for direct download/preview.
+ * The URL is generated server-side and handed to the client — it is NOT cached
+ * across requests because short TTL is intentional for security.
+ */
+const createSignedDownloadUrl = async (
+  supabase: ReturnType<typeof createSupabaseAdmin>,
+  storageKey: string,
+): Promise<string> => {
+  const { data, error } = await supabase.storage
+    .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+    .createSignedUrl(storageKey, 3600); // 1 hour
+  if (error || !data?.signedUrl) return "";
+  return data.signedUrl;
+};
+
 const mapRowToFileItem = (
   row: FileRowWithOwner,
   sharedWith: string[],
+  signedUrl: string = "",
 ): FileItem => {
   const extension = row.extension || getFileType(row.name).extension;
+  const isImage = row.type === "image";
 
   return {
     id: row.id,
@@ -35,8 +54,11 @@ const mapRowToFileItem = (
     extension,
     type: row.type as FileType,
     size: row.size,
-    url: "",
-    downloadUrl: "",
+    url: signedUrl,
+    // Stable, auth-protected route → sharp resizes to 200×200 WebP 60%q
+    // browser caches for 24 h; works without any Supabase premium features
+    thumbnailUrl: isImage ? `/api/thumbnail/${row.id}` : "",
+    downloadUrl: signedUrl,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     storageKey: row.storage_key,
@@ -182,6 +204,11 @@ export const uploadFile = async ({ file, path }: UploadFileProps) => {
     const { type, extension } = getFileType(file.name);
     const fileId = crypto.randomUUID();
     const storageKey = `${currentUser.workspaceId}/${fileId}-${file.name}`;
+    // Upload file to Supabase storage bucket
+    const { error: storageError } = await supabase.storage
+      .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+      .upload(storageKey, file);
+    if (storageError) throw storageError;
 
     const { data: insertedFile, error: insertError } = await supabase
       .from("files")
@@ -202,7 +229,12 @@ export const uploadFile = async ({ file, path }: UploadFileProps) => {
 
     if (insertError) throw insertError;
 
-    const fileItem = mapRowToFileItem(insertedFile as FileRowWithOwner, []);
+    const signedUrl = await createSignedDownloadUrl(supabase, storageKey);
+    const fileItem = mapRowToFileItem(
+      insertedFile as FileRowWithOwner,
+      [],
+      signedUrl,
+    );
 
     revalidatePath(path);
     revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });
@@ -263,8 +295,27 @@ export const getFiles = async ({
       pagedFiles.map((file) => file.id),
     );
 
+    // Batch-generate signed URLs for all paged files in a single Supabase call
+    const { data: signedUrls } = pagedFiles.length
+      ? await supabase.storage
+          .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+          .createSignedUrls(
+            pagedFiles.map((f) => f.storage_key),
+            3600,
+          )
+      : { data: [] };
+
+    const signedUrlMap = new Map<string, string>();
+    (signedUrls || []).forEach((entry) => {
+      if (entry.signedUrl && entry.path) signedUrlMap.set(entry.path, entry.signedUrl);
+    });
+
     const documents = pagedFiles.map((file) =>
-      mapRowToFileItem(file, shareMap.get(file.id) || []),
+      mapRowToFileItem(
+        file,
+        shareMap.get(file.id) || [],
+        signedUrlMap.get(file.storage_key) || "",
+      ),
     );
 
     return parseStringify({ documents, total });

@@ -7,7 +7,6 @@ import {
   getUsageSummary,
 } from "@/lib/utils";
 import Link from "next/link";
-import React from "react";
 import EmptyState from "@/components/EmptyState";
 
 const Page = async ({ searchParams, params }: SearchParamProps) => {
@@ -34,7 +33,7 @@ const Page = async ({ searchParams, params }: SearchParamProps) => {
 
   const usageSummary = getUsageSummary(totalSpace);
   const currentUsage = usageSummary.find(
-    (item) => item.title.toLowerCase() === type.toLowerCase()
+    (item) => item.title.toLowerCase() === type.toLowerCase(),
   );
 
   const totalPages = Math.max(Math.ceil(files.total / pageSize), 1);
@@ -86,8 +85,9 @@ const Page = async ({ searchParams, params }: SearchParamProps) => {
         <div className="flex w-full items-center justify-between">
           <Link
             href={buildPageHref(page - 1)}
-            className={`inline-flex items-center justify-center rounded-full border border-white/70 bg-white/90 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 ${hasPrevPage ? "" : "pointer-events-none opacity-40"
-              }`}
+            className={`inline-flex items-center justify-center rounded-full border border-white/70 bg-white/90 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 ${
+              hasPrevPage ? "" : "pointer-events-none opacity-40"
+            }`}
           >
             Previous
           </Link>
@@ -98,8 +98,9 @@ const Page = async ({ searchParams, params }: SearchParamProps) => {
 
           <Link
             href={buildPageHref(page + 1)}
-            className={`inline-flex items-center justify-center rounded-full border border-white/70 bg-white/90 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 ${hasNextPage ? "" : "pointer-events-none opacity-40"
-              }`}
+            className={`inline-flex items-center justify-center rounded-full border border-white/70 bg-white/90 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 ${
+              hasNextPage ? "" : "pointer-events-none opacity-40"
+            }`}
           >
             Next
           </Link>

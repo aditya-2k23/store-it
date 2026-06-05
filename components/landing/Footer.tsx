@@ -157,7 +157,7 @@ export const Footer = () => {
               />
               <button
                 type="submit"
-                className="bg-brand hover:bg-brand-100 text-white text-xs font-bold px-5 py-2.5 rounded-full shadow-sm hover:shadow-md transition-all shrink-0 cursor-pointer font-dynapuff"
+                className="bg-brand hover:bg-brand-100 text-white text-xs font-medium px-5 py-2.5 rounded-full shadow-sm hover:shadow-md transition-all shrink-0 cursor-pointer font-dynapuff"
               >
                 Subscribe
               </button>

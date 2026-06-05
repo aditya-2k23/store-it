@@ -4,6 +4,10 @@ import React, { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import { uploadFile } from "@/lib/actions/file.actions";
+import { usePathname } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
+import { MAX_FILE_SIZE } from "@/constants";
 
 interface GlobalDropzoneWrapperProps {
   children: React.ReactNode;
@@ -15,17 +19,46 @@ const GlobalDropzoneWrapper = ({
   className,
 }: GlobalDropzoneWrapperProps) => {
   const [isUploading, setIsUploading] = useState(false);
+  const path = usePathname();
+  const { toast } = useToast();
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    // For now, we simulate the upload UI
-    if (acceptedFiles.length > 0) {
+  const onDrop = useCallback(
+    async (acceptedFiles: File[]) => {
+      if (acceptedFiles.length === 0) return;
+
       setIsUploading(true);
-      // Simulate upload delay
-      setTimeout(() => {
-        setIsUploading(false);
-      }, 3000);
-    }
-  }, []);
+
+      const uploadPromises = acceptedFiles.map(async (file) => {
+        if (file.size > MAX_FILE_SIZE) {
+          return toast({
+            description: (
+              <p className="body-2 text-white">
+                <span className="font-semibold">{file.name}</span> is too large.
+                Max file size is 50MB.
+              </p>
+            ),
+            className: "error-toast",
+          });
+        }
+
+        return uploadFile({ file, path }).catch((err) => {
+          console.error("Upload failed for", file.name, err);
+          toast({
+            description: (
+              <p className="body-2 text-white">
+                Failed to upload <span className="font-semibold">{file.name}</span>.
+              </p>
+            ),
+            className: "error-toast",
+          });
+        });
+      });
+
+      await Promise.all(uploadPromises);
+      setIsUploading(false);
+    },
+    [path, toast],
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -67,7 +100,7 @@ const GlobalDropzoneWrapper = ({
         </div>
       )}
 
-      {/* Uploading Status Overlay (Simulation for now) */}
+      {/* Uploading Status Overlay */}
       {isUploading && (
         <div className="fixed bottom-10 right-10 z-50 flex items-center gap-4 p-5 bg-white rounded-2xl shadow-drop-3 border border-light-300 animate-in slide-in-from-bottom-5">
           <Image

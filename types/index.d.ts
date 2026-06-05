@@ -37,6 +37,7 @@ declare interface FileItem {
   type: FileType;
   size: number;
   url: string;
+  thumbnailUrl: string;
   downloadUrl: string;
   createdAt: string;
   updatedAt: string;
