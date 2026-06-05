@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -19,6 +19,7 @@ const GlobalDropzoneWrapper = ({
   className,
 }: GlobalDropzoneWrapperProps) => {
   const [isUploading, setIsUploading] = useState(false);
+  const uploadsInFlightRef = useRef(0);
   const path = usePathname();
   const { toast } = useToast();
 
@@ -27,6 +28,7 @@ const GlobalDropzoneWrapper = ({
       if (acceptedFiles.length === 0) return;
 
       setIsUploading(true);
+      uploadsInFlightRef.current += 1;
 
       const uploadPromises = acceptedFiles.map(async (file) => {
         if (file.size > MAX_FILE_SIZE) {
@@ -54,8 +56,14 @@ const GlobalDropzoneWrapper = ({
         });
       });
 
-      await Promise.all(uploadPromises);
-      setIsUploading(false);
+      try {
+        await Promise.all(uploadPromises);
+      } finally {
+        uploadsInFlightRef.current -= 1;
+        if (uploadsInFlightRef.current === 0) {
+          setIsUploading(false);
+        }
+      }
     },
     [path, toast],
   );
