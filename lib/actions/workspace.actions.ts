@@ -605,6 +605,23 @@ export const createInviteLink = async (
       throw new Error("You do not have permission to generate invite links");
     }
 
+    // Fetch workspace to get name and slug
+    const { data: wsData, error: wsError } = await supabase
+      .from("workspaces")
+      .select("name, slug")
+      .eq("id", workspaceId)
+      .single();
+
+    if (wsError) throw wsError;
+
+    let activeSlug = wsData.slug;
+    if (!activeSlug) {
+      // Handle legacy workspaces with null slugs
+      const slugBase = generateSlugBase(wsData.name);
+      activeSlug = await ensureUniqueSlug(supabase, slugBase);
+      await supabase.from("workspaces").update({ slug: activeSlug }).eq("id", workspaceId);
+    }
+
     const { data, error } = await supabase
       .from("workspace_invitations")
       .insert({
@@ -617,7 +634,7 @@ export const createInviteLink = async (
 
     if (error) throw error;
 
-    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${data.token}`;
+    const inviteUrl = `/invite/${activeSlug}/${data.token}`;
 
     return parseStringify({
       ...data,
@@ -705,14 +722,14 @@ export const getWorkspaceInvitations = async (workspaceId: string) => {
   }
 };
 
-export const validateInviteToken = async (token: string) => {
+export const validateInviteToken = async (token: string, expectedSlug?: string) => {
   const supabase = createSupabaseAdmin();
 
   try {
     const { data: invitation, error } = await supabase
       .from("workspace_invitations")
       .select(
-        "id, workspace_id, role, status, expires_at, workspaces(id, name)",
+        "id, workspace_id, role, status, expires_at, workspaces(id, name, slug)",
       )
       .eq("token", token)
       .maybeSingle();
@@ -741,6 +758,13 @@ export const validateInviteToken = async (token: string) => {
     }
 
     const ws = invitation.workspaces as any;
+
+    if (expectedSlug && ws?.slug !== expectedSlug) {
+      return parseStringify({
+        valid: false,
+        reason: "Invite link is invalid or mismatched",
+      });
+    }
 
     return parseStringify({
       valid: true,

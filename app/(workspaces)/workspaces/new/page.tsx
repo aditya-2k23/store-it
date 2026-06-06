@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Image from "next/image";
 import Link from "next/link";
@@ -34,7 +35,8 @@ import { cn } from "@/lib/utils";
 const formSchema = z.object({
   name: z
     .string()
-    .min(2, "Name must be at least 2 characters")
+    .trim()
+    .min(1, "Workspace name is required")
     .max(50, "Name must be at most 50 characters"),
   expectedMembers: z.string().optional(),
   icon: z.string().optional(),
@@ -67,6 +69,7 @@ export default function NewWorkspacePage() {
     control,
     formState: { errors },
   } = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       expectedMembers: "just_me",
@@ -130,7 +133,7 @@ export default function NewWorkspacePage() {
       if (result) {
         const parsedResult = result as any;
         setInviteLink({
-          url: `${window.location.origin}/invite/${parsedResult.token}`,
+          url: `${window.location.origin}${parsedResult.inviteUrl}`,
           id: parsedResult.id,
         });
       }

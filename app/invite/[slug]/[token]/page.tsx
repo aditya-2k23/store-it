@@ -14,12 +14,12 @@ const roleBadgeStyles: Record<string, string> = {
 };
 
 interface InvitePageProps {
-  params: Promise<{ token: string }>;
+  params: Promise<{ slug: string; token: string }>;
 }
 
 export default async function InvitePage({ params }: InvitePageProps) {
-  const { token } = await params;
-  const validation = await validateInviteToken(token);
+  const { slug, token } = await params;
+  const validation = await validateInviteToken(token, slug);
   const { userId } = await auth();
 
   // State A — Invalid token
@@ -32,7 +32,8 @@ export default async function InvitePage({ params }: InvitePageProps) {
           </div>
           <h2 className="h2 text-dark-100">This invite link is invalid</h2>
           <p className="body-1 mt-3 text-light-100">
-            {validation?.reason || "This invite link may have expired or been revoked."}
+            {validation?.reason ||
+              "This invite link may have expired or been revoked."}
           </p>
           <Link
             href="/"
@@ -56,8 +57,8 @@ export default async function InvitePage({ params }: InvitePageProps) {
           <Image
             src="/assets/icons/logo_brand.png"
             alt="Storey"
-            width={120}
-            height={120}
+            width={180}
+            height={180}
             className="mx-auto"
             priority
           />
@@ -79,7 +80,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
           <div className="mt-8 space-y-3">
             <Link
-              href={`/sign-in?redirect=/invite/${token}`}
+              href={`/sign-in?redirect=/invite/${slug}/${token}`}
               className="primary-btn flex h-12 w-full items-center justify-center rounded-full text-white"
             >
               Sign in to accept
@@ -87,7 +88,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
             <p className="caption text-light-200">
               Don&apos;t have an account?{" "}
               <Link
-                href={`/sign-up?redirect=/invite/${token}`}
+                href={`/sign-up?redirect=/invite/${slug}/${token}`}
                 className="font-semibold text-brand hover:text-brand-100"
               >
                 Sign up
@@ -107,18 +108,16 @@ export default async function InvitePage({ params }: InvitePageProps) {
         <Image
           src="/assets/icons/logo_brand.png"
           alt="Storey"
-          width={120}
-          height={120}
+          width={180}
+          height={180}
           className="mx-auto"
           priority
         />
 
-        <p className="caption mt-6 text-light-200">
+        <p className="text-lg mt-6 text-light-100">
           You&apos;ve been invited to join
         </p>
-        <h2 className="h2 mt-1 font-dynapuff text-dark-100">
-          {workspaceName}
-        </h2>
+        <h2 className="h2 mt-1 font-dynapuff text-dark-100">{workspaceName}</h2>
 
         <span
           className={`mt-3 inline-block rounded-full px-3 py-1 text-xs font-semibold capitalize ${

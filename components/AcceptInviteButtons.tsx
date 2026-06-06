@@ -19,15 +19,17 @@ const AcceptInviteButtons = ({ token }: AcceptInviteButtonsProps) => {
     startTransition(async () => {
       try {
         const result = await acceptInvite(token);
-        toast({
-          description: (
-            <p className="body-2 text-white">
-              Successfully joined the workspace!
-            </p>
-          ),
-          className: "success-toast",
-        });
-        router.push("/dashboard");
+        if (result?.workspaceId) {
+          toast({
+            description: (
+              <p className="body-2 text-white">
+                Successfully joined the workspace!
+              </p>
+            ),
+            className: "success-toast",
+          });
+          router.push("/dashboard");
+        }
       } catch (error: any) {
         if (error?.message?.includes("already a member")) {
           toast({
@@ -62,7 +64,7 @@ const AcceptInviteButtons = ({ token }: AcceptInviteButtonsProps) => {
       <Button
         onClick={handleJoin}
         disabled={isPending}
-        className="primary-btn h-12 flex-1 gap-2 text-white cursor-pointer"
+        className="primary-btn h-12 flex-1 gap-2 text-white cursor-pointer font-dynapuff"
       >
         {isPending ? (
           <>
@@ -77,7 +79,7 @@ const AcceptInviteButtons = ({ token }: AcceptInviteButtonsProps) => {
         onClick={handleDecline}
         disabled={isPending}
         variant="outline"
-        className="h-12 flex-1 rounded-full border-light-300 text-light-100 hover:bg-light-400/50"
+        className="h-12 flex-1 rounded-full border-light-300 text-light-100 hover:bg-light-400/50 cursor-pointer"
       >
         Decline
       </Button>

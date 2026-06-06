@@ -380,7 +380,7 @@ const InviteLinkSection = ({
         if (result) {
           const parsedResult = result as any;
           setGeneratedLink({
-            url: `${window.location.origin}/invite/${parsedResult.token}`,
+            url: `${window.location.origin}${parsedResult.inviteUrl}`,
             invitationId: parsedResult.id,
           });
           toast({
@@ -532,7 +532,7 @@ const InviteLinkSection = ({
               className="flex items-center gap-3 rounded-xl border border-light-300 bg-white p-3"
             >
               <span className="caption flex-1 truncate text-light-100">
-                {window.location.origin}/invite/{inv.token}
+                {window.location.origin}/invite/{workspace.slug}/{inv.token}
               </span>
               <span
                 className={cn(
