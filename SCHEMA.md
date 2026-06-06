@@ -9,6 +9,7 @@
 | ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2025-06 | v1.0    | Initial schema — users, workspaces, workspace_members, folders, files, file_versions, direct_file_shares, public_file_links, favorite_files, ai_metadata, activity_logs |
 | 2025-06 | v1.1    | Workspace system — renamed role `member` → `editor` in workspace_members; added `slug` column to workspaces; added `workspace_invitations` table                        |
+| 2026-06 | v1.2    | Workspace Identity — added `expected_members`, `icon`, and `theme_color` to workspaces                                                                                  |
 
 ---
 
@@ -26,6 +27,7 @@
 - **Full-text search** — `search_tsv` tsvector + GIN index on `files` and `folders`.
 - **AI embeddings** — untyped `vector` column in `ai_metadata` with `embedding_model` text column to avoid hardcoding dimensions (Gemini models).
 - **Activity log actions** — dot-namespaced plain text (e.g. `file.upload`, `workspace.member.invite`) — not an enum, to allow new event types without migrations.
+- **Workspace Identity** — workspaces optionally store `icon` (emoji or lucide) and `theme_color` to provide customizable avatars, along with `expected_members` to track team size intent.
 
 ---
 
@@ -55,18 +57,21 @@ Synced from Clerk via webhooks. One row per Clerk user.
 
 A workspace is the top-level container for files and members.
 
-| Column          | Type        | Constraints                   | Notes                                                                          |
-| --------------- | ----------- | ----------------------------- | ------------------------------------------------------------------------------ |
-| `id`            | uuid        | PK, default gen_random_uuid() |                                                                                |
-| `name`          | text        | NOT NULL                      | Display name                                                                   |
-| `slug`          | text        | UNIQUE, nullable              | URL-safe identifier. Auto-generated from name. Used in invite URLs. Added v1.1 |
-| `type`          | text        | NOT NULL                      | CHECK: `personal \| team`                                                      |
-| `owner_id`      | uuid        | FK → users(id), nullable      | The user who owns/created this workspace                                       |
-| `clerk_org_id`  | text        | UNIQUE, nullable              | Reserved for future Clerk Org sync. Not used as SOT.                           |
-| `storage_limit` | bigint      | NOT NULL, default 2147483648  | 2 GB in bytes                                                                  |
-| `storage_used`  | bigint      | NOT NULL, default 0           | Maintained by trigger on files insert/delete                                   |
-| `created_at`    | timestamptz | NOT NULL, default now()       |                                                                                |
-| `updated_at`    | timestamptz | NOT NULL, default now()       |                                                                                |
+| Column             | Type        | Constraints                   | Notes                                                                          |
+| ------------------ | ----------- | ----------------------------- | ------------------------------------------------------------------------------ |
+| `id`               | uuid        | PK, default gen_random_uuid() |                                                                                |
+| `name`             | text        | NOT NULL                      | Display name                                                                   |
+| `slug`             | text        | UNIQUE, nullable              | URL-safe identifier. Auto-generated from name. Used in invite URLs. Added v1.1 |
+| `expected_members` | text        | nullable                      | Stores internal buckets: `just_me`, `2_to_5`, `6_to_20`, `20_plus`             |
+| `icon`             | text        | nullable                      | Stores icon identifier e.g. `emoji:🚀` or `lucide:briefcase`                   |
+| `theme_color`      | text        | nullable                      | Hex color code for the workspace avatar                                        |
+| `type`             | text        | NOT NULL                      | CHECK: `personal \| team`                                                      |
+| `owner_id`         | uuid        | FK → users(id), nullable      | The user who owns/created this workspace                                       |
+| `clerk_org_id`     | text        | UNIQUE, nullable              | Reserved for future Clerk Org sync. Not used as SOT.                           |
+| `storage_limit`    | bigint      | NOT NULL, default 2147483648  | 2 GB in bytes                                                                  |
+| `storage_used`     | bigint      | NOT NULL, default 0           | Maintained by trigger on files insert/delete                                   |
+| `created_at`       | timestamptz | NOT NULL, default now()       |                                                                                |
+| `updated_at`       | timestamptz | NOT NULL, default now()       |                                                                                |
 
 **Relationships:** `owner_id` → `users(id)`
 
