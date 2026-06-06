@@ -10,11 +10,13 @@ import {
   FileText,
   ImageIcon,
   LayoutGrid,
+  Settings,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
+import WorkspaceSwitcher from "./WorkspaceSwitcher";
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
@@ -27,7 +29,14 @@ const sidebarLinks = [
 
 const STORAGE_EVENT = "sidebar-collapsed-change";
 
-const Sidebar = () => {
+interface SidebarProps {
+  workspaces: WorkspaceWithRole[];
+  activeWorkspaceId: string;
+}
+
+const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
+  const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
+  const userRole = activeWorkspace?.role;
   const pathname = usePathname();
 
   const subscribe = (callback: () => void) => {
@@ -120,6 +129,14 @@ const Sidebar = () => {
           </Link>
         </div>
 
+        <WorkspaceSwitcher
+          workspaces={workspaces}
+          activeWorkspaceId={activeWorkspaceId}
+          isCollapsed={displayCollapsed}
+        />
+
+        <div className="my-3 border-t border-light-300" />
+
         <nav aria-label="Primary navigation">
           <ul className="flex flex-col gap-2">
             {sidebarLinks.map(({ name, href, icon: Icon }) => {
@@ -162,6 +179,41 @@ const Sidebar = () => {
                 </li>
               );
             })}
+            {(userRole === "owner" || userRole === "admin") && (
+              <li>
+                <Link
+                  href={`/workspaces/${activeWorkspaceId}/settings`}
+                  className={cn(
+                    "group flex items-center py-3 font-semibold text-slate-600 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35",
+                    pathname.includes("/settings") &&
+                      "bg-[#ff6b6b]/15 font-dynapuff font-medium text-[#ff6b6b]",
+                    displayCollapsed
+                      ? "justify-center rounded-xl px-2"
+                      : "gap-3 rounded-full px-4",
+                  )}
+                >
+                  <Settings
+                    className={cn(
+                      "size-4.5 shrink-0 transition-colors",
+                      pathname.includes("/settings")
+                        ? "text-brand"
+                        : "text-slate-500",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "origin-left whitespace-nowrap transition-all duration-300 ease-in-out",
+                      displayCollapsed
+                        ? "max-w-0 -translate-x-2.5 opacity-0 pointer-events-none"
+                        : "max-w-40 translate-x-0 opacity-100",
+                    )}
+                    style={{ overflow: "hidden" }}
+                  >
+                    Settings
+                  </span>
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
       </div>

@@ -21,10 +21,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import FileUploader from "./FileUploader";
+import { Home, Users } from "lucide-react";
 
 interface Props {
   fullName: string;
   email: string;
+  activeWorkspaceName: string;
+  activeWorkspaceType: string;
 }
 const mobileLinks = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
@@ -35,7 +38,7 @@ const mobileLinks = [
   { name: "Others", href: "/others", icon: Ellipsis },
 ];
 
-const MobileNavigation = ({ fullName, email }: Props) => {
+const MobileNavigation = ({ fullName, email, activeWorkspaceName, activeWorkspaceType }: Props) => {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
@@ -63,6 +66,24 @@ const MobileNavigation = ({ fullName, email }: Props) => {
               </p>
               <p className="truncate text-xs text-slate-500">{email}</p>
             </div>
+          </div>
+
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-light-300 bg-white/60 px-3 py-2">
+            {activeWorkspaceType === "personal" ? (
+              <Home className="size-4 shrink-0 text-light-200" />
+            ) : (
+              <Users className="size-4 shrink-0 text-light-200" />
+            )}
+            <span className="caption flex-1 truncate text-light-100">
+              {activeWorkspaceName}
+            </span>
+            <Link
+              href="/workspaces"
+              onClick={() => setOpen(false)}
+              className="caption font-semibold text-brand"
+            >
+              Switch
+            </Link>
           </div>
 
           <nav className="mobile-nav">

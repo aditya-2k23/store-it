@@ -643,6 +643,45 @@ export const revokeInviteLink = async (invitationId: string) => {
   }
 };
 
+export const getWorkspaceInvitations = async (workspaceId: string) => {
+  const supabase = createSupabaseAdmin();
+
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
+
+    const callerRole = await getCallerRole(supabase, currentUser.id, workspaceId);
+    if (!callerRole || !canInvite(callerRole)) {
+      throw new Error("You do not have permission to view invitations");
+    }
+
+    const { data, error } = await supabase
+      .from("workspace_invitations")
+      .select("id, workspace_id, invited_by, role, token, status, expires_at, created_at")
+      .eq("workspace_id", workspaceId)
+      .eq("status", "pending")
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+
+    return parseStringify(
+      (data || []).map((inv) => ({
+        id: inv.id,
+        workspaceId: inv.workspace_id,
+        invitedBy: inv.invited_by,
+        role: inv.role,
+        token: inv.token,
+        status: inv.status,
+        expiresAt: inv.expires_at,
+        createdAt: inv.created_at,
+      })),
+    );
+  } catch (error) {
+    handleError(error, "Failed to get workspace invitations");
+  }
+};
+
 export const validateInviteToken = async (token: string) => {
   const supabase = createSupabaseAdmin();
 
