@@ -4,6 +4,7 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { getFileType, parseStringify } from "@/lib/utils";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { getCurrentUser } from "./user.actions";
+import { canUpload, canDeleteOthers, type WorkspaceRole } from "@/lib/permissions";
 
 import type { Database } from "@/types/database.types";
 
@@ -200,6 +201,18 @@ export const uploadFile = async ({ file, path }: UploadFileProps) => {
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
+
+    // Permission check: verify the user can upload in this workspace
+    const { data: membership } = await supabase
+      .from("workspace_members")
+      .select("role")
+      .eq("user_id", currentUser.id)
+      .eq("workspace_id", currentUser.workspaceId)
+      .maybeSingle();
+
+    if (!membership?.role || !canUpload(membership.role as WorkspaceRole)) {
+      throw new Error("You do not have permission to upload files in this workspace");
+    }
 
     const { type, extension } = getFileType(file.name);
     const fileId = crypto.randomUUID();
@@ -436,8 +449,22 @@ export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
       .single();
 
     if (fetchError) throw fetchError;
+
+    // If caller is not the file owner, check if they have admin/owner role
     if (fileRecord.owner_id !== currentUser.id) {
-      throw new Error("Not authorized to delete this file.");
+      const { data: membership } = await supabase
+        .from("workspace_members")
+        .select("role")
+        .eq("user_id", currentUser.id)
+        .eq("workspace_id", currentUser.workspaceId)
+        .maybeSingle();
+
+      if (
+        !membership?.role ||
+        !canDeleteOthers(membership.role as WorkspaceRole)
+      ) {
+        throw new Error("Not authorized to delete this file.");
+      }
     }
 
     const { error: deleteError } = await supabase

@@ -100,3 +100,44 @@ declare interface ShareInputProps {
   onInputChange: (emails: string[]) => void;
   onRemove: (email: string) => void;
 }
+
+declare type WorkspaceRole = "owner" | "admin" | "editor" | "viewer";
+
+declare interface WorkspaceWithRole {
+  id: string;
+  name: string;
+  slug: string | null;
+  type: string;
+  ownerId: string | null;
+  storageLimit: number;
+  storageUsed: number;
+  createdAt: string;
+  updatedAt: string;
+  role: WorkspaceRole;
+  memberCount?: number;
+}
+
+declare interface WorkspaceMember {
+  id: string;
+  userId: string;
+  workspaceId: string;
+  role: WorkspaceRole;
+  joinedAt: string;
+  user: {
+    id: string;
+    fullName: string | null;
+    email: string;
+    avatarUrl: string | null;
+  };
+}
+
+declare interface WorkspaceInvitation {
+  id: string;
+  workspaceId: string;
+  invitedBy: string;
+  role: string;
+  token: string;
+  status: string;
+  expiresAt: string;
+  createdAt: string;
+}

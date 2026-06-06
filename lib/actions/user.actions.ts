@@ -5,8 +5,11 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { parseStringify } from "../utils";
 import type { Database } from "@/types/database.types";
+import { cookies } from "next/headers";
 
 import { cache } from "react";
+
+const ACTIVE_WORKSPACE_COOKIE = "storey-active-workspace";
 
 const handleError = (error: unknown, message: string) => {
   console.error(message, error);
@@ -31,15 +34,56 @@ export const getCurrentUser = cache(async () => {
     if (findError) throw findError;
 
     if (existingUser) {
-      // Fetch workspace member ownership to get their workspace
-      const { data: membership, error: memberError } = await supabase
-        .from("workspace_members")
-        .select("workspace_id")
-        .eq("user_id", existingUser.id)
-        .eq("role", "owner")
-        .maybeSingle();
+      // Resolve active workspace: cookie first, then personal workspace fallback
+      let workspaceId: string | undefined;
 
-      if (membership?.workspace_id) {
+      // Try the active workspace cookie
+      try {
+        const cookieStore = await cookies();
+        const activeWsCookie = cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value;
+
+        if (activeWsCookie) {
+          // Verify the user is actually a member of this workspace
+          const { data: cookieMembership } = await supabase
+            .from("workspace_members")
+            .select("workspace_id")
+            .eq("user_id", existingUser.id)
+            .eq("workspace_id", activeWsCookie)
+            .maybeSingle();
+
+          if (cookieMembership?.workspace_id) {
+            workspaceId = cookieMembership.workspace_id;
+          }
+        }
+      } catch {
+        // cookies() can throw in some contexts (e.g. generateStaticParams)
+      }
+
+      // Fallback: find their personal workspace
+      if (!workspaceId) {
+        const { data: personalWs } = await supabase
+          .from("workspaces")
+          .select("id")
+          .eq("owner_id", existingUser.id)
+          .eq("type", "personal")
+          .maybeSingle();
+
+        workspaceId = personalWs?.id;
+      }
+
+      // Final fallback: any workspace they own
+      if (!workspaceId) {
+        const { data: membership } = await supabase
+          .from("workspace_members")
+          .select("workspace_id")
+          .eq("user_id", existingUser.id)
+          .eq("role", "owner")
+          .maybeSingle();
+
+        workspaceId = membership?.workspace_id;
+      }
+
+      if (workspaceId) {
         return parseStringify({
           id: existingUser.id,
           clerkId: existingUser.clerk_id,
@@ -48,7 +92,7 @@ export const getCurrentUser = cache(async () => {
           avatarUrl: existingUser.avatar_url,
           username: existingUser.username,
           plan: existingUser.plan,
-          workspaceId: membership.workspace_id,
+          workspaceId,
         });
       }
     }
