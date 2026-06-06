@@ -88,12 +88,30 @@ async function getCallerRole(
 }
 
 // Workspace CRUD
-export const createWorkspace = async (name: string) => {
+export const createWorkspace = async (
+  name: string,
+  expectedMembers?: string,
+  icon?: string,
+  themeColor?: string,
+) => {
   const supabase = createSupabaseAdmin();
 
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
+
+    // Check for existing workspace with same name (case-insensitive)
+    const { data: existingWorkspace } = await supabase
+      .from("workspaces")
+      .select("id")
+      .ilike("name", name.trim())
+      .eq("owner_id", currentUser.id)
+      .eq("type", "team")
+      .limit(1);
+
+    if (existingWorkspace && existingWorkspace.length > 0) {
+      throw new Error("A workspace with this name already exists in your account");
+    }
 
     // Count team workspaces owned by this user
     const { count, error: countError } = await supabase
@@ -129,6 +147,9 @@ export const createWorkspace = async (name: string) => {
         slug,
         type: "team",
         owner_id: currentUser.id,
+        expected_members: expectedMembers || null,
+        icon: icon || "lucide:building2",
+        theme_color: themeColor || "#FA7275",
       })
       .select()
       .single();
@@ -163,7 +184,7 @@ export const getUserWorkspaces = async () => {
     const { data: memberships, error } = await supabase
       .from("workspace_members")
       .select(
-        "role, workspace_id, workspaces(id, name, slug, type, owner_id, storage_limit, storage_used, created_at, updated_at)",
+        "role, workspace_id, workspaces(id, name, slug, type, owner_id, storage_limit, storage_used, created_at, updated_at, icon, theme_color)",
       )
       .eq("user_id", currentUser.id);
 
@@ -200,6 +221,8 @@ export const getUserWorkspaces = async () => {
           storageUsed: ws.storage_used,
           createdAt: ws.created_at,
           updatedAt: ws.updated_at,
+          icon: ws.icon,
+          themeColor: ws.theme_color,
           role: m.role as WorkspaceRole,
           memberCount: countMap.get(ws.id) || 1,
         };

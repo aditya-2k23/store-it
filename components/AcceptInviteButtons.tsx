@@ -62,7 +62,7 @@ const AcceptInviteButtons = ({ token }: AcceptInviteButtonsProps) => {
       <Button
         onClick={handleJoin}
         disabled={isPending}
-        className="primary-btn h-12 flex-1 gap-2 text-white"
+        className="primary-btn h-12 flex-1 gap-2 text-white cursor-pointer"
       >
         {isPending ? (
           <>

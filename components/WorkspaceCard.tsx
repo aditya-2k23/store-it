@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { setActiveWorkspace } from "@/lib/actions/workspace.actions";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Home, Users, ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { fadeIn } from "./landing/animations";
+import { WorkspaceAvatar } from "./workspace/WorkspaceAvatar";
 
 const roleBadgeStyles: Record<WorkspaceRole, string> = {
   owner: "bg-brand/10 text-brand",
@@ -19,8 +20,6 @@ const roleBadgeStyles: Record<WorkspaceRole, string> = {
 const WorkspaceCard = ({ workspace }: { workspace: WorkspaceWithRole }) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-
-  const TypeIcon = workspace.type === "personal" ? Home : Users;
   const storagePercent =
     workspace.storageLimit > 0
       ? Math.min((workspace.storageUsed / workspace.storageLimit) * 100, 100)
@@ -55,14 +54,13 @@ const WorkspaceCard = ({ workspace }: { workspace: WorkspaceWithRole }) => {
       )}
     >
       <div className="flex items-start justify-between">
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-brand/10">
-          <TypeIcon
-            className={cn(
-              "size-7",
-              workspace.type === "personal" ? "text-brand" : "text-blue",
-            )}
-          />
-        </div>
+        <WorkspaceAvatar
+          name={workspace.name}
+          icon={workspace.icon}
+          themeColor={workspace.themeColor}
+          className="size-14 text-2xl"
+          iconClassName="size-7"
+        />
         <span
           className={cn(
             "rounded-full px-2.5 py-1 text-[10px] font-semibold capitalize",

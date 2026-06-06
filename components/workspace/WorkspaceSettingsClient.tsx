@@ -12,6 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -58,11 +59,7 @@ const roleBadgeStyles: Record<WorkspaceRole, string> = {
 };
 
 // ——— Section 1: General ———
-const GeneralSection = ({
-  workspace,
-}: {
-  workspace: WorkspaceWithRole;
-}) => {
+const GeneralSection = ({ workspace }: { workspace: WorkspaceWithRole }) => {
   const router = useRouter();
   const [name, setName] = useState(workspace.name);
   const [isPending, startTransition] = useTransition();
@@ -97,12 +94,12 @@ const GeneralSection = ({
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="h-11 max-w-sm rounded-xl border border-light-300 px-4 text-sm"
+          className="h-11 max-w-sm rounded-xl border border-light-300 px-4 text-sm focus-visible:border-brand focus-visible:ring-brand"
         />
         <Button
           onClick={handleSave}
           disabled={isPending || !name.trim() || name.trim() === workspace.name}
-          className="primary-btn h-11 gap-2 px-6 text-white"
+          className="primary-btn h-11 gap-2 px-6 text-white cursor-pointer"
         >
           {isPending ? <Loader2 className="size-4 animate-spin" /> : "Save"}
         </Button>
@@ -135,10 +132,8 @@ const MembersSection = ({
   );
   const [isPending, startTransition] = useTransition();
 
-  const canModifyRoles =
-    userRole === "owner" || userRole === "admin";
-  const canRemoveMembers =
-    userRole === "owner" || userRole === "admin";
+  const canModifyRoles = userRole === "owner" || userRole === "admin";
+  const canRemoveMembers = userRole === "owner" || userRole === "admin";
 
   const getRoleOptions = (targetRole: WorkspaceRole): WorkspaceRole[] => {
     if (userRole === "owner") return ["admin", "editor", "viewer"];
@@ -146,10 +141,7 @@ const MembersSection = ({
     return [];
   };
 
-  const handleRoleChange = (
-    targetUserId: string,
-    newRole: WorkspaceRole,
-  ) => {
+  const handleRoleChange = (targetUserId: string, newRole: WorkspaceRole) => {
     startTransition(async () => {
       try {
         await updateMemberRole(workspace.id, targetUserId, newRole);
@@ -261,22 +253,24 @@ const MembersSection = ({
                 >
                   <SelectTrigger
                     className={cn(
-                      "h-8 w-24 rounded-full border-0 px-3 text-[11px] font-semibold capitalize",
+                      "h-8 w-24 rounded-full border-0 px-3 text-[11px] font-semibold capitalize cursor-pointer focus:ring-brand",
                       roleBadgeStyles[member.role as WorkspaceRole],
                     )}
                   >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {getRoleOptions(member.role as WorkspaceRole).map((role) => (
-                      <SelectItem
-                        key={role}
-                        value={role}
-                        className="capitalize"
-                      >
-                        {role}
-                      </SelectItem>
-                    ))}
+                    {getRoleOptions(member.role as WorkspaceRole).map(
+                      (role) => (
+                        <SelectItem
+                          key={role}
+                          value={role}
+                          className="capitalize cursor-pointer"
+                        >
+                          {role}
+                        </SelectItem>
+                      ),
+                    )}
                   </SelectContent>
                 </Select>
               ) : (
@@ -295,7 +289,7 @@ const MembersSection = ({
                 <button
                   onClick={() => setConfirmRemove(member)}
                   disabled={removingId === member.userId}
-                  className="rounded-lg p-1.5 text-red transition-colors hover:bg-red/10"
+                  className="rounded-lg p-1.5 text-red transition-colors hover:bg-red/10 cursor-pointer"
                 >
                   {removingId === member.userId ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -330,19 +324,17 @@ const MembersSection = ({
           <DialogFooter className="flex flex-col gap-3 md:flex-row">
             <Button
               onClick={() => setConfirmRemove(null)}
-              className="modal-cancel-button"
+              className="modal-cancel-button cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               onClick={handleRemove}
               disabled={isPending}
-              className="modal-submit-button"
+              className="modal-submit-button cursor-pointer font-dynapuff"
             >
               Remove
-              {isPending && (
-                <Loader2 className="ml-2 size-4 animate-spin" />
-              )}
+              {isPending && <Loader2 className="ml-2 size-4 animate-spin" />}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -362,7 +354,9 @@ const InviteLinkSection = ({
   invitations: WorkspaceInvitation[];
 }) => {
   const router = useRouter();
-  const [selectedRole, setSelectedRole] = useState<"admin" | "editor" | "viewer">("editor");
+  const [selectedRole, setSelectedRole] = useState<
+    "admin" | "editor" | "viewer"
+  >("editor");
   const [generatedLink, setGeneratedLink] = useState<{
     url: string;
     invitationId: string;
@@ -370,25 +364,24 @@ const InviteLinkSection = ({
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [revoking, setRevoking] = useState(false);
-  const [confirmRevoke, setConfirmRevoke] = useState(false);
+  const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
 
   // Show existing pending invitations
   const [existingInvitations, setExistingInvitations] =
     useState(initialInvitations);
 
   const roleOptions: ("admin" | "editor" | "viewer")[] =
-    userRole === "owner"
-      ? ["editor", "viewer", "admin"]
-      : ["editor", "viewer"];
+    userRole === "owner" ? ["editor", "viewer", "admin"] : ["editor", "viewer"];
 
   const handleGenerate = () => {
     startTransition(async () => {
       try {
         const result = await createInviteLink(workspace.id, selectedRole);
         if (result) {
+          const parsedResult = result as any;
           setGeneratedLink({
-            url: result as string,
-            invitationId: "", // We'll get this from the invitations list refresh
+            url: `${window.location.origin}/invite/${parsedResult.token}`,
+            invitationId: parsedResult.id,
           });
           toast({
             description: (
@@ -440,7 +433,7 @@ const InviteLinkSection = ({
           ),
           className: "success-toast",
         });
-        setConfirmRevoke(false);
+        setConfirmRevokeId(null);
         router.refresh();
       } catch {
         toast({
@@ -464,13 +457,22 @@ const InviteLinkSection = ({
           <label className="caption mb-1.5 block font-medium text-light-100">
             Role
           </label>
-          <Select value={selectedRole} onValueChange={(val) => setSelectedRole(val as "admin" | "editor" | "viewer")}>
-            <SelectTrigger className="h-11 w-32 rounded-xl border border-light-300 text-sm capitalize">
+          <Select
+            value={selectedRole}
+            onValueChange={(val) =>
+              setSelectedRole(val as "admin" | "editor" | "viewer")
+            }
+          >
+            <SelectTrigger className="h-11 w-32 rounded-xl border border-light-300 text-sm capitalize cursor-pointer focus:border-brand focus:ring-brand">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {roleOptions.map((role) => (
-                <SelectItem key={role} value={role} className="capitalize">
+                <SelectItem
+                  key={role}
+                  value={role}
+                  className="capitalize cursor-pointer"
+                >
                   {role}
                 </SelectItem>
               ))}
@@ -480,7 +482,7 @@ const InviteLinkSection = ({
         <Button
           onClick={handleGenerate}
           disabled={isPending}
-          className="primary-btn h-11 gap-2 px-6 text-white"
+          className="primary-btn h-11 gap-2 px-6 text-white cursor-pointer"
         >
           {isPending ? (
             <Loader2 className="size-4 animate-spin" />
@@ -496,12 +498,12 @@ const InviteLinkSection = ({
           <Input
             value={generatedLink.url}
             readOnly
-            className="h-11 flex-1 rounded-xl border border-light-300 bg-light-400/50 px-4 text-sm text-light-100"
+            className="h-11 flex-1 rounded-xl border border-light-300 bg-light-400/50 px-4 text-sm text-light-100 focus-visible:border-brand focus-visible:ring-brand"
           />
           <Button
             onClick={() => handleCopy(generatedLink.url)}
             variant="outline"
-            className="h-11 gap-1.5 rounded-xl border-light-300 px-4"
+            className="h-11 gap-1.5 rounded-xl border-light-300 px-4 cursor-pointer"
           >
             {copied ? (
               <>
@@ -542,9 +544,9 @@ const InviteLinkSection = ({
                 {inv.role}
               </span>
               <button
-                onClick={() => handleRevoke(inv.id)}
+                onClick={() => setConfirmRevokeId(inv.id)}
                 disabled={revoking}
-                className="caption font-semibold text-red transition-colors hover:text-red/80"
+                className="caption font-semibold text-red transition-colors hover:text-red/80 cursor-pointer"
               >
                 Revoke
               </button>
@@ -552,6 +554,45 @@ const InviteLinkSection = ({
           ))}
         </div>
       )}
+
+      {/* Revoke Confirmation Dialog */}
+      <Dialog
+        open={!!confirmRevokeId}
+        onOpenChange={(open) => !open && setConfirmRevokeId(null)}
+      >
+        <DialogContent className="shad-dialog">
+          <DialogHeader>
+            <DialogTitle className="h3 font-dynapuff text-dark-100">
+              Revoke Invite Link
+            </DialogTitle>
+            <DialogDescription className="body-2 text-light-200">
+              Are you sure you want to revoke this invitation link? Anyone with
+              this link will no longer be able to join the workspace.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6 gap-3 flex-col sm:flex-row">
+            <Button
+              onClick={() => setConfirmRevokeId(null)}
+              variant="outline"
+              disabled={revoking}
+              className="h-11 flex-1 rounded-full text-light-100 cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => confirmRevokeId && handleRevoke(confirmRevokeId)}
+              disabled={revoking}
+              className="h-11 flex-1 rounded-full bg-red text-white hover:bg-red/90 cursor-pointer font-dynapuff"
+            >
+              {revoking ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                "Yes, Revoke"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <p className="caption mt-3 text-light-200">
         Each link expires in 7 days and can only be used once.
@@ -601,9 +642,7 @@ const DangerZoneSection = ({
       } catch {
         toast({
           description: (
-            <p className="body-2 text-white">
-              Failed to transfer ownership.
-            </p>
+            <p className="body-2 text-white">Failed to transfer ownership.</p>
           ),
           className: "error-toast",
         });
@@ -616,9 +655,7 @@ const DangerZoneSection = ({
       try {
         await deleteWorkspace(workspace.id);
         toast({
-          description: (
-            <p className="body-2 text-white">Workspace deleted.</p>
-          ),
+          description: <p className="body-2 text-white">Workspace deleted.</p>,
           className: "success-toast",
         });
         setConfirmDelete(false);
@@ -626,9 +663,7 @@ const DangerZoneSection = ({
       } catch {
         toast({
           description: (
-            <p className="body-2 text-white">
-              Failed to delete workspace.
-            </p>
+            <p className="body-2 text-white">Failed to delete workspace.</p>
           ),
           className: "error-toast",
         });
@@ -652,12 +687,16 @@ const DangerZoneSection = ({
             </label>
             <div className="flex items-end gap-3">
               <Select value={transferTarget} onValueChange={setTransferTarget}>
-                <SelectTrigger className="h-11 w-60 rounded-xl border border-light-300 text-sm">
+                <SelectTrigger className="h-11 w-60 rounded-xl border border-light-300 text-sm cursor-pointer focus:border-brand focus:ring-brand">
                   <SelectValue placeholder="Select a member" />
                 </SelectTrigger>
                 <SelectContent>
                   {nonOwnerMembers.map((m) => (
-                    <SelectItem key={m.userId} value={m.userId}>
+                    <SelectItem
+                      key={m.userId}
+                      value={m.userId}
+                      className="cursor-pointer"
+                    >
                       {m.user.fullName || m.user.email}
                     </SelectItem>
                   ))}
@@ -667,7 +706,7 @@ const DangerZoneSection = ({
                 onClick={() => setConfirmTransfer(true)}
                 disabled={!transferTarget}
                 variant="outline"
-                className="h-11 rounded-xl border-red/30 text-red hover:bg-red/5 hover:text-red"
+                className="h-11 rounded-xl border-red/30 text-red hover:bg-red/5 hover:text-red cursor-pointer"
               >
                 Transfer
               </Button>
@@ -688,7 +727,7 @@ const DangerZoneSection = ({
             <Button
               onClick={() => setConfirmDelete(true)}
               variant="outline"
-              className="h-11 rounded-xl border-red text-red hover:bg-red/5 hover:text-red"
+              className="h-11 rounded-xl border-red text-red hover:bg-red/5 hover:text-red cursor-pointer"
             >
               Delete workspace
             </Button>
@@ -710,19 +749,17 @@ const DangerZoneSection = ({
           <DialogFooter className="flex flex-col gap-3 md:flex-row">
             <Button
               onClick={() => setConfirmTransfer(false)}
-              className="modal-cancel-button"
+              className="modal-cancel-button cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               onClick={handleTransfer}
               disabled={isPending}
-              className="modal-submit-button"
+              className="modal-submit-button cursor-pointer font-dynapuff"
             >
               Transfer
-              {isPending && (
-                <Loader2 className="ml-2 size-4 animate-spin" />
-              )}
+              {isPending && <Loader2 className="ml-2 size-4 animate-spin" />}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -747,7 +784,7 @@ const DangerZoneSection = ({
             value={deleteInput}
             onChange={(e) => setDeleteInput(e.target.value)}
             placeholder={workspace.name}
-            className="h-11 rounded-xl border border-light-300 px-4 text-sm"
+            className="h-11 rounded-xl border border-light-300 px-4 text-sm focus-visible:border-brand focus-visible:ring-brand"
           />
           <DialogFooter className="flex flex-col gap-3 md:flex-row">
             <Button
@@ -755,19 +792,17 @@ const DangerZoneSection = ({
                 setConfirmDelete(false);
                 setDeleteInput("");
               }}
-              className="modal-cancel-button"
+              className="modal-cancel-button cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               onClick={handleDelete}
               disabled={isPending || deleteInput !== workspace.name}
-              className="modal-submit-button bg-red hover:bg-red/90"
+              className="modal-submit-button bg-red hover:bg-red/90 cursor-pointer font-dynapuff"
             >
               Delete
-              {isPending && (
-                <Loader2 className="ml-2 size-4 animate-spin" />
-              )}
+              {isPending && <Loader2 className="ml-2 size-4 animate-spin" />}
             </Button>
           </DialogFooter>
         </DialogContent>

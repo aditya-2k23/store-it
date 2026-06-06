@@ -593,36 +593,45 @@ export type Database = {
         Row: {
           clerk_org_id: string | null
           created_at: string
+          expected_members: string | null
+          icon: string | null
           id: string
           name: string
           owner_id: string | null
           slug: string | null
           storage_limit: number
           storage_used: number
+          theme_color: string | null
           type: string
           updated_at: string
         }
         Insert: {
           clerk_org_id?: string | null
           created_at?: string
+          expected_members?: string | null
+          icon?: string | null
           id?: string
           name: string
           owner_id?: string | null
           slug?: string | null
           storage_limit?: number
           storage_used?: number
+          theme_color?: string | null
           type: string
           updated_at?: string
         }
         Update: {
           clerk_org_id?: string | null
           created_at?: string
+          expected_members?: string | null
+          icon?: string | null
           id?: string
           name?: string
           owner_id?: string | null
           slug?: string | null
           storage_limit?: number
           storage_used?: number
+          theme_color?: string | null
           type?: string
           updated_at?: string
         }

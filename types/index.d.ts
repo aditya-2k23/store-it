@@ -113,6 +113,8 @@ declare interface WorkspaceWithRole {
   storageUsed: number;
   createdAt: string;
   updatedAt: string;
+  icon?: string | null;
+  themeColor?: string | null;
   role: WorkspaceRole;
   memberCount?: number;
 }

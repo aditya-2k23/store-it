@@ -12,16 +12,9 @@ import {
 import { setActiveWorkspace } from "@/lib/actions/workspace.actions";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import {
-  ChevronDown,
-  Home,
-  Users,
-  Check,
-  Plus,
-  LayoutGrid,
-  Loader2,
-} from "lucide-react";
+import { ChevronDown, Check, Plus, LayoutGrid, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { WorkspaceAvatar } from "./workspace/WorkspaceAvatar";
 
 interface WorkspaceSwitcherProps {
   workspaces: WorkspaceWithRole[];
@@ -46,7 +39,6 @@ const WorkspaceSwitcher = ({
   const [switchingId, setSwitchingId] = useState<string | null>(null);
 
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
-  const TypeIcon = activeWorkspace?.type === "personal" ? Home : Users;
 
   const handleSwitch = (workspaceId: string) => {
     if (workspaceId === activeWorkspaceId) return;
@@ -75,7 +67,7 @@ const WorkspaceSwitcher = ({
       <DropdownMenuTrigger asChild>
         <button
           className={cn(
-            "shad-no-focus w-full rounded-xl border border-light-300 bg-white transition-all hover:border-light-200 hover:shadow-drop-3 cursor-pointer",
+            "shad-no-focus w-full rounded-xl border border-light-300 bg-white transition-all hover:shadow-drop-3 cursor-pointer",
             isCollapsed
               ? "flex-center size-11"
               : "flex items-center justify-between px-3 py-2.5",
@@ -83,14 +75,15 @@ const WorkspaceSwitcher = ({
           disabled={isPending}
         >
           <div className="flex items-center gap-2 min-w-0">
-            <TypeIcon
-              className={cn(
-                "size-4 shrink-0",
-                activeWorkspace?.type === "personal"
-                  ? "text-brand"
-                  : "text-blue",
-              )}
-            />
+            {activeWorkspace && (
+              <WorkspaceAvatar
+                name={activeWorkspace.name}
+                icon={activeWorkspace.icon}
+                themeColor={activeWorkspace.themeColor}
+                className="size-6 text-[10px]"
+                iconClassName="size-3.5"
+              />
+            )}
             {!isCollapsed && (
               <span className="truncate text-sm font-semibold text-light-100">
                 {activeWorkspace?.name || "Workspace"}
@@ -110,7 +103,6 @@ const WorkspaceSwitcher = ({
       >
         <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
           {workspaces.map((workspace) => {
-            const Icon = workspace.type === "personal" ? Home : Users;
             const isActive = workspace.id === activeWorkspaceId;
             const isSwitching = switchingId === workspace.id;
 
@@ -123,11 +115,12 @@ const WorkspaceSwitcher = ({
                   isActive && "bg-brand/5",
                 )}
               >
-                <Icon
-                  className={cn(
-                    "size-4 shrink-0",
-                    workspace.type === "personal" ? "text-brand" : "text-blue",
-                  )}
+                <WorkspaceAvatar
+                  name={workspace.name}
+                  icon={workspace.icon}
+                  themeColor={workspace.themeColor}
+                  className="size-6 text-[10px]"
+                  iconClassName="size-3.5"
                 />
                 <span className="flex-1 truncate text-sm font-medium text-light-100">
                   {workspace.name}
