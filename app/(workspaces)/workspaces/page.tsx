@@ -7,10 +7,12 @@ export default async function WorkspacesPage() {
   const workspaces: WorkspaceWithRole[] = (await getUserWorkspaces()) ?? [];
 
   if (workspaces.length === 0) {
-    redirect("/sign-in");
+    redirect("/workspaces/new");
   }
 
-  const teamCount = workspaces.filter((w: WorkspaceWithRole) => w.type === "team").length;
+  const teamCount = workspaces.filter(
+    (w: WorkspaceWithRole) => w.type === "team",
+  ).length;
   const canCreateNew = teamCount < 5;
 
   return (
@@ -23,15 +25,12 @@ export default async function WorkspacesPage() {
         priority
       />
 
-      <h1 className="h1 mt-8 font-dynapuff text-dark-100">Your Workspaces</h1>
+      <h1 className="h1 mt-8 font-dynapuff font-light">Your Workspaces</h1>
       <p className="body-1 mt-2 text-light-200">
         Select a workspace to continue
       </p>
 
-      <WorkspacesGrid
-        workspaces={workspaces}
-        canCreateNew={canCreateNew}
-      />
+      <WorkspacesGrid workspaces={workspaces} canCreateNew={canCreateNew} />
     </div>
   );
 }

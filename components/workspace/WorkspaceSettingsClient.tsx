@@ -410,9 +410,19 @@ const InviteLinkSection = ({
   };
 
   const handleCopy = async (url: string) => {
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      setCopied(false);
+      toast({
+        description: (
+          <p className="body-2 text-white">Failed to copy to clipboard.</p>
+        ),
+        className: "error-toast",
+      });
+    }
   };
 
   const handleRevoke = (invitationId: string) => {

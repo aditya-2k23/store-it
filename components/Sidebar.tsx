@@ -15,7 +15,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, useEffect } from "react";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
 
 const sidebarLinks = [
@@ -38,6 +38,12 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
   const userRole = activeWorkspace?.role;
   const pathname = usePathname();
+
+  useEffect(() => {
+    if (activeWorkspaceId) {
+      localStorage.setItem("storey_previous_workspace", activeWorkspaceId);
+    }
+  }, [activeWorkspaceId]);
 
   const subscribe = (callback: () => void) => {
     window.addEventListener("storage", callback);
@@ -85,48 +91,73 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
             displayCollapsed ? "flex-col gap-4" : "flex-row",
           )}
         >
+          {/* Logo / Home Link (Visible when expanded) */}
           <Link
-            href="/dashboard"
+            href="/?ref=internal"
             className={cn(
-              "relative flex h-10 w-full items-center overflow-hidden",
-              displayCollapsed ? "justify-center" : "justify-start",
+              "relative flex h-10 items-center overflow-hidden transition-all duration-300 ease-in-out",
+              displayCollapsed
+                ? "w-0 opacity-0 pointer-events-none absolute"
+                : "w-[148px] opacity-100",
             )}
           >
-            <div
-              className={cn(
-                "shrink-0 origin-left transition-all duration-300 ease-in-out",
-                displayCollapsed
-                  ? "pointer-events-none absolute -translate-x-10 scale-75 opacity-0"
-                  : "relative translate-x-0 scale-100 opacity-100",
-              )}
-            >
-              <Image
-                src="/assets/icons/logo_brand.png"
-                alt="Storey"
-                width={148}
-                height={148}
-                loading="eager"
-                priority
-              />
-            </div>
-            <div
-              className={cn(
-                "shrink-0 origin-left transition-all duration-300 ease-in-out",
-                displayCollapsed
-                  ? "relative translate-x-0 scale-100 opacity-100"
-                  : "pointer-events-none absolute -translate-x-10 scale-75 opacity-0",
-              )}
-            >
-              <Image
-                src="/assets/icons/logo-brand.svg"
-                alt="Storey"
-                width={40}
-                height={40}
-                className="h-10 w-10 object-contain"
-                priority
-              />
-            </div>
+            <Image
+              src="/assets/icons/logo_brand.png"
+              alt="Storey"
+              width={148}
+              height={148}
+              loading="eager"
+              priority
+              className="shrink-0"
+            />
           </Link>
+
+          {/* Expand/Collapse Button */}
+          <button
+            onClick={toggleCollapse}
+            className={cn(
+              "group relative flex shrink-0 items-center justify-center transition-all focus:outline-none",
+              displayCollapsed
+                ? "h-10 w-10 cursor-pointer rounded-lg bg-white hover:bg-slate-50"
+                : "h-8 w-8 cursor-pointer rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-50 hover:text-slate-800",
+            )}
+            aria-label={
+              displayCollapsed ? "Expand sidebar" : "Collapse sidebar"
+            }
+          >
+            {/* Small Logo (Visible when collapsed & NOT hovered) */}
+            <Image
+              src="/assets/icons/logo-brand.svg"
+              alt="Storey"
+              width={40}
+              height={40}
+              className={cn(
+                "absolute h-10 w-10 object-contain transition-all duration-300",
+                displayCollapsed
+                  ? "opacity-100 group-hover:opacity-0 scale-100"
+                  : "opacity-0 pointer-events-none scale-50",
+              )}
+              priority
+            />
+            {/* Chevron Right (Visible when collapsed & hovered) */}
+            <ChevronRight
+              className={cn(
+                "absolute size-5 text-slate-500 transition-all duration-300",
+                displayCollapsed
+                  ? "opacity-0 group-hover:opacity-100 scale-100"
+                  : "opacity-0 pointer-events-none scale-50",
+              )}
+            />
+            {/* Chevron Left (Visible when expanded) */}
+            <ChevronLeft
+              className={cn(
+                "size-4 transition-all duration-300",
+                displayCollapsed
+                  ? "opacity-0 pointer-events-none absolute scale-50"
+                  : "opacity-100 scale-100",
+              )}
+            />
+          </button>
         </div>
 
         <WorkspaceSwitcher
@@ -152,7 +183,7 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
                     className={cn(
                       "group flex items-center py-3 font-semibold text-slate-600 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35",
                       isActive &&
-                      "bg-[#ff6b6b]/15 font-dynapuff font-medium text-[#ff6b6b]",
+                        "bg-[#ff6b6b]/15 font-dynapuff font-medium text-[#ff6b6b]",
                       displayCollapsed
                         ? "justify-center rounded-xl px-2"
                         : "gap-3 rounded-full px-4",
@@ -227,37 +258,13 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
               : "max-h-60 scale-100 opacity-100",
           )}
         >
-          <div className="rounded-3xl border border-white/70 bg-white/75 p-3">
-            <Image
-              src="/assets/images/files-2.png"
-              alt="Storage helper visual"
-              width={320}
-              height={210}
-              className="h-auto w-full"
-              priority
-            />
-          </div>
-        </div>
-
-        <div
-          className={cn(
-            "flex w-full",
-            displayCollapsed ? "justify-center" : "justify-end",
-          )}
-        >
-          <button
-            onClick={toggleCollapse}
-            className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-800 focus:outline-none"
-            aria-label={
-              displayCollapsed ? "Expand sidebar" : "Collapse sidebar"
-            }
-          >
-            {displayCollapsed ? (
-              <ChevronRight className="size-4" />
-            ) : (
-              <ChevronLeft className="size-4" />
-            )}
-          </button>
+          <Image
+            src="/assets/images/files-2.png"
+            alt="Storage helper visual"
+            width={250}
+            height={250}
+            priority
+          />
         </div>
       </div>
     </aside>

@@ -75,7 +75,7 @@ const WorkspaceSwitcher = ({
       <DropdownMenuTrigger asChild>
         <button
           className={cn(
-            "shad-no-focus w-full rounded-xl border border-light-300 bg-white transition-all hover:border-brand/30 hover:shadow-drop-3",
+            "shad-no-focus w-full rounded-xl border border-light-300 bg-white transition-all hover:border-light-200 hover:shadow-drop-3 cursor-pointer",
             isCollapsed
               ? "flex-center size-11"
               : "flex items-center justify-between px-3 py-2.5",
@@ -126,9 +126,7 @@ const WorkspaceSwitcher = ({
                 <Icon
                   className={cn(
                     "size-4 shrink-0",
-                    workspace.type === "personal"
-                      ? "text-brand"
-                      : "text-blue",
+                    workspace.type === "personal" ? "text-brand" : "text-blue",
                   )}
                 />
                 <span className="flex-1 truncate text-sm font-medium text-light-100">

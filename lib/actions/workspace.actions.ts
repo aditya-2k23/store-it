@@ -780,10 +780,18 @@ export const acceptInvite = async (token: string) => {
 
     if (memberError) {
       // Rollback invitation status if membership insert fails
-      await supabase
-        .from("workspace_invitations")
-        .update({ status: "pending" })
-        .eq("id", invitationId);
+      try {
+        const { error: rollbackError } = await supabase
+          .from("workspace_invitations")
+          .update({ status: "pending" })
+          .eq("id", invitationId);
+        
+        if (rollbackError) {
+          console.error("Failed to rollback invitation status:", rollbackError);
+        }
+      } catch (err) {
+        console.error("Exception during invitation status rollback:", err);
+      }
       throw memberError;
     }
 

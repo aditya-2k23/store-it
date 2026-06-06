@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setActiveWorkspace } from "@/lib/actions/workspace.actions";
 import { toast } from "@/hooks/use-toast";
@@ -16,11 +16,7 @@ const roleBadgeStyles: Record<WorkspaceRole, string> = {
   viewer: "bg-light-300 text-light-100",
 };
 
-const WorkspaceCard = ({
-  workspace,
-}: {
-  workspace: WorkspaceWithRole;
-}) => {
+const WorkspaceCard = ({ workspace }: { workspace: WorkspaceWithRole }) => {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -53,8 +49,8 @@ const WorkspaceCard = ({
       variants={fadeIn}
       onClick={handleClick}
       className={cn(
-        "group cursor-pointer rounded-[20px] border border-light-300 bg-white p-6 transition-all duration-200",
-        "hover:shadow-drop-2 hover:border-brand/30 hover:scale-[1.02]",
+        "group cursor-pointer rounded-[20px] border border-brand/30 bg-white p-6 transition-all duration-200",
+        "hover:shadow-drop-2 hover:border-brand/60 hover:scale-[1.02]",
         isPending && "pointer-events-none opacity-70",
       )}
     >
@@ -77,11 +73,10 @@ const WorkspaceCard = ({
         </span>
       </div>
 
-      <h4 className="h4 mt-4 mb-1 truncate text-dark-100">
-        {workspace.name}
-      </h4>
+      <h4 className="h4 mt-4 mb-1 truncate text-dark-100">{workspace.name}</h4>
       <p className="caption text-light-200">
-        {workspace.memberCount ?? 1} {(workspace.memberCount ?? 1) === 1 ? "member" : "members"}
+        {workspace.memberCount ?? 1}{" "}
+        {(workspace.memberCount ?? 1) === 1 ? "member" : "members"}
       </p>
 
       {/* Storage progress bar */}

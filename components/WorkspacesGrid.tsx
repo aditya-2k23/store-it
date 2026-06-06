@@ -32,7 +32,7 @@ const WorkspacesGrid = ({ workspaces, canCreateNew }: WorkspacesGridProps) => {
         >
           <Link
             href="/workspaces/new"
-            className="flex h-full min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[20px] border-2 border-dashed border-light-300 p-6 text-light-200 transition-all hover:border-brand hover:text-brand"
+            className="flex h-full min-h-[200px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[20px] border-2 border-dashed border-brand/50 p-6 text-light-200 transition-all hover:border-brand hover:text-brand"
           >
             <Plus className="size-8" />
             <span className="text-sm font-medium">New workspace</span>
