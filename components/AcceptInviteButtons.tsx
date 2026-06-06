@@ -29,6 +29,15 @@ const AcceptInviteButtons = ({ token }: AcceptInviteButtonsProps) => {
             className: "success-toast",
           });
           router.push("/dashboard");
+        } else {
+          toast({
+            description: (
+              <p className="body-2 text-white">
+                {result?.reason || "Failed to join workspace. Please try again."}
+              </p>
+            ),
+            className: "error-toast",
+          });
         }
       } catch (error: any) {
         if (error?.message?.includes("already a member")) {

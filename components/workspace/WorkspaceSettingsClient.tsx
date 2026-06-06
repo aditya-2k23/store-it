@@ -51,6 +51,11 @@ interface WorkspaceSettingsClientProps {
   currentUserId: string;
 }
 
+interface InviteLinkResult {
+  id: string;
+  inviteUrl: string;
+}
+
 const roleBadgeStyles: Record<WorkspaceRole, string> = {
   owner: "bg-brand/10 text-brand",
   admin: "bg-blue/10 text-blue",
@@ -378,10 +383,10 @@ const InviteLinkSection = ({
       try {
         const result = await createInviteLink(workspace.id, selectedRole);
         if (result) {
-          const parsedResult = result as any;
+          const { id, inviteUrl } = result as InviteLinkResult;
           setGeneratedLink({
-            url: `${window.location.origin}${parsedResult.inviteUrl}`,
-            invitationId: parsedResult.id,
+            url: `${window.location.origin}${inviteUrl}`,
+            invitationId: id,
           });
           toast({
             description: (
@@ -532,7 +537,7 @@ const InviteLinkSection = ({
               className="flex items-center gap-3 rounded-xl border border-light-300 bg-white p-3"
             >
               <span className="caption flex-1 truncate text-light-100">
-                {window.location.origin}/invite/{workspace.slug}/{inv.token}
+                {window.location.origin}/invite/{workspace.slug || workspace.id}/{inv.token}
               </span>
               <span
                 className={cn(

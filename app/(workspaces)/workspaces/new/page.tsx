@@ -45,6 +45,11 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+interface InviteLinkResult {
+  id: string;
+  inviteUrl: string;
+}
+
 export default function NewWorkspacePage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -131,10 +136,10 @@ export default function NewWorkspacePage() {
     try {
       const result = await createInviteLink(createdWorkspace.id, selectedRole);
       if (result) {
-        const parsedResult = result as any;
+        const { id, inviteUrl } = result as InviteLinkResult;
         setInviteLink({
-          url: `${window.location.origin}${parsedResult.inviteUrl}`,
-          id: parsedResult.id,
+          url: `${window.location.origin}${inviteUrl}`,
+          id: id,
         });
       }
     } catch {
@@ -423,6 +428,8 @@ export default function NewWorkspacePage() {
                   <button
                     key={color}
                     type="button"
+                    aria-label={`Select theme color ${color}`}
+                    aria-pressed={themeColorValue === color}
                     onClick={() => setValue("themeColor", color)}
                     className={cn(
                       "size-8 rounded-full transition-transform hover:scale-110 cursor-pointer",
@@ -454,6 +461,8 @@ export default function NewWorkspacePage() {
                         <button
                           key={name}
                           type="button"
+                          aria-label={name}
+                          aria-pressed={isSelected}
                           onClick={() => setValue("icon", iconKey)}
                           className={cn(
                             "flex aspect-square items-center justify-center rounded-lg border transition-colors cursor-pointer",
@@ -477,6 +486,8 @@ export default function NewWorkspacePage() {
                         <button
                           key={emoji}
                           type="button"
+                          aria-label={`Emoji ${emoji}`}
+                          aria-pressed={isSelected}
                           onClick={() => setValue("icon", iconKey)}
                           className={cn(
                             "flex aspect-square items-center justify-center rounded-lg border text-xl transition-colors cursor-pointer",

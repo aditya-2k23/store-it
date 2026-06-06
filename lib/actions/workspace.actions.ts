@@ -619,7 +619,22 @@ export const createInviteLink = async (
       // Handle legacy workspaces with null slugs
       const slugBase = generateSlugBase(wsData.name);
       activeSlug = await ensureUniqueSlug(supabase, slugBase);
-      await supabase.from("workspaces").update({ slug: activeSlug }).eq("id", workspaceId);
+      const { data: updatedRows, error: updateError } = await supabase
+        .from("workspaces")
+        .update({ slug: activeSlug })
+        .eq("id", workspaceId)
+        .select("id");
+
+      if (updateError) {
+        console.error("Failed to persist slug for legacy workspace:", updateError);
+        throw updateError;
+      }
+
+      if (!updatedRows || updatedRows.length === 0) {
+        const err = new Error("Failed to update workspace slug: No rows affected.");
+        console.error(err.message);
+        throw err;
+      }
     }
 
     const { data, error } = await supabase
