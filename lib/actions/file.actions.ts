@@ -90,16 +90,16 @@ const applyFilters = (query: any, types: FileType[], searchText: string) => {
   return filteredQuery;
 };
 
-const fetchOwnerFiles = async (
+const fetchWorkspaceFiles = async (
   supabase: ReturnType<typeof createSupabaseAdmin>,
-  ownerId: string,
+  workspaceId: string,
   types: FileType[],
   searchText: string,
 ) => {
   const baseQuery = supabase.from("files").select(FILE_SELECT);
   const filteredQuery = applyFilters(baseQuery, types, searchText).eq(
-    "owner_id",
-    ownerId,
+    "workspace_id",
+    workspaceId,
   );
 
   const { data, error } = await filteredQuery;
@@ -127,13 +127,15 @@ const fetchFilesByIds = async (
   fileIds: string[],
   types: FileType[],
   searchText: string,
+  workspaceId: string,
 ) => {
   if (fileIds.length === 0) return [] as FileRowWithOwner[];
 
   const baseQuery = supabase
     .from("files")
     .select(FILE_SELECT)
-    .in("id", fileIds);
+    .in("id", fileIds)
+    .eq("workspace_id", workspaceId);
   const filteredQuery = applyFilters(baseQuery, types, searchText);
 
   const { data, error } = await filteredQuery;
@@ -271,9 +273,9 @@ export const getFiles = async ({
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const ownerFiles = await fetchOwnerFiles(
+    const workspaceFiles = await fetchWorkspaceFiles(
       supabase,
-      currentUser.id,
+      currentUser.workspaceId,
       types,
       searchText,
     );
@@ -288,10 +290,11 @@ export const getFiles = async ({
       sharedFileIds,
       types,
       searchText,
+      currentUser.workspaceId,
     );
 
     const combinedMap = new Map<string, FileRowWithOwner>();
-    [...ownerFiles, ...sharedFiles].forEach((file) => {
+    [...workspaceFiles, ...sharedFiles].forEach((file) => {
       combinedMap.set(file.id, file);
     });
 
