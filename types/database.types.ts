@@ -642,6 +642,14 @@ export type Database = {
     }
     Functions: {
       requesting_clerk_user_id: { Args: never; Returns: string }
+      transfer_workspace_ownership: {
+        Args: {
+          p_new_owner_id: string
+          p_old_owner_id: string
+          p_workspace_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

@@ -423,34 +423,14 @@ export const transferOwnership = async (
       throw new Error("Target user is not a member of this workspace");
     }
 
-    // Update current owner → admin
-    const { error: demoteError } = await supabase
-      .from("workspace_members")
-      .update({ role: "admin" })
-      .eq("workspace_id", workspaceId)
-      .eq("user_id", currentUser.id);
+    // Atomic transaction using RPC function
+    const { error: txError } = await supabase.rpc("transfer_workspace_ownership", {
+      p_workspace_id: workspaceId,
+      p_old_owner_id: currentUser.id,
+      p_new_owner_id: newOwnerId,
+    });
 
-    if (demoteError) throw demoteError;
-
-    // Update new owner → owner
-    const { error: promoteError } = await supabase
-      .from("workspace_members")
-      .update({ role: "owner" })
-      .eq("workspace_id", workspaceId)
-      .eq("user_id", newOwnerId);
-
-    if (promoteError) throw promoteError;
-
-    // Update workspace.owner_id
-    const { error: wsError } = await supabase
-      .from("workspaces")
-      .update({
-        owner_id: newOwnerId,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", workspaceId);
-
-    if (wsError) throw wsError;
+    if (txError) throw txError;
 
     return parseStringify({ status: "success" });
   } catch (error) {
@@ -737,6 +717,19 @@ export const acceptInvite = async (token: string) => {
       throw new Error("You are already a member of this workspace");
     }
 
+    // Atomic check-and-set of the invitation status to prevent double-acceptance
+    const { data: updatedInvitation, error: updateError } = await supabase
+      .from("workspace_invitations")
+      .update({ status: "accepted" })
+      .eq("id", invitationId)
+      .eq("status", "pending")
+      .select()
+      .maybeSingle();
+
+    if (updateError || !updatedInvitation) {
+      throw new Error("This invite has already been accepted or is no longer valid.");
+    }
+
     // Insert membership
     const { error: memberError } = await supabase
       .from("workspace_members")
@@ -746,15 +739,14 @@ export const acceptInvite = async (token: string) => {
         role,
       });
 
-    if (memberError) throw memberError;
-
-    // Mark invitation as accepted
-    const { error: updateError } = await supabase
-      .from("workspace_invitations")
-      .update({ status: "accepted" })
-      .eq("id", invitationId);
-
-    if (updateError) throw updateError;
+    if (memberError) {
+      // Rollback invitation status if membership insert fails
+      await supabase
+        .from("workspace_invitations")
+        .update({ status: "pending" })
+        .eq("id", invitationId);
+      throw memberError;
+    }
 
     // Set as active workspace
     await setActiveWorkspace(workspaceId);

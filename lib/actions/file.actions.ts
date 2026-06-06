@@ -444,7 +444,7 @@ export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
 
     const { data: fileRecord, error: fetchError } = await supabase
       .from("files")
-      .select("owner_id, storage_key")
+      .select("owner_id, storage_key, workspace_id")
       .eq("id", fileId)
       .single();
 
@@ -456,7 +456,7 @@ export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
         .from("workspace_members")
         .select("role")
         .eq("user_id", currentUser.id)
-        .eq("workspace_id", currentUser.workspaceId)
+        .eq("workspace_id", fileRecord.workspace_id)
         .maybeSingle();
 
       if (
