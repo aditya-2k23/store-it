@@ -84,7 +84,7 @@ export async function GET(
       .webp({ quality: 60 })
       .toBuffer();
 
-    return new NextResponse(thumbnail, {
+    return new NextResponse(new Uint8Array(thumbnail), {
       headers: {
         "Content-Type": "image/webp",
         // 24h browser cache + 1h stale-while-revalidate

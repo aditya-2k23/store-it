@@ -242,7 +242,19 @@ export const uploadFile = async ({ file, path }: UploadFileProps) => {
       .select(FILE_SELECT)
       .single();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      try {
+        const { error: removeError } = await supabase.storage
+          .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+          .remove([storageKey]);
+        if (removeError) {
+          console.error("Failed to remove storage blob after insert failure:", removeError);
+        }
+      } catch (err) {
+        console.error("Failed to remove storage blob after insert failure:", err);
+      }
+      throw insertError;
+    }
 
     const signedUrl = await createSignedDownloadUrl(supabase, storageKey);
     const fileItem = mapRowToFileItem(
@@ -476,6 +488,13 @@ export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
       .eq("id", fileId);
 
     if (deleteError) throw deleteError;
+
+    if (fileRecord.storage_key) {
+      const { error: storageDeleteError } = await supabase.storage
+        .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+        .remove([fileRecord.storage_key]);
+      if (storageDeleteError) throw storageDeleteError;
+    }
 
     revalidatePath(path);
     revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });
