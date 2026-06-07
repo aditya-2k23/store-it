@@ -375,16 +375,6 @@ const InviteLinkSection = ({
   const [existingInvitations, setExistingInvitations] =
     useState(initialInvitations);
 
-  const [origin, setOrigin] = useState("");
-
-  useEffect(() => {
-    setOrigin(window.location.origin);
-  }, []);
-
-  useEffect(() => {
-    setExistingInvitations(initialInvitations);
-  }, [initialInvitations]);
-
   const roleOptions: ("admin" | "editor" | "viewer")[] =
     userRole === "owner" ? ["editor", "viewer", "admin"] : ["editor", "viewer"];
 
@@ -395,7 +385,7 @@ const InviteLinkSection = ({
         if (result) {
           const { id, inviteUrl } = result as InviteLinkResult;
           setGeneratedLink({
-            url: `${origin}${inviteUrl}`,
+            url: `${window.location.origin}${inviteUrl}`,
             invitationId: id,
           });
           toast({
@@ -547,7 +537,7 @@ const InviteLinkSection = ({
               className="flex items-center gap-3 rounded-xl border border-light-300 bg-white p-3"
             >
               <span className="caption flex-1 truncate text-light-100">
-                {origin}/invite/{workspace.slug || workspace.id}/{inv.token}
+                /invite/{workspace.slug || workspace.id}/{inv.token}
               </span>
               <span
                 className={cn(
