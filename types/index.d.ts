@@ -37,6 +37,7 @@ declare interface FileItem {
   type: FileType;
   size: number;
   url: string;
+  thumbnailUrl: string;
   downloadUrl: string;
   createdAt: string;
   updatedAt: string;
@@ -86,11 +87,6 @@ declare interface MobileNavigationProps {
   email: string;
 }
 
-declare interface SidebarProps {
-  fullName: string;
-  avatar: string;
-}
-
 declare interface ThumbnailProps {
   type: string;
   extension: string;
@@ -103,4 +99,47 @@ declare interface ShareInputProps {
   file: FileItem;
   onInputChange: (emails: string[]) => void;
   onRemove: (email: string) => void;
+}
+
+declare type WorkspaceRole = "owner" | "admin" | "editor" | "viewer";
+
+declare interface WorkspaceWithRole {
+  id: string;
+  name: string;
+  slug: string | null;
+  type: string;
+  ownerId: string | null;
+  storageLimit: number;
+  storageUsed: number;
+  createdAt: string;
+  updatedAt: string;
+  icon?: string | null;
+  themeColor?: string | null;
+  role: WorkspaceRole;
+  memberCount?: number;
+}
+
+declare interface WorkspaceMember {
+  id: string;
+  userId: string;
+  workspaceId: string;
+  role: WorkspaceRole;
+  joinedAt: string;
+  user: {
+    id: string;
+    fullName: string | null;
+    email: string;
+    avatarUrl: string | null;
+  };
+}
+
+declare interface WorkspaceInvitation {
+  id: string;
+  workspaceId: string;
+  invitedBy: string;
+  role: "admin" | "editor" | "viewer";
+  token: string;
+  status: "pending" | "accepted" | "revoked";
+  expiresAt: string;
+  createdAt: string;
 }

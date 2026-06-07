@@ -56,6 +56,7 @@ export const Navbar = () => {
             alt="Storey Logo"
             width={180}
             height={180}
+            loading="eager"
           />
         </Link>
 
@@ -64,7 +65,7 @@ export const Navbar = () => {
             <Link
               key={item}
               href={`#${item.toLowerCase().replace(" ", "-")}`}
-              className="text-sm font-medium text-light-100 hover:text-brand transition-colors"
+              className="text-sm font-semibold text-light-100 hover:text-brand transition-colors"
             >
               {item}
             </Link>
@@ -72,7 +73,8 @@ export const Navbar = () => {
           <Link
             href="https://github.com/aditya-2k23/store-it"
             target="_blank"
-            className="text-sm font-medium text-light-100 hover:text-brand transition-colors"
+            rel="noopener noreferrer"
+            className="text-sm font-semibold text-light-100 hover:text-brand transition-colors"
           >
             GitHub
           </Link>
@@ -82,7 +84,7 @@ export const Navbar = () => {
           <Link href="/sign-in">
             <Button
               variant="ghost"
-              className="text-brand font-semibold hover:text-brand-100 rounded-full cursor-pointer"
+              className="text-brand font-medium font-dynapuff hover:text-brand-100 rounded-full cursor-pointer"
             >
               Sign In
             </Button>

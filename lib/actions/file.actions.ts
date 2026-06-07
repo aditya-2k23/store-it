@@ -4,6 +4,9 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { getFileType, parseStringify } from "@/lib/utils";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { getCurrentUser } from "./user.actions";
+import { canUpload, canDeleteOthers, type WorkspaceRole } from "@/lib/permissions";
+import { MAX_FILE_SIZE } from "@/constants";
+
 import type { Database } from "@/types/database.types";
 
 const handleError = (error: unknown, message: string) => {
@@ -22,11 +25,29 @@ type FileRowWithOwner = FileRow & {
 const FILE_SELECT =
   "id, name, original_name, extension, mime_type, type, size, storage_key, thumbnail_key, preview_status, owner_id, workspace_id, created_at, updated_at, owner:users!files_owner_id_fkey(id, full_name, email, avatar_url)";
 
+/**
+ * Generates a 1-hour signed URL for direct download/preview.
+ * The URL is generated server-side and handed to the client — it is NOT cached
+ * across requests because short TTL is intentional for security.
+ */
+const createSignedDownloadUrl = async (
+  supabase: ReturnType<typeof createSupabaseAdmin>,
+  storageKey: string,
+): Promise<string> => {
+  const { data, error } = await supabase.storage
+    .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+    .createSignedUrl(storageKey, 3600); // 1 hour
+  if (error || !data?.signedUrl) return "";
+  return data.signedUrl;
+};
+
 const mapRowToFileItem = (
   row: FileRowWithOwner,
   sharedWith: string[],
+  signedUrl: string = "",
 ): FileItem => {
   const extension = row.extension || getFileType(row.name).extension;
+  const isImage = row.type === "image";
 
   return {
     id: row.id,
@@ -35,8 +56,11 @@ const mapRowToFileItem = (
     extension,
     type: row.type as FileType,
     size: row.size,
-    url: "",
-    downloadUrl: "",
+    url: signedUrl,
+    // Stable, auth-protected route → sharp resizes to 200×200 WebP 60%q
+    // browser caches for 24 h; works without any Supabase premium features
+    thumbnailUrl: isImage ? `/api/thumbnail/${row.id}` : "",
+    downloadUrl: signedUrl,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     storageKey: row.storage_key,
@@ -67,16 +91,16 @@ const applyFilters = (query: any, types: FileType[], searchText: string) => {
   return filteredQuery;
 };
 
-const fetchOwnerFiles = async (
+const fetchWorkspaceFiles = async (
   supabase: ReturnType<typeof createSupabaseAdmin>,
-  ownerId: string,
+  workspaceId: string,
   types: FileType[],
   searchText: string,
 ) => {
   const baseQuery = supabase.from("files").select(FILE_SELECT);
   const filteredQuery = applyFilters(baseQuery, types, searchText).eq(
-    "owner_id",
-    ownerId,
+    "workspace_id",
+    workspaceId,
   );
 
   const { data, error } = await filteredQuery;
@@ -104,13 +128,15 @@ const fetchFilesByIds = async (
   fileIds: string[],
   types: FileType[],
   searchText: string,
+  workspaceId: string,
 ) => {
   if (fileIds.length === 0) return [] as FileRowWithOwner[];
 
   const baseQuery = supabase
     .from("files")
     .select(FILE_SELECT)
-    .in("id", fileIds);
+    .in("id", fileIds)
+    .eq("workspace_id", workspaceId);
   const filteredQuery = applyFilters(baseQuery, types, searchText);
 
   const { data, error } = await filteredQuery;
@@ -176,12 +202,33 @@ export const uploadFile = async ({ file, path }: UploadFileProps) => {
   const supabase = createSupabaseAdmin();
 
   try {
+    if (file.size > MAX_FILE_SIZE) {
+      throw new RangeError("File size exceeds the 50MB limit");
+    }
+
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
+
+    // Permission check: verify the user can upload in this workspace
+    const { data: membership } = await supabase
+      .from("workspace_members")
+      .select("role")
+      .eq("user_id", currentUser.id)
+      .eq("workspace_id", currentUser.workspaceId)
+      .maybeSingle();
+
+    if (!membership?.role || !canUpload(membership.role as WorkspaceRole)) {
+      throw new Error("You do not have permission to upload files in this workspace");
+    }
 
     const { type, extension } = getFileType(file.name);
     const fileId = crypto.randomUUID();
     const storageKey = `${currentUser.workspaceId}/${fileId}-${file.name}`;
+    // Upload file to Supabase storage bucket
+    const { error: storageError } = await supabase.storage
+      .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+      .upload(storageKey, file);
+    if (storageError) throw storageError;
 
     const { data: insertedFile, error: insertError } = await supabase
       .from("files")
@@ -200,9 +247,26 @@ export const uploadFile = async ({ file, path }: UploadFileProps) => {
       .select(FILE_SELECT)
       .single();
 
-    if (insertError) throw insertError;
+    if (insertError) {
+      try {
+        const { error: removeError } = await supabase.storage
+          .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+          .remove([storageKey]);
+        if (removeError) {
+          console.error("Failed to remove storage blob after insert failure:", removeError);
+        }
+      } catch (err) {
+        console.error("Failed to remove storage blob after insert failure:", err);
+      }
+      throw insertError;
+    }
 
-    const fileItem = mapRowToFileItem(insertedFile as FileRowWithOwner, []);
+    const signedUrl = await createSignedDownloadUrl(supabase, storageKey);
+    const fileItem = mapRowToFileItem(
+      insertedFile as FileRowWithOwner,
+      [],
+      signedUrl,
+    );
 
     revalidatePath(path);
     revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });
@@ -226,9 +290,9 @@ export const getFiles = async ({
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const ownerFiles = await fetchOwnerFiles(
+    const workspaceFiles = await fetchWorkspaceFiles(
       supabase,
-      currentUser.id,
+      currentUser.workspaceId,
       types,
       searchText,
     );
@@ -243,10 +307,11 @@ export const getFiles = async ({
       sharedFileIds,
       types,
       searchText,
+      currentUser.workspaceId,
     );
 
     const combinedMap = new Map<string, FileRowWithOwner>();
-    [...ownerFiles, ...sharedFiles].forEach((file) => {
+    [...workspaceFiles, ...sharedFiles].forEach((file) => {
       combinedMap.set(file.id, file);
     });
 
@@ -263,8 +328,27 @@ export const getFiles = async ({
       pagedFiles.map((file) => file.id),
     );
 
+    // Batch-generate signed URLs for all paged files in a single Supabase call
+    const { data: signedUrls } = pagedFiles.length
+      ? await supabase.storage
+          .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+          .createSignedUrls(
+            pagedFiles.map((f) => f.storage_key),
+            3600,
+          )
+      : { data: [] };
+
+    const signedUrlMap = new Map<string, string>();
+    (signedUrls || []).forEach((entry) => {
+      if (entry.signedUrl && entry.path) signedUrlMap.set(entry.path, entry.signedUrl);
+    });
+
     const documents = pagedFiles.map((file) =>
-      mapRowToFileItem(file, shareMap.get(file.id) || []),
+      mapRowToFileItem(
+        file,
+        shareMap.get(file.id) || [],
+        signedUrlMap.get(file.storage_key) || "",
+      ),
     );
 
     return parseStringify({ documents, total });
@@ -380,13 +464,27 @@ export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
 
     const { data: fileRecord, error: fetchError } = await supabase
       .from("files")
-      .select("owner_id, storage_key")
+      .select("owner_id, storage_key, workspace_id")
       .eq("id", fileId)
       .single();
 
     if (fetchError) throw fetchError;
+
+    // If caller is not the file owner, check if they have admin/owner role
     if (fileRecord.owner_id !== currentUser.id) {
-      throw new Error("Not authorized to delete this file.");
+      const { data: membership } = await supabase
+        .from("workspace_members")
+        .select("role")
+        .eq("user_id", currentUser.id)
+        .eq("workspace_id", fileRecord.workspace_id)
+        .maybeSingle();
+
+      if (
+        !membership?.role ||
+        !canDeleteOthers(membership.role as WorkspaceRole)
+      ) {
+        throw new Error("Not authorized to delete this file.");
+      }
     }
 
     const { error: deleteError } = await supabase
@@ -395,6 +493,13 @@ export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
       .eq("id", fileId);
 
     if (deleteError) throw deleteError;
+
+    if (fileRecord.storage_key) {
+      const { error: storageDeleteError } = await supabase.storage
+        .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+        .remove([fileRecord.storage_key]);
+      if (storageDeleteError) throw storageDeleteError;
+    }
 
     revalidatePath(path);
     revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });

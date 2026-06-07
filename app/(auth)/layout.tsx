@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 
 const Layout = async ({ children }: { children: React.ReactNode }) => {
   const { userId } = await auth();
-  
+
   if (userId) {
     redirect("/dashboard");
   }
@@ -43,6 +43,7 @@ const Layout = async ({ children }: { children: React.ReactNode }) => {
               width={200}
               height={200}
               className="relative z-10 pt-2"
+              loading="eager"
               priority
             />
           </div>
@@ -71,8 +72,8 @@ const Layout = async ({ children }: { children: React.ReactNode }) => {
             src="/assets/icons/logo_brand.png"
             alt="Storey"
             width={180}
-            height={60}
-            className="h-auto w-auto"
+            height={180}
+            loading="eager"
             priority
           />
         </div>

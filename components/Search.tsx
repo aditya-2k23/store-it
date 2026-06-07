@@ -107,6 +107,7 @@ const Search = () => {
                         type={file.type}
                         extension={file.extension}
                         url={file.url}
+                        thumbnailUrl={file.thumbnailUrl}
                         className="size-9 min-w-9"
                       />
                       <p className="line-clamp-1 text-sm font-medium text-slate-700">

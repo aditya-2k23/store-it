@@ -15,6 +15,7 @@ const Card = ({ file }: { file: FileItem }) => {
           type={file.type}
           extension={file.extension}
           url={file.url}
+          thumbnailUrl={file.thumbnailUrl}
           className="size-20!"
           imageClassName="size-11!"
         />
