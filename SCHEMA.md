@@ -327,7 +327,7 @@ Examples:
 
 ## Relationships Overview
 
-```
+```text
 users
  ├── workspaces (owner_id)
  ├── workspace_members (user_id)
