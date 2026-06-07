@@ -5,6 +5,7 @@ import { getFileType, parseStringify } from "@/lib/utils";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { getCurrentUser } from "./user.actions";
 import { canUpload, canDeleteOthers, type WorkspaceRole } from "@/lib/permissions";
+import { MAX_FILE_SIZE } from "@/constants";
 
 import type { Database } from "@/types/database.types";
 
@@ -201,6 +202,10 @@ export const uploadFile = async ({ file, path }: UploadFileProps) => {
   const supabase = createSupabaseAdmin();
 
   try {
+    if (file.size > MAX_FILE_SIZE) {
+      throw new RangeError("File size exceeds the 50MB limit");
+    }
+
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 

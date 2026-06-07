@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -375,6 +375,16 @@ const InviteLinkSection = ({
   const [existingInvitations, setExistingInvitations] =
     useState(initialInvitations);
 
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  useEffect(() => {
+    setExistingInvitations(initialInvitations);
+  }, [initialInvitations]);
+
   const roleOptions: ("admin" | "editor" | "viewer")[] =
     userRole === "owner" ? ["editor", "viewer", "admin"] : ["editor", "viewer"];
 
@@ -385,7 +395,7 @@ const InviteLinkSection = ({
         if (result) {
           const { id, inviteUrl } = result as InviteLinkResult;
           setGeneratedLink({
-            url: `${window.location.origin}${inviteUrl}`,
+            url: `${origin}${inviteUrl}`,
             invitationId: id,
           });
           toast({
@@ -537,7 +547,7 @@ const InviteLinkSection = ({
               className="flex items-center gap-3 rounded-xl border border-light-300 bg-white p-3"
             >
               <span className="caption flex-1 truncate text-light-100">
-                {window.location.origin}/invite/{workspace.slug || workspace.id}/{inv.token}
+                {origin}/invite/{workspace.slug || workspace.id}/{inv.token}
               </span>
               <span
                 className={cn(

@@ -44,11 +44,14 @@ const WorkspaceCard = ({ workspace }: { workspace: WorkspaceWithRole }) => {
   };
 
   return (
-    <motion.div
+    <motion.button
+      type="button"
       variants={fadeIn}
       onClick={handleClick}
+      disabled={isPending}
+      aria-disabled={isPending}
       className={cn(
-        "group cursor-pointer rounded-[20px] border border-brand/30 bg-white p-6 transition-all duration-200",
+        "group cursor-pointer rounded-[20px] border border-brand/30 bg-white p-6 transition-all duration-200 w-full text-left block",
         "hover:shadow-drop-2 hover:border-brand/60 hover:scale-[1.02]",
         isPending && "pointer-events-none opacity-70",
       )}
@@ -97,7 +100,7 @@ const WorkspaceCard = ({ workspace }: { workspace: WorkspaceWithRole }) => {
           {isPending ? "Opening…" : "Open workspace"}
         </span>
       </div>
-    </motion.div>
+    </motion.button>
   );
 };
 

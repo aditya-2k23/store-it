@@ -59,9 +59,13 @@ async function ensureUniqueSlug(
       query = query.neq("id", excludeWorkspaceId);
     }
 
-    const { data } = await query;
+    const { data, error } = await query;
 
-    if (!data || data.length === 0) {
+    if (error) {
+      throw error;
+    }
+
+    if (data && data.length === 0) {
       return candidate;
     }
     suffix++;
@@ -97,6 +101,11 @@ export const createWorkspace = async (
   const supabase = createSupabaseAdmin();
 
   try {
+    const trimmed = name.trim();
+    if (trimmed === "") {
+      throw new Error("Invalid workspace name");
+    }
+
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
@@ -104,7 +113,7 @@ export const createWorkspace = async (
     const { data: existingWorkspace } = await supabase
       .from("workspaces")
       .select("id")
-      .ilike("name", name.trim())
+      .ilike("name", trimmed)
       .eq("owner_id", currentUser.id)
       .eq("type", "team")
       .limit(1);
@@ -136,14 +145,14 @@ export const createWorkspace = async (
     }
 
     // Generate unique slug
-    const slugBase = generateSlugBase(name);
+    const slugBase = generateSlugBase(trimmed);
     const slug = await ensureUniqueSlug(supabase, slugBase);
 
     // Insert workspace
     const { data: workspace, error: wsError } = await supabase
       .from("workspaces")
       .insert({
-        name: name.trim(),
+        name: trimmed,
         slug,
         type: "team",
         owner_id: currentUser.id,
@@ -165,7 +174,20 @@ export const createWorkspace = async (
         role: "owner",
       });
 
-    if (memberError) throw memberError;
+    if (memberError) {
+      try {
+        const { error: rollbackError } = await supabase
+          .from("workspaces")
+          .delete()
+          .match({ id: workspace.id });
+        if (rollbackError) {
+          console.error("Failed to rollback orphaned workspace:", rollbackError);
+        }
+      } catch (err) {
+        console.error("Failed to rollback orphaned workspace:", err);
+      }
+      throw memberError;
+    }
 
     return parseStringify(workspace);
   } catch (error) {
@@ -280,6 +302,11 @@ export const renameWorkspace = async (workspaceId: string, name: string) => {
   const supabase = createSupabaseAdmin();
 
   try {
+    const trimmed = name.trim();
+    if (trimmed === "") {
+      throw new Error("Invalid workspace name");
+    }
+
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
@@ -288,12 +315,12 @@ export const renameWorkspace = async (workspaceId: string, name: string) => {
       throw new Error("Only the owner can rename a workspace");
     }
 
-    const slugBase = generateSlugBase(name);
+    const slugBase = generateSlugBase(trimmed);
     const slug = await ensureUniqueSlug(supabase, slugBase, workspaceId);
 
     const { data, error } = await supabase
       .from("workspaces")
-      .update({ name: name.trim(), slug, updated_at: new Date().toISOString() })
+      .update({ name: trimmed, slug, updated_at: new Date().toISOString() })
       .eq("id", workspaceId)
       .select()
       .single();
@@ -363,6 +390,13 @@ export const deleteWorkspace = async (workspaceId: string) => {
 
       if (deleteFilesError) throw deleteFilesError;
     }
+
+    const { error: deleteFoldersError } = await supabase
+      .from("folders")
+      .delete()
+      .eq("workspace_id", workspaceId);
+
+    if (deleteFoldersError) throw deleteFoldersError;
 
     // Delete the workspace (cascade handles members + invitations)
     const { error: deleteError } = await supabase
@@ -725,9 +759,9 @@ export const getWorkspaceInvitations = async (workspaceId: string) => {
         id: inv.id,
         workspaceId: inv.workspace_id,
         invitedBy: inv.invited_by,
-        role: inv.role,
+        role: inv.role as "admin" | "editor" | "viewer",
         token: inv.token,
-        status: inv.status,
+        status: inv.status as "pending" | "accepted" | "revoked",
         expiresAt: inv.expires_at,
         createdAt: inv.created_at,
       })),
@@ -815,7 +849,9 @@ export const acceptInvite = async (token: string) => {
       workspaceId,
     );
     if (existingRole) {
-      throw new Error("You are already a member of this workspace");
+      const err = new Error("You are already a member of this workspace") as any;
+      err.code = "ALREADY_MEMBER";
+      throw err;
     }
 
     // Atomic check-and-set of the invitation status to prevent double-acceptance
@@ -843,13 +879,28 @@ export const acceptInvite = async (token: string) => {
     if (memberError) {
       // Rollback invitation status if membership insert fails
       try {
-        const { error: rollbackError } = await supabase
+        const { data: invRow, error: fetchError } = await supabase
           .from("workspace_invitations")
-          .update({ status: "pending" })
-          .eq("id", invitationId);
-        
-        if (rollbackError) {
-          console.error("Failed to rollback invitation status:", rollbackError);
+          .select("*")
+          .eq("id", invitationId)
+          .single();
+
+        if (!fetchError && invRow) {
+          const isSingleUse = (invRow as any).single_use !== false;
+          const isExpectedStatus = invRow.status === "accepted";
+
+          if (!isSingleUse && isExpectedStatus) {
+            const { error: rollbackError } = await supabase
+              .from("workspace_invitations")
+              .update({ status: "pending" })
+              .eq("id", invitationId);
+            
+            if (rollbackError) {
+              console.error("Failed to rollback invitation status:", rollbackError);
+            }
+          }
+        } else if (fetchError) {
+          console.error("Failed to fetch invitation for rollback:", fetchError);
         }
       } catch (err) {
         console.error("Exception during invitation status rollback:", err);
