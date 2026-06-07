@@ -29,7 +29,7 @@ export async function GET(
     // Fetch the file record
     const { data: file, error: fileError } = await supabase
       .from("files")
-      .select("storage_key, owner_id, type")
+      .select("storage_key, owner_id, type, workspace_id")
       .eq("id", fileId)
       .eq("is_trashed", false)
       .single();
@@ -48,6 +48,17 @@ export async function GET(
         .eq("shared_with_email", user.email.toLowerCase())
         .maybeSingle();
       hasAccess = !!share;
+    }
+
+    // Verify workspace membership
+    if (!hasAccess) {
+      const { data: member } = await supabase
+        .from("workspace_members")
+        .select("id")
+        .eq("workspace_id", file.workspace_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      hasAccess = !!member;
     }
 
     if (!hasAccess) {
@@ -87,8 +98,8 @@ export async function GET(
     return new NextResponse(new Uint8Array(thumbnail), {
       headers: {
         "Content-Type": "image/webp",
-        // 24h browser cache + 1h stale-while-revalidate
-        "Cache-Control": "private, max-age=86400, stale-while-revalidate=3600",
+        "Cache-Control": "private, no-cache, no-store, must-revalidate",
+        "Vary": "Cookie",
       },
     });
   } catch (error) {

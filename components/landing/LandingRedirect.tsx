@@ -12,15 +12,20 @@ export default function LandingRedirect() {
     if (isLoaded && isSignedIn) {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get("ref") !== "internal") {
-        const previousWorkspace = localStorage.getItem(
-          "storey_previous_workspace"
-        );
+        let previousWorkspace = null;
+        try {
+          if (typeof window !== "undefined" && window.localStorage) {
+            previousWorkspace = localStorage.getItem("storey_previous_workspace");
+          }
+        } catch (e) {
+          console.error("Failed to access localStorage:", e);
+        }
         if (previousWorkspace) {
           // If we have a previous workspace in local storage, redirect to dashboard.
           // The server layout uses active_workspace_id cookie to route correctly.
-          router.push("/dashboard");
+          router.replace("/dashboard");
         } else {
-          router.push("/workspaces");
+          router.replace("/workspaces");
         }
       }
     }

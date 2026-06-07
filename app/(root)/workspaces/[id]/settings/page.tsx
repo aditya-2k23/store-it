@@ -32,8 +32,9 @@ export default async function WorkspaceSettingsPage({
   if (userRole === "owner" || userRole === "admin") {
     try {
       invitations = (await getWorkspaceInvitations(workspaceId)) ?? [];
-    } catch {
-      // User may not have permission
+    } catch (error) {
+      console.error("Failed to fetch workspace invitations:", error);
+      throw error;
     }
   }
 

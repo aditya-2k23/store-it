@@ -73,6 +73,7 @@ export const Navbar = () => {
           <Link
             href="https://github.com/aditya-2k23/store-it"
             target="_blank"
+            rel="noopener noreferrer"
             className="text-sm font-semibold text-light-100 hover:text-brand transition-colors"
           >
             GitHub

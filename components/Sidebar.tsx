@@ -18,6 +18,28 @@ import { usePathname } from "next/navigation";
 import { useSyncExternalStore, useEffect } from "react";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
 
+const safeLocalStorage = {
+  getItem(key: string): string | null {
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        return localStorage.getItem(key);
+      }
+    } catch (e) {
+      console.error(`Failed to get item ${key} from localStorage:`, e);
+    }
+    return null;
+  },
+  setItem(key: string, value: string): void {
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        localStorage.setItem(key, value);
+      }
+    } catch (e) {
+      console.error(`Failed to set item ${key} to localStorage:`, e);
+    }
+  }
+};
+
 const sidebarLinks = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
   { name: "Documents", href: "/documents", icon: FileText },
@@ -41,7 +63,7 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
 
   useEffect(() => {
     if (activeWorkspaceId) {
-      localStorage.setItem("storey_previous_workspace", activeWorkspaceId);
+      safeLocalStorage.setItem("storey_previous_workspace", activeWorkspaceId);
     }
   }, [activeWorkspaceId]);
 
@@ -60,7 +82,7 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
       return false;
     }
 
-    return localStorage.getItem("sidebar-collapsed") === "true";
+    return safeLocalStorage.getItem("sidebar-collapsed") === "true";
   };
 
   const displayCollapsed = useSyncExternalStore(
@@ -71,7 +93,7 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
 
   const toggleCollapse = () => {
     const next = !displayCollapsed;
-    localStorage.setItem("sidebar-collapsed", JSON.stringify(next));
+    safeLocalStorage.setItem("sidebar-collapsed", JSON.stringify(next));
     window.dispatchEvent(new Event(STORAGE_EVENT));
   };
 

@@ -137,9 +137,9 @@ declare interface WorkspaceInvitation {
   id: string;
   workspaceId: string;
   invitedBy: string;
-  role: string;
+  role: "admin" | "editor" | "viewer";
   token: string;
-  status: string;
+  status: "pending" | "accepted" | "revoked";
   expiresAt: string;
   createdAt: string;
 }

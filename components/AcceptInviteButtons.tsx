@@ -40,7 +40,7 @@ const AcceptInviteButtons = ({ token }: AcceptInviteButtonsProps) => {
           });
         }
       } catch (error: any) {
-        if (error?.message?.includes("already a member")) {
+        if (error?.code === "ALREADY_MEMBER") {
           toast({
             description: (
               <p className="body-2 text-white">

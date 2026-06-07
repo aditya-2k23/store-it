@@ -98,16 +98,29 @@ export default function NewWorkspacePage() {
 
   const onSubmit = (data: FormValues) => {
     startTransition(async () => {
+      let workspaceResult: any = null;
       try {
-        const result = await createWorkspace(
+        workspaceResult = await createWorkspace(
           data.name,
           data.expectedMembers,
           data.icon,
           data.themeColor,
         );
-        if (result?.id) {
-          await setActiveWorkspace(result.id);
-          setCreatedWorkspace({ ...data, ...result });
+      } catch (error: any) {
+        const message = error?.message?.includes("limit")
+          ? "You've reached the 5 workspace limit"
+          : "Failed to create workspace. Please try again.";
+        toast({
+          description: <p className="body-2 text-white">{message}</p>,
+          className: "error-toast",
+        });
+        return;
+      }
+
+      if (workspaceResult?.id) {
+        setCreatedWorkspace({ ...data, ...workspaceResult });
+        try {
+          await setActiveWorkspace(workspaceResult.id);
           toast({
             description: (
               <p className="body-2 text-white">
@@ -117,15 +130,16 @@ export default function NewWorkspacePage() {
             ),
             className: "success-toast",
           });
+        } catch (error: any) {
+          toast({
+            description: (
+              <p className="body-2 text-white">
+                Workspace created, but failed to set as active. Please try refreshing or selecting it manually.
+              </p>
+            ),
+            className: "error-toast",
+          });
         }
-      } catch (error: any) {
-        const message = error?.message?.includes("limit")
-          ? "You've reached the 5 workspace limit"
-          : "Failed to create workspace. Please try again.";
-        toast({
-          description: <p className="body-2 text-white">{message}</p>,
-          className: "error-toast",
-        });
       }
     });
   };
@@ -184,7 +198,7 @@ export default function NewWorkspacePage() {
               Welcome to {createdWorkspace.name}!
             </h2>
             <p className="body-2 mt-2 text-light-200">
-              Your workspace is ready. Let's get to work.
+              Your workspace is ready. Let&apos;s get to work.
             </p>
           </div>
 
@@ -348,7 +362,7 @@ export default function NewWorkspacePage() {
         <div className="w-full max-w-md">
           <h2 className="h2 mb-2 text-dark-100">New Workspace</h2>
           <p className="body-2 mb-8 text-light-200">
-            Set up your team's space to get started.
+            Set up your team&apos;s space to get started.
           </p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
