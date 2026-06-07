@@ -22,7 +22,7 @@
 - **Team workspaces** — user-created, max 5 per user (`type = 'team'`). Enforced server-side.
 - **Active workspace** — tracked via an httpOnly cookie `storey-active-workspace` containing the workspace UUID.
 - **Roles** — `owner > admin > editor > viewer`. Owner is immutable via role change; must transfer ownership to leave.
-- **Invite links** — token-based, 7-day expiry, single-use. No email sent (phase 1). URL: `/invite/[token]`.
+- **Invite links** — token-based, 7-day expiry, single-use. No email sent (phase 1). URL: `/invite/[slug]/[token]`.
 - **storage_used** — maintained on `workspaces` via a Postgres trigger that fires on file insert/delete.
 - **Full-text search** — `search_tsv` tsvector + GIN index on `files` and `folders`.
 - **AI embeddings** — untyped `vector` column in `ai_metadata` with `embedding_model` text column to avoid hardcoding dimensions (Gemini models).
@@ -125,7 +125,7 @@ Tracks invite links for team workspaces. Added in v1.1.
 | `workspace_id` | uuid        | NOT NULL, FK → workspaces(id) ON DELETE CASCADE               |                                                                  |
 | `invited_by`   | uuid        | NOT NULL, FK → users(id)                                      | The owner/admin who created the invite                           |
 | `role`         | text        | NOT NULL, default `'editor'`                                  | CHECK: `admin \| editor \| viewer` — role granted to the invitee |
-| `token`        | text        | NOT NULL, UNIQUE, default encode(gen_random_bytes(32), 'hex') | Used in the invite URL: `/invite/[token]`                        |
+| `token`        | text        | NOT NULL, UNIQUE, default encode(gen_random_bytes(32), 'hex') | Used in the invite URL: `/invite/[slug]/[token]`                 |
 | `status`       | text        | NOT NULL, default `'pending'`                                 | CHECK: `pending \| accepted \| revoked`                          |
 | `expires_at`   | timestamptz | NOT NULL, default now() + interval '7 days'                   | Tokens expire after 7 days                                       |
 | `created_at`   | timestamptz | NOT NULL, default now()                                       |                                                                  |
@@ -137,7 +137,7 @@ Tracks invite links for team workspaces. Added in v1.1.
 - Single-use: status becomes `accepted` on redemption
 - Revocable by owner or admin: status becomes `revoked`
 - No email is sent (phase 1) — inviter copies the URL and shares manually
-- Invite URL format: `{NEXT_PUBLIC_APP_URL}/invite/[token]`
+- Invite URL format: `{NEXT_PUBLIC_APP_URL}/invite/[slug]/[token]`
 
 ---
 
