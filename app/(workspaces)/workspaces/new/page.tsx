@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   createWorkspace,
   setActiveWorkspace,
@@ -25,12 +24,7 @@ import {
 } from "@/lib/actions/workspace.actions";
 import { toast } from "@/hooks/use-toast";
 import { WorkspaceAvatar } from "@/components/workspace/WorkspaceAvatar";
-import {
-  WORKSPACE_ICONS,
-  WORKSPACE_EMOJIS,
-  WORKSPACE_THEME_COLORS,
-} from "@/lib/workspace-icons";
-import { cn } from "@/lib/utils";
+import { WorkspaceAppearancePicker } from "@/components/workspace/WorkspaceAppearancePicker";
 
 const formSchema = z.object({
   name: z
@@ -134,7 +128,8 @@ export default function NewWorkspacePage() {
           toast({
             description: (
               <p className="body-2 text-white">
-                Workspace created, but failed to set as active. Please try refreshing or selecting it manually.
+                Workspace created, but failed to set as active. Please try
+                refreshing or selecting it manually.
               </p>
             ),
             className: "error-toast",
@@ -431,93 +426,13 @@ export default function NewWorkspacePage() {
               />
             </div>
 
-            <div>
-              <label className="body-2 mb-2 block font-medium text-light-100">
-                Workspace Identity
-              </label>
-
-              {/* Color Picker */}
-              <div className="mb-4 flex flex-wrap gap-2">
-                {WORKSPACE_THEME_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    aria-label={`Select theme color ${color}`}
-                    aria-pressed={themeColorValue === color}
-                    onClick={() => setValue("themeColor", color)}
-                    className={cn(
-                      "size-8 rounded-full transition-transform hover:scale-110 cursor-pointer",
-                      themeColorValue === color
-                        ? "ring-2 ring-brand ring-offset-2 scale-110"
-                        : "",
-                    )}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-
-              {/* Icon Picker */}
-              <Tabs defaultValue="icons" className="w-full">
-                <TabsList className="w-full grid grid-cols-2 bg-light-400">
-                  <TabsTrigger value="icons" className="cursor-pointer">
-                    Icons
-                  </TabsTrigger>
-                  <TabsTrigger value="emojis" className="cursor-pointer">
-                    Emojis
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="icons" className="mt-3">
-                  <div className="grid grid-cols-6 gap-2">
-                    {Object.entries(WORKSPACE_ICONS).map(([name, Icon]) => {
-                      const iconKey = `lucide:${name}`;
-                      const isSelected = iconValue === iconKey;
-                      return (
-                        <button
-                          key={name}
-                          type="button"
-                          aria-label={name}
-                          aria-pressed={isSelected}
-                          onClick={() => setValue("icon", iconKey)}
-                          className={cn(
-                            "flex aspect-square items-center justify-center rounded-lg border transition-colors cursor-pointer",
-                            isSelected
-                              ? "border-brand bg-brand/10 text-brand"
-                              : "border-light-300 bg-white text-light-100 hover:bg-light-400",
-                          )}
-                        >
-                          <Icon className="size-5" />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </TabsContent>
-                <TabsContent value="emojis" className="mt-3">
-                  <div className="grid grid-cols-6 gap-2">
-                    {WORKSPACE_EMOJIS.map((emoji) => {
-                      const iconKey = `emoji:${emoji}`;
-                      const isSelected = iconValue === iconKey;
-                      return (
-                        <button
-                          key={emoji}
-                          type="button"
-                          aria-label={`Emoji ${emoji}`}
-                          aria-pressed={isSelected}
-                          onClick={() => setValue("icon", iconKey)}
-                          className={cn(
-                            "flex aspect-square items-center justify-center rounded-lg border text-xl transition-colors cursor-pointer",
-                            isSelected
-                              ? "border-brand bg-brand/10"
-                              : "border-light-300 bg-white hover:bg-light-400",
-                          )}
-                        >
-                          {emoji}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
+            <WorkspaceAppearancePicker
+              iconValue={iconValue || "lucide:building2"}
+              themeColorValue={themeColorValue || "#FA7275"}
+              onIconChange={(icon) => setValue("icon", icon)}
+              onThemeColorChange={(color) => setValue("themeColor", color)}
+              showLabel={true}
+            />
 
             <Button
               type="submit"
