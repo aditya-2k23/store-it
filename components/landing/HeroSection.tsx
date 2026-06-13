@@ -3,17 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  Sparkles,
-  ArrowRight,
-  Play,
-  Search,
-  FileText,
-  Files,
-  ImageIcon,
-  FileCode,
-  MousePointer2,
-} from "lucide-react";
+import { Sparkles, ArrowRight, Search, MousePointer2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fadeIn, staggerChildren } from "./animations";
 
@@ -68,13 +58,6 @@ export const HeroSection = () => {
                 Get Started for Free <ArrowRight className="w-5 h-5" />
               </Button>
             </Link>
-            <Button
-              variant="outline"
-              className="rounded-full px-8 py-6 text-lg font-light border-light-400 text-dark-100 hover:bg-light-400 transition-all flex items-center gap-2 bg-white/50 backdrop-blur-xs cursor-pointer shadow-drop-1 hover:shadow-drop-2"
-            >
-              <Play className="w-5 h-5 text-brand" />{" "}
-              <span className="font-dynapuff">Watch Demo</span>
-            </Button>
           </motion.div>
         </motion.div>
 
@@ -211,12 +194,7 @@ export const HeroSection = () => {
                       whileHover={{ scale: 1.1, rotate: 2 }}
                       className="w-full h-full"
                     >
-                      <Image
-                        src={f.i}
-                        alt={f.t}
-                        width={200}
-                        height={200}
-                      />
+                      <Image src={f.i} alt={f.t} width={200} height={200} />
                     </motion.div>
                   </div>
                   <p className="text-[10px] font-medium text-dark-100 truncate">
