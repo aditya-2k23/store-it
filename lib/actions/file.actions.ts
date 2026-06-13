@@ -18,12 +18,17 @@ const TOTAL_SPACE_CACHE_TAG = "total-space-used";
 
 type FileRow = Database["public"]["Tables"]["files"]["Row"];
 type UserRow = Database["public"]["Tables"]["users"]["Row"];
+type AiMetaJoin = {
+  tags: string[] | null;
+  processing_status: string;
+} | null;
 type FileRowWithOwner = FileRow & {
   owner: Pick<UserRow, "id" | "full_name" | "email" | "avatar_url"> | null;
+  ai_metadata: AiMetaJoin;
 };
 
 const FILE_SELECT =
-  "id, name, original_name, extension, mime_type, type, size, storage_key, thumbnail_key, preview_status, owner_id, workspace_id, created_at, updated_at, owner:users!files_owner_id_fkey(id, full_name, email, avatar_url)";
+  "id, name, original_name, extension, mime_type, type, size, storage_key, thumbnail_key, preview_status, owner_id, workspace_id, created_at, updated_at, owner:users!files_owner_id_fkey(id, full_name, email, avatar_url), ai_metadata(tags, processing_status)";
 
 /**
  * Generates a 1-hour signed URL for direct download/preview.
@@ -71,6 +76,8 @@ const mapRowToFileItem = (
       avatarUrl: row.owner?.avatar_url || null,
     },
     sharedWith,
+    tags: (row.ai_metadata as AiMetaJoin)?.tags ?? null,
+    aiStatus: (row.ai_metadata as AiMetaJoin)?.processing_status ?? undefined,
   };
 };
 
@@ -568,3 +575,64 @@ const getCachedTotalSpaceUsed = unstable_cache(
   [TOTAL_SPACE_CACHE_TAG],
   { revalidate: 300, tags: [TOTAL_SPACE_CACHE_TAG] },
 );
+
+export async function getStorageSnapshot() {
+  const supabase = createSupabaseAdmin();
+
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
+
+    const workspaceId = currentUser.workspaceId;
+    const oneWeekAgo = new Date(
+      Date.now() - 7 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+
+    // Get all non-trashed files for the workspace
+    const { data: files, error: filesError } = await supabase
+      .from("files")
+      .select("id, type, created_at")
+      .eq("workspace_id", workspaceId)
+      .eq("is_trashed", false);
+
+    if (filesError) throw filesError;
+
+    const allFiles = files || [];
+    const totalFiles = allFiles.length;
+
+    // Files uploaded in the last 7 days
+    const recentFiles = allFiles.filter(
+      (f) => new Date(f.created_at) >= new Date(oneWeekAgo),
+    );
+    const uploadedLastWeek = recentFiles.length;
+
+    // Dominant type — use this week's files if ≥ 3, otherwise use all
+    const filesForType = recentFiles.length >= 3 ? recentFiles : allFiles;
+    const typeCounts: Record<string, number> = {};
+    filesForType.forEach((f) => {
+      typeCounts[f.type] = (typeCounts[f.type] || 0) + 1;
+    });
+    const dominantType =
+      Object.entries(typeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ||
+      "document";
+
+    // AI processed count
+    const { count: aiProcessedCount } = await supabase
+      .from("ai_metadata")
+      .select("id", { count: "exact", head: true })
+      .eq("processing_status", "completed")
+      .in(
+        "file_id",
+        allFiles.map((f) => f.id),
+      );
+
+    return parseStringify({
+      uploadedLastWeek,
+      dominantType,
+      totalFiles,
+      aiProcessedCount: aiProcessedCount || 0,
+    });
+  } catch (error) {
+    handleError(error, "Failed to get storage snapshot");
+  }
+}
