@@ -4,7 +4,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import {
   callGenerativeModel,
   callEmbeddingModel,
-  truncateToTokenLimit,
   extractTextContent,
 } from "../_shared/gemini.ts";
 
@@ -160,51 +159,110 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // ---------- Generate tags ----------
+    // ---------- Process based on file type ----------
     let tags: string[] = [];
-    try {
-      const tagPrompt = isImage
-        ? 'Generate 3 to 5 short descriptive tags for this image. Return only a JSON array of strings, no explanation. Example: ["landscape", "sunset", "mountains"]'
-        : `Generate 3 to 5 short descriptive tags for this file named "${fileRecord.name}". Content:\n\n${truncateToTokenLimit(textContent || "", 7500)}\n\nReturn only a JSON array of strings, no explanation. Example: ["invoice", "Q3", "finance"]`;
-
-      const tagResult = await callGenerativeModel(geminiApiKey, tagPrompt, {
-        maxOutputTokens: 128,
-        inlineData: inlineImageData,
-      });
-
-      // Parse the JSON array from the response
-      const jsonMatch = tagResult.text.match(/\[[\s\S]*?\]/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        if (Array.isArray(parsed)) {
-          tags = parsed
-            .filter((t: unknown) => typeof t === "string")
-            .slice(0, 5);
-        }
-      }
-    } catch (err) {
-      console.error("Tag generation failed:", err);
-      // Continue — tags are optional, embedding is more important
-    }
-
-    // ---------- Rate limit delay (2s between tag and embedding calls) ----------
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    // ---------- Generate embedding ----------
     let embedding: number[] | null = null;
     let embeddingModel = "";
-    try {
-      const embeddingInput = truncateToTokenLimit(
-        `${fileRecord.name} ${textContent || ""}`.trim(),
-        8000,
-      );
 
-      const embResult = await callEmbeddingModel(geminiApiKey, embeddingInput);
-      embedding = embResult.embedding;
-      embeddingModel = embResult.model;
-    } catch (err) {
-      console.error("Embedding generation failed:", err);
-      // If embedding fails but tags succeeded, we still save tags
+    if (isImage) {
+      // ===== IMAGE PIPELINE =====
+      // Step 1: Combined description + tags in a single generative call
+      let imageDescription = "";
+      try {
+        const combinedPrompt =
+          "First, describe the content of this image in detail, including any visible text, objects, scenes, and context. Then on a new line output TAGS: followed by a JSON array of 3 to 5 short descriptive tags.";
+
+        const combinedResult = await callGenerativeModel(
+          geminiApiKey,
+          combinedPrompt,
+          {
+            maxOutputTokens: 640,
+            inlineData: inlineImageData,
+          },
+        );
+
+        // Parse response: split on "TAGS:" — description before, tags after
+        const tagsMarkerIdx = combinedResult.text.indexOf("TAGS:");
+        if (tagsMarkerIdx !== -1) {
+          imageDescription = combinedResult.text
+            .slice(0, tagsMarkerIdx)
+            .trim();
+          const tagsJsonStr = combinedResult.text.slice(tagsMarkerIdx + 5);
+          const jsonMatch = tagsJsonStr.match(/\[[\s\S]*?\]/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (Array.isArray(parsed)) {
+              tags = parsed
+                .filter((t: unknown) => typeof t === "string")
+                .slice(0, 5);
+            }
+          }
+        } else {
+          // Model didn't follow format — use full response as description
+          imageDescription = combinedResult.text;
+        }
+      } catch (err) {
+        console.error("Image description + tag generation failed:", err);
+        // Continue — we'll still attempt embedding with whatever we have
+      }
+
+      // Step 2: Rate limit delay (2s between generative and embedding calls)
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Step 3: Generate embedding from the description text
+      if (imageDescription) {
+        try {
+          const embResult = await callEmbeddingModel(
+            geminiApiKey,
+            imageDescription,
+          );
+          embedding = embResult.embedding;
+          embeddingModel = embResult.model;
+        } catch (err) {
+          console.error("Image embedding generation failed:", err);
+        }
+      }
+    } else {
+      // ===== DOCUMENT PIPELINE =====
+      // Step 1: Generate tags
+      try {
+        const tagPrompt = `Generate 3 to 5 short descriptive tags for this file named "${fileRecord.name}". Content:\n\n${(textContent || "").slice(0, 6000)}\n\nReturn only a JSON array of strings, no explanation. Example: ["invoice", "Q3", "finance"]`;
+
+        const tagResult = await callGenerativeModel(geminiApiKey, tagPrompt, {
+          maxOutputTokens: 128,
+        });
+
+        const jsonMatch = tagResult.text.match(/\[[\s\S]*?\]/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed)) {
+            tags = parsed
+              .filter((t: unknown) => typeof t === "string")
+              .slice(0, 5);
+          }
+        }
+      } catch (err) {
+        console.error("Tag generation failed:", err);
+      }
+
+      // Step 2: Rate limit delay (2s between tag and embedding calls)
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      // Step 3: Generate embedding from truncated text content
+      try {
+        const embeddingInput = (textContent || "").slice(0, 6000);
+
+        if (embeddingInput.trim()) {
+          const embResult = await callEmbeddingModel(
+            geminiApiKey,
+            embeddingInput,
+          );
+          embedding = embResult.embedding;
+          embeddingModel = embResult.model;
+        }
+      } catch (err) {
+        console.error("Embedding generation failed:", err);
+      }
     }
 
     // ---------- Update ai_metadata ----------

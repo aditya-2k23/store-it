@@ -3,8 +3,8 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-const EMBEDDING_MODELS = ["gemini-embedding-001"];
-const MAX_RETRIES_PER_MODEL = 3;
+const EMBEDDING_MODEL = "gemini-embedding-2";
+const MAX_RETRIES = 3;
 
 async function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -14,48 +14,56 @@ function isRetryable(status: number): boolean {
   return status === 429 || status === 503;
 }
 
+/**
+ * Generate an embedding using gemini-embedding-2.
+ * NO FALLBACK — a mismatched dimension corrupts the vector column.
+ * 3 retries with exponential backoff, then throw.
+ */
 async function generateEmbedding(
   apiKey: string,
   text: string,
 ): Promise<number[]> {
   let lastError = "";
 
-  for (const model of EMBEDDING_MODELS) {
-    for (let attempt = 0; attempt < MAX_RETRIES_PER_MODEL; attempt++) {
-      try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${apiKey}`;
-        const resp = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            model: `models/${model}`,
-            content: { parts: [{ text }] },
-          }),
-        });
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent?key=${apiKey}`;
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: `models/${EMBEDDING_MODEL}`,
+          content: { parts: [{ text }] },
+        }),
+      });
 
-        if (!resp.ok) {
-          if (isRetryable(resp.status)) {
-            await delay(1000 * Math.pow(2, attempt));
-            continue;
-          }
-          lastError = `${model}: HTTP ${resp.status}`;
-          break;
+      if (!resp.ok) {
+        lastError = `${EMBEDDING_MODEL}: HTTP ${resp.status}`;
+        if (isRetryable(resp.status)) {
+          await delay(1000 * Math.pow(2, attempt));
+          continue;
         }
+        throw new Error(
+          `Embedding model failed (non-retryable): ${lastError}`,
+        );
+      }
 
-        const data = await resp.json();
-        const embedding = data?.embedding?.values;
-        if (!embedding || !Array.isArray(embedding)) {
-          lastError = `${model}: no embedding values`;
-          break;
-        }
-        return embedding;
-      } catch (err) {
-        lastError = `${model}: ${(err as Error).message}`;
+      const data = await resp.json();
+      const embedding = data?.embedding?.values;
+      if (!embedding || !Array.isArray(embedding)) {
+        throw new Error(`${EMBEDDING_MODEL}: no embedding values in response`);
+      }
+      return embedding;
+    } catch (err) {
+      lastError = `${EMBEDDING_MODEL}: ${(err as Error).message}`;
+      if (attempt < MAX_RETRIES - 1) {
         await delay(1000 * Math.pow(2, attempt));
       }
     }
   }
-  throw new Error(lastError);
+  throw new Error(
+    `Embedding model ${EMBEDDING_MODEL} failed after ${MAX_RETRIES} retries. Last error: ${lastError}`,
+  );
 }
 
 export async function POST(req: Request) {

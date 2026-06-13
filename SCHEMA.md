@@ -11,6 +11,7 @@
 | 2025-06 | v1.1    | Workspace system — renamed role `member` → `editor` in workspace_members; added `slug` column to workspaces; added `workspace_invitations` table                        |
 | 2026-06 | v1.2    | Workspace Identity — added `expected_members`, `icon`, and `theme_color` to workspaces                                                                                  |
 | 2026-06 | v1.3    | AI Features — typed `embedding` to `vector(768)`, added IVFFlat index, enabled `pg_net`, added `trigger_process_file_ai` webhook trigger on files INSERT, added `match_files_by_embedding` RPC |
+| 2026-06 | v1.4    | Embedding Model Migration — changed `embedding` from `vector(768)` to `vector(3072)` for `gemini-embedding-2`, dropped IVFFlat index (pgvector 0.8.0 has 2000-dim limit, using exact scan), reset all existing embeddings to force reprocessing |
 
 ---
 
@@ -26,7 +27,7 @@
 - **Invite links** — token-based, 7-day expiry, single-use. No email sent (phase 1). URL: `/invite/[slug]/[token]`.
 - **storage_used** — maintained on `workspaces` via a Postgres trigger that fires on file insert/delete.
 - **Full-text search** — `search_tsv` tsvector + GIN index on `files` and `folders`.
-- **AI embeddings** — `vector(768)` column in `ai_metadata` with `embedding_model` text column. Uses `text-embedding-004` (768 dimensions). IVFFlat index for cosine similarity search via `match_files_by_embedding` RPC.
+- **AI embeddings** — `vector(3072)` column in `ai_metadata` with `embedding_model` text column. Uses `gemini-embedding-2` (3072 dimensions). No vector index (pgvector 0.8.0 IVFFlat/HNSW limit is 2000 dims) — exact scan via `<=>` operator in `match_files_by_embedding` RPC. Sufficient for small-to-medium datasets.
 - **Activity log actions** — dot-namespaced plain text (e.g. `file.upload`, `workspace.member.invite`) — not an enum, to allow new event types without migrations.
 - **Workspace Identity** — workspaces optionally store `icon` (emoji or lucide) and `theme_color` to provide customizable avatars, along with `expected_members` to track team size intent.
 
@@ -279,8 +280,8 @@ AI processing results per file. One-to-one with files.
 | `file_id`           | uuid        | NOT NULL, UNIQUE, FK → files(id) | One-to-one                                                                             |
 | `summary`           | text        | nullable                         | AI-generated document summary                                                          |
 | `tags`              | text[]      | nullable                         | Auto-generated tags                                                                    |
-| `embedding`         | vector      | nullable                         | pgvector embedding. Untyped to avoid hardcoding dimensions — varies by Gemini model.   |
-| `embedding_model`   | text        | nullable                         | e.g. `text-embedding-004`. Stored alongside embedding to know which model produced it. |
+| `embedding`         | vector(3072) | nullable                         | pgvector embedding for `gemini-embedding-2` (3072 dimensions). No vector index — pgvector 0.8.0 caps IVFFlat/HNSW at 2000 dims; exact scan via `<=>` is used instead. |
+| `embedding_model`   | text        | nullable                         | e.g. `gemini-embedding-2`. Stored alongside embedding to know which model produced it. |
 | `processing_status` | text        | NOT NULL, default `'pending'`    | CHECK: `pending \| processing \| completed \| failed \| not_applicable`                |
 | `error_message`     | text        | nullable                         | Populated if processing_status = 'failed'                                              |
 | `processed_at`      | timestamptz | nullable                         | When processing completed                                                              |
