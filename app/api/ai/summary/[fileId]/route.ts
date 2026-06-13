@@ -188,13 +188,13 @@ export async function GET(
       });
     }
 
-    // Still processing
-    if (aiMeta.processing_status === "processing") {
+    // Still processing or pending
+    if (aiMeta.processing_status === "processing" || aiMeta.processing_status === "pending") {
       return NextResponse.json({ summary: null, status: "processing" });
     }
 
     // Summary already cached
-    if (aiMeta.summary) {
+    if (aiMeta.processing_status === "completed" && aiMeta.summary) {
       return NextResponse.json({
         summary: aiMeta.summary,
         status: "completed",

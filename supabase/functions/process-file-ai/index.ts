@@ -188,7 +188,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // ---------- Rate limit delay (2s between tag and embedding calls) ----------
-    await new Promise((r) => setTimeout(r, 2000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // ---------- Generate embedding ----------
     let embedding: number[] | null = null;

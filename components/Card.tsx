@@ -30,6 +30,24 @@ const Card = ({ file }: { file: FileItem }) => {
       <div className="file-card-details">
         <p className="subtitle-2 line-clamp-1">{file.name}</p>
 
+        {file.tags && file.tags.length > 0 && file.aiStatus === "completed" && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {file.tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20"
+              >
+                {tag}
+              </span>
+            ))}
+            {file.tags.length > 3 && (
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-light-300 text-light-200">
+                +{file.tags.length - 3} more
+              </span>
+            )}
+          </div>
+        )}
+
         <FormattedDateTime
           date={file.createdAt}
           className="body-2 text-light-100"
