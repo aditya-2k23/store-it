@@ -10,6 +10,7 @@
 | 2025-06 | v1.0    | Initial schema — users, workspaces, workspace_members, folders, files, file_versions, direct_file_shares, public_file_links, favorite_files, ai_metadata, activity_logs |
 | 2025-06 | v1.1    | Workspace system — renamed role `member` → `editor` in workspace_members; added `slug` column to workspaces; added `workspace_invitations` table                        |
 | 2026-06 | v1.2    | Workspace Identity — added `expected_members`, `icon`, and `theme_color` to workspaces                                                                                  |
+| 2026-06 | v1.3    | AI Features — typed `embedding` to `vector(768)`, added IVFFlat index, enabled `pg_net`, added `trigger_process_file_ai` webhook trigger on files INSERT, added `match_files_by_embedding` RPC |
 
 ---
 
@@ -25,7 +26,7 @@
 - **Invite links** — token-based, 7-day expiry, single-use. No email sent (phase 1). URL: `/invite/[slug]/[token]`.
 - **storage_used** — maintained on `workspaces` via a Postgres trigger that fires on file insert/delete.
 - **Full-text search** — `search_tsv` tsvector + GIN index on `files` and `folders`.
-- **AI embeddings** — untyped `vector` column in `ai_metadata` with `embedding_model` text column to avoid hardcoding dimensions (Gemini models).
+- **AI embeddings** — `vector(768)` column in `ai_metadata` with `embedding_model` text column. Uses `text-embedding-004` (768 dimensions). IVFFlat index for cosine similarity search via `match_files_by_embedding` RPC.
 - **Activity log actions** — dot-namespaced plain text (e.g. `file.upload`, `workspace.member.invite`) — not an enum, to allow new event types without migrations.
 - **Workspace Identity** — workspaces optionally store `icon` (emoji or lucide) and `theme_color` to provide customizable avatars, along with `expected_members` to track team size intent.
 

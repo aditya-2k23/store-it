@@ -8,90 +8,90 @@ The vision behind Storey is to move beyond traditional folder-based storage syst
 
 ## Table of Contents
 
-* [Tech Stack](#tech-stack)
-* [Core Features](#core-features)
-* [Upcoming AI Features](#upcoming-ai-features)
-* [Realtime Collaboration](#realtime-collaboration)
-* [Installation](#installation)
+- [Tech Stack](#tech-stack)
+- [Core Features](#core-features)
+- [Upcoming AI Features](#upcoming-ai-features)
+- [Realtime Collaboration](#realtime-collaboration)
+- [Installation](#installation)
 
 ## Tech Stack
 
 ### Frontend
 
-* **React 19**
-* **Next.js 16 (App Router)**
-* **TypeScript**
-* **Tailwind CSS**
-* **ShadCN UI**
-* **Framer Motion**
+- **React 19**
+- **Next.js 16 (App Router)**
+- **TypeScript**
+- **Tailwind CSS**
+- **ShadCN UI**
+- **Framer Motion**
 
 ### Authentication
 
-* **Clerk**
+- **Clerk**
 
 ### Backend & Database
 
-* **Supabase Postgres**
-* **Supabase Realtime**
-* **Supabase Row Level Security (RLS)**
+- **Supabase Postgres**
+- **Supabase Realtime**
+- **Supabase Row Level Security (RLS)**
 
 ### File Storage
 
-* **Cloudflare R2**
+- **Cloudflare R2**
 
 ### AI & Search
 
-* **OpenAI APIs**
-* **pgvector**
-* **Semantic Search**
-* **AI Embeddings**
+- **Gemini APIs**
+- **pgvector**
+- **Semantic Search**
+- **AI Embeddings**
 
 ### Deployment
 
-* **Vercel**
+- **Vercel**
 
 ## Core Features
 
 ### Authentication & Security
 
-* Secure user authentication with Clerk
-* Protected routes and workspace-based access
-* Row Level Security (RLS) for secure database access
+- Secure user authentication with Clerk
+- Protected routes and workspace-based access
+- Row Level Security (RLS) for secure database access
 
 ### File Storage & Management
 
-* Upload and manage any type of file
-* Rename, move, organize, and delete files
-* Drag-and-drop uploads
-* Folder-based file organization
-* File previews and downloads
-* Storage usage dashboard
-* File type categorization
+- Upload and manage any type of file
+- Rename, move, organize, and delete files
+- Drag-and-drop uploads
+- Folder-based file organization
+- File previews and downloads
+- Storage usage dashboard
+- File type categorization
 
 ### Smart Search & Organization
 
-* Global search across files and folders
-* AI-powered semantic file search
-* Smart file tagging and categorization
-* Search files using natural language
-* Intelligent filtering and sorting
+- Global search across files and folders
+- AI-powered semantic file search
+- Smart file tagging and categorization
+- Search files using natural language
+- Intelligent filtering and sorting
 
 ### Sharing & Collaboration
 
-* Share files and folders securely
-* Team workspaces
-* Realtime collaboration
-* Shared file activity
-* Workspace member management
-* Live presence indicators
+- Share files and folders securely
+- Team workspaces
+- Realtime collaboration
+- Shared file activity
+- Workspace member management
+- Live presence indicators
 
 ### Modern User Experience
 
-* Fully responsive modern UI
-* Clean dashboard and analytics
-* Smooth animations and transitions
-* Fast and optimized performance
-* Beautiful file previews
+- Fully responsive modern UI
+- Clean dashboard and analytics
+- Smooth animations and transitions
+- Fast and optimized performance
+- Beautiful file previews
 
 ## Upcoming AI Features
 
@@ -99,14 +99,14 @@ Storey is evolving into an intelligent storage platform with AI-powered capabili
 
 ### Planned AI Features
 
-* Semantic search using embeddings
-* AI-generated document summaries
-* Automatic file tagging
-* OCR-based text extraction from PDFs and images
-* Duplicate file detection
-* Smart recommendations and organization
-* Context-aware file discovery
-* AI-powered workspace insights
+- Semantic search using embeddings
+- AI-generated document summaries
+- Automatic file tagging
+- OCR-based text extraction from PDFs and images
+- Duplicate file detection
+- Smart recommendations and organization
+- Context-aware file discovery
+- AI-powered workspace insights
 
 ## Realtime Collaboration
 
@@ -114,13 +114,13 @@ Storey is designed to support collaborative team workflows with realtime synchro
 
 ### Planned Collaboration Features
 
-* Realtime collaborative document editing
-* Live cursors and presence
-* Shared collaborative notes
-* Activity feeds
-* Comments and mentions
-* File version history
-* Team workspaces and permissions
+- Realtime collaborative document editing
+- Live cursors and presence
+- Shared collaborative notes
+- Activity feeds
+- Comments and mentions
+- File version history
+- Team workspaces and permissions
 
 ## Installation
 
@@ -128,9 +128,9 @@ Follow these steps to run the project locally.
 
 ### Prerequisites
 
-* Git
-* Node.js
-* npm
+- Git
+- Node.js
+- npm
 
 ### Clone the repository
 

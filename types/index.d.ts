@@ -44,6 +44,8 @@ declare interface FileItem {
   storageKey: string;
   owner: FileOwner;
   sharedWith: string[];
+  tags?: string[] | null;
+  aiStatus?: string;
 }
 
 declare interface UploadFileProps {
