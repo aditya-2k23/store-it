@@ -6,19 +6,25 @@ import Chart from "@/components/Chart";
 import FormattedDateTime from "@/components/FormattedDateTime";
 import Thumbnail from "@/components/Thumbnail";
 import { Separator } from "@/components/ui/separator";
-import { getFiles, getTotalSpaceUsed } from "@/lib/actions/file.actions";
+import { getFiles, getTotalSpaceUsed, getStorageSnapshot } from "@/lib/actions/file.actions";
 import { convertFileSize, getUsageSummary } from "@/lib/utils";
 import EmptyState from "@/components/EmptyState";
 
 const Dashboard = async () => {
   // Parallel requests
-  const [files, totalSpace] = await Promise.all([
+  const [files, totalSpace, snapshot] = await Promise.all([
     getFiles({ types: [], limit: 10 }),
     getTotalSpaceUsed(),
+    getStorageSnapshot(),
   ]);
 
   // Get usage summary
   const usageSummary = getUsageSummary(totalSpace);
+
+  // Build AI insight text
+  const snapshotText = snapshot
+    ? `You uploaded ${snapshot.uploadedLastWeek} file${snapshot.uploadedLastWeek !== 1 ? "s" : ""} last week, mostly ${snapshot.dominantType}s. ${snapshot.aiProcessedCount} file${snapshot.aiProcessedCount !== 1 ? "s are" : " is"} AI-ready.`
+    : null;
 
   return (
     <div className="dashboard-container">
@@ -26,6 +32,7 @@ const Dashboard = async () => {
         <Chart
           used={totalSpace.used}
           insightText={convertFileSize(totalSpace.used ?? 0) || "0 B"}
+          snapshotText={snapshotText}
         />
 
         {/* Uploaded file type summaries */}
