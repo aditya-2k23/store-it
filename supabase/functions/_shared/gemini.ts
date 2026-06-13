@@ -14,7 +14,7 @@ export const GENERATIVE_MODELS = [
   "gemini-3.1-flash-lite",
 ];
 
-export const EMBEDDING_MODELS = ["text-embedding-004"];
+export const EMBEDDING_MODELS = ["gemini-embedding-001"];
 
 // ---------- Retry / backoff ----------
 

@@ -6,7 +6,7 @@ import {
   callEmbeddingModel,
   truncateToTokenLimit,
   extractTextContent,
-} from "../_shared/gemini";
+} from "../_shared/gemini.ts";
 
 // File types that should be processed with AI
 const PROCESSABLE_TYPES = new Set(["document", "image"]);

@@ -4,7 +4,7 @@ import { Input } from "./ui/input";
 import { getFiles } from "@/lib/actions/file.actions";
 import { Mic, Search as SearchIcon, Sparkles } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Thumbnail from "./Thumbnail";
 import { useDebounce } from "use-debounce";
 
@@ -41,7 +41,23 @@ const Search = () => {
   const [results, setResults] = useState<FileItem[]>([]);
   const [semanticResults, setSemanticResults] = useState<SemanticResult[]>([]);
   const [open, setOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const minQueryLength = 2;
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const router = useRouter();
   const path = usePathname();
@@ -50,6 +66,7 @@ const Search = () => {
 
   useEffect(() => {
     let isActive = true;
+    const controller = new AbortController();
 
     const fetchFiles = async () => {
       if (debouncedQuery.length === 0) {
@@ -82,7 +99,7 @@ const Search = () => {
       // Run semantic search only if query looks semantic
       const shouldRunSemantic = isSemanticQuery(debouncedQuery);
       const semanticPromise = shouldRunSemantic
-        ? fetchSemanticResults(debouncedQuery)
+        ? fetchSemanticResults(debouncedQuery, controller.signal)
         : Promise.resolve([]);
 
       let files = { documents: [] as FileItem[] };
@@ -94,10 +111,16 @@ const Search = () => {
           semanticPromise,
         ]);
         if (filesResult) {
-          files = typeof filesResult === "string" ? JSON.parse(filesResult) : filesResult;
+          files =
+            typeof filesResult === "string"
+              ? JSON.parse(filesResult)
+              : filesResult;
         }
         if (semanticResult) {
-          semantic = typeof semanticResult === "string" ? JSON.parse(semanticResult) : semanticResult;
+          semantic =
+            typeof semanticResult === "string"
+              ? JSON.parse(semanticResult)
+              : semanticResult;
         }
       } catch (error) {
         console.error("Search failed:", error);
@@ -114,11 +137,13 @@ const Search = () => {
 
     return () => {
       isActive = false;
+      controller.abort();
     };
   }, [debouncedQuery, path, router, searchParams]);
 
   const fetchSemanticResults = async (
     q: string,
+    signal?: AbortSignal,
   ): Promise<SemanticResult[]> => {
     try {
       // Get workspaceId from cookie — we'll read it from the current page context
@@ -127,6 +152,7 @@ const Search = () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: q }),
+        signal,
       });
       if (!res.ok) return [];
       const data = await res.json();
@@ -153,7 +179,7 @@ const Search = () => {
 
     const type = result.type;
     router.push(
-      `/${type === "video" || type === "audio" ? "media" : type + "s"}?query=${query}`,
+      `/${type === "video" || type === "audio" ? "media" : type + "s"}`,
     );
   };
 
@@ -162,7 +188,7 @@ const Search = () => {
   const hasAnyResults = hasSemanticResults || hasKeywordResults;
 
   return (
-    <div className="search">
+    <div className="search" ref={searchRef}>
       <div className="search-input-wrapper">
         <SearchIcon className="size-5 text-slate-400 transition-colors focus-within:text-[#ff6b6b]" />
 

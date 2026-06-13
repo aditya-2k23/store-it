@@ -3,7 +3,7 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-const EMBEDDING_MODELS = ["text-embedding-004"];
+const EMBEDDING_MODELS = ["gemini-embedding-001"];
 const MAX_RETRIES_PER_MODEL = 3;
 
 async function delay(ms: number): Promise<void> {

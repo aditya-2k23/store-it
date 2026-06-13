@@ -399,7 +399,7 @@
 
   /* Header */
   .header {
-    @apply hidden items-center justify-between gap-5 bg-light-400/95 p-5 backdrop-blur sm:flex lg:py-7 xl:gap-10;
+    @apply hidden items-center justify-between gap-5 bg-light-400/95 p-5 backdrop-blur z-50 sm:flex lg:py-7 xl:gap-10;
   }
 
   .header-wrapper {
@@ -412,7 +412,7 @@
 
   /* Mobile Navigation */
   .mobile-header {
-    @apply flex h-15 justify-between bg-light-400/95 px-5 backdrop-blur sm:hidden;
+    @apply flex h-15 justify-between bg-light-400/95 px-5 backdrop-blur z-50 sm:hidden;
   }
 
   .header-user {
