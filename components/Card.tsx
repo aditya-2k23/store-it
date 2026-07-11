@@ -1,5 +1,4 @@
 import Link from "next/link";
-import React from "react";
 import Thumbnail from "./Thumbnail";
 import { convertFileSize } from "@/lib/utils";
 import FormattedDateTime from "./FormattedDateTime";
@@ -7,6 +6,11 @@ import ActionsDropdown from "./ActionsDropdown";
 
 const Card = ({ file }: { file: FileItem }) => {
   const fileHref = file.downloadUrl || file.url || "#";
+
+  // Show a subtle message only for files still being processed after the first 2 minutes
+  const isStaleProcessing =
+    (file.aiStatus === "pending" || file.aiStatus === "processing") &&
+    Date.now() - new Date(file.createdAt).getTime() > 2 * 60 * 1000;
 
   return (
     <Link href={fileHref} target="_blank" className="file-card">
@@ -29,6 +33,12 @@ const Card = ({ file }: { file: FileItem }) => {
 
       <div className="file-card-details">
         <p className="subtitle-2 line-clamp-1">{file.name}</p>
+
+        {isStaleProcessing && (
+          <p className="text-[10px] text-light-200 mt-1 italic">
+            AI tagging in progress...
+          </p>
+        )}
 
         {file.tags && file.tags.length > 0 && file.aiStatus === "completed" && (
           <div className="flex flex-wrap gap-1 mt-1">

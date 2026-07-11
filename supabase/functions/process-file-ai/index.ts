@@ -67,6 +67,72 @@ async function markFailed(fileId: string, errorMessage: string) {
   }
 }
 
+// ---------- Tag parsing helpers ----------
+
+/**
+ * Parse a JSON tag array from a raw Gemini response string.
+ * Handles markdown code fences, varied formatting, and malformed JSON.
+ * Never throws — always returns a (possibly empty) string[].
+ */
+function parseTagsFromResponse(raw: string): string[] {
+  try {
+    // Strip markdown code blocks
+    let text = raw.trim()
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/gi, "")
+      .trim();
+
+    // Try to find a JSON array anywhere in the response
+    const arrayMatch = text.match(/\[[\s\S]*?\]/);
+    if (arrayMatch) {
+      const parsed = JSON.parse(arrayMatch[0]);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.slice(0, 5).map(String).filter(Boolean);
+      }
+    }
+
+    // Fallback: try parsing the whole trimmed text as JSON
+    const direct = JSON.parse(text);
+    if (Array.isArray(direct)) {
+      return direct.slice(0, 5).map(String).filter(Boolean);
+    }
+
+    return [];
+  } catch {
+    // Last resort: extract quoted strings that look like tags (2–30 chars)
+    const quoted = raw.match(/"([^"]{2,30})"/g);
+    if (quoted && quoted.length > 0) {
+      return quoted.slice(0, 5).map((s) => s.replace(/"/g, "")).filter(Boolean);
+    }
+    return [];
+  }
+}
+
+/**
+ * Split a combined image response into description + tags.
+ * Matches TAGS: marker case-insensitively, with optional surrounding asterisks.
+ */
+function parseImageResponse(
+  raw: string,
+): { description: string; tags: string[] } {
+  const normalized = raw.trim();
+
+  // Match TAGS: marker: optional leading newline/whitespace, optional **bold**, any casing
+  const tagsMarkerMatch = normalized.match(/\n?\s*\*{0,2}tags\*{0,2}\s*:/i);
+
+  if (tagsMarkerMatch && tagsMarkerMatch.index !== undefined) {
+    const description = normalized.slice(0, tagsMarkerMatch.index).trim();
+    const tagsSection = normalized
+      .slice(tagsMarkerMatch.index + tagsMarkerMatch[0].length)
+      .trim();
+    const tags = parseTagsFromResponse(tagsSection);
+    return { description: description || normalized, tags };
+  }
+
+  // No marker found — use full response as description, no tags
+  return { description: normalized, tags: [] };
+}
+
 Deno.serve(async (req: Request) => {
   let fileId: string | null = null;
 
@@ -170,7 +236,7 @@ Deno.serve(async (req: Request) => {
       let imageDescription = "";
       try {
         const combinedPrompt =
-          "First, describe the content of this image in detail, including any visible text, objects, scenes, and context. Then on a new line output TAGS: followed by a JSON array of 3 to 5 short descriptive tags.";
+          `Describe the content of this image in detail, including any visible text, objects, scenes, and context.\n\nThen on a new line write exactly: TAGS: followed by a JSON array of 3 to 5 short descriptive tags.\n\nExample format:\nA photograph showing a mountain landscape with snow-capped peaks and a clear blue sky.\nTAGS: ["landscape", "mountains", "snow", "nature"]`;
 
         const combinedResult = await callGenerativeModel(
           geminiApiKey,
@@ -181,26 +247,11 @@ Deno.serve(async (req: Request) => {
           },
         );
 
-        // Parse response: split on "TAGS:" — description before, tags after
-        const tagsMarkerIdx = combinedResult.text.indexOf("TAGS:");
-        if (tagsMarkerIdx !== -1) {
-          imageDescription = combinedResult.text
-            .slice(0, tagsMarkerIdx)
-            .trim();
-          const tagsJsonStr = combinedResult.text.slice(tagsMarkerIdx + 5);
-          const jsonMatch = tagsJsonStr.match(/\[[\s\S]*?\]/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if (Array.isArray(parsed)) {
-              tags = parsed
-                .filter((t: unknown) => typeof t === "string")
-                .slice(0, 5);
-            }
-          }
-        } else {
-          // Model didn't follow format — use full response as description
-          imageDescription = combinedResult.text;
-        }
+        const { description, tags: parsedTags } = parseImageResponse(
+          combinedResult.text,
+        );
+        imageDescription = description;
+        tags = parsedTags;
       } catch (err) {
         console.error("Image description + tag generation failed:", err);
         // Continue — we'll still attempt embedding with whatever we have
@@ -226,21 +277,14 @@ Deno.serve(async (req: Request) => {
       // ===== DOCUMENT PIPELINE =====
       // Step 1: Generate tags
       try {
-        const tagPrompt = `Generate 3 to 5 short descriptive tags for this file named "${fileRecord.name}". Content:\n\n${(textContent || "").slice(0, 6000)}\n\nReturn only a JSON array of strings, no explanation. Example: ["invoice", "Q3", "finance"]`;
+        const tagPrompt =
+          `Generate 3 to 5 short descriptive tags for this file named "${fileRecord.name}". Content:\n\n${(textContent || "").slice(0, 6000)}\n\nReturn only a JSON array of strings, no explanation. Example: ["invoice", "Q3", "finance"]`;
 
         const tagResult = await callGenerativeModel(geminiApiKey, tagPrompt, {
           maxOutputTokens: 128,
         });
 
-        const jsonMatch = tagResult.text.match(/\[[\s\S]*?\]/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (Array.isArray(parsed)) {
-            tags = parsed
-              .filter((t: unknown) => typeof t === "string")
-              .slice(0, 5);
-          }
-        }
+        tags = parseTagsFromResponse(tagResult.text);
       } catch (err) {
         console.error("Tag generation failed:", err);
       }
@@ -266,9 +310,11 @@ Deno.serve(async (req: Request) => {
     }
 
     // ---------- Update ai_metadata ----------
+    // Always store tags as an array (possibly empty) — never null.
+    // null means "not yet processed"; [] means "processed but no tags found".
     const updatePayload: Record<string, unknown> = {
       file_id: fileRecord.id,
-      tags: tags.length > 0 ? tags : null,
+      tags,
       processing_status: "completed",
       processed_at: new Date().toISOString(),
       error_message: null,

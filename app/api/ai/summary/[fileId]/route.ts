@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { NextResponse } from "next/server";
 
-// Reuse the same model chains and utilities as the Edge Function
+// Reuse the same model chains as the Edge Function
 const GENERATIVE_MODELS = [
   "gemini-3.5-flash",
   "gemini-2.5-flash",
@@ -19,6 +19,9 @@ function isRetryable(status: number): boolean {
   return status === 429 || status === 503;
 }
 
+/**
+ * Call a Gemini generative model with text-only prompt.
+ */
 async function callGenerativeModel(
   apiKey: string,
   prompt: string,
@@ -65,10 +68,81 @@ async function callGenerativeModel(
   throw new Error(lastError);
 }
 
+/**
+ * Call a Gemini vision model with inline image data.
+ */
+async function callGenerativeModelWithImage(
+  apiKey: string,
+  prompt: string,
+  imageBase64: string,
+  mimeType: string,
+  maxOutputTokens: number,
+): Promise<string> {
+  let lastError = "";
+
+  for (const model of GENERATIVE_MODELS) {
+    for (let attempt = 0; attempt < MAX_RETRIES_PER_MODEL; attempt++) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { inline_data: { mime_type: mimeType, data: imageBase64 } },
+                  { text: prompt },
+                ],
+              },
+            ],
+            generationConfig: { maxOutputTokens },
+          }),
+        });
+
+        if (!resp.ok) {
+          if (isRetryable(resp.status)) {
+            await delay(1000 * Math.pow(2, attempt));
+            continue;
+          }
+          lastError = `${model}: HTTP ${resp.status}`;
+          break;
+        }
+
+        const data = await resp.json();
+        const text =
+          data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+        if (!text) {
+          lastError = `${model}: empty response`;
+          break;
+        }
+        return text;
+      } catch (err) {
+        lastError = `${model}: ${(err as Error).message}`;
+        await delay(1000 * Math.pow(2, attempt));
+      }
+    }
+  }
+  throw new Error(lastError);
+}
+
 function truncateToTokenLimit(text: string, maxTokens = 8000): string {
   const maxChars = maxTokens * 4;
   return text.length <= maxChars ? text : text.slice(0, maxChars);
 }
+
+// Extensions that can be meaningfully text-extracted without a parser library
+const SUMMARIZABLE_EXTENSIONS = new Set([
+  "txt", "md", "csv", "html", "htm", "rtf", "log",
+  "json", "xml", "yaml", "yml", "pdf", "doc", "docx",
+]);
+
+// Binary formats that produce garbage when decoded as UTF-8
+const BINARY_DOCUMENT_EXTENSIONS = new Set([
+  "xls", "xlsx", "ods", "ppt", "pptx", "odp",
+  "pages", "numbers", "key", "fig", "psd", "ai",
+  "indd", "xd", "sketch", "afdesign", "afphoto", "epub",
+]);
 
 const TEXT_EXTENSIONS = new Set([
   "txt", "md", "csv", "html", "htm", "rtf", "log", "json", "xml", "yaml", "yml",
@@ -189,7 +263,10 @@ export async function GET(
     }
 
     // Still processing or pending
-    if (aiMeta.processing_status === "processing" || aiMeta.processing_status === "pending") {
+    if (
+      aiMeta.processing_status === "processing" ||
+      aiMeta.processing_status === "pending"
+    ) {
       return NextResponse.json({ summary: null, status: "processing" });
     }
 
@@ -211,6 +288,13 @@ export async function GET(
       });
     }
 
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+
+    // Binary document formats cannot be meaningfully summarised without a parser
+    if (BINARY_DOCUMENT_EXTENSIONS.has(ext)) {
+      return NextResponse.json({ summary: null, status: "not_applicable" });
+    }
+
     // Download file for summary generation
     const { data: fileData, error: downloadError } = await supabase.storage
       .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
@@ -225,34 +309,63 @@ export async function GET(
     }
 
     const fileBytes = new Uint8Array(await fileData.arrayBuffer());
-    const textContent = extractTextFromBytes(
-      fileBytes,
-      file.mime_type,
-      file.name,
-    );
+    let summaryText = "";
 
-    if (!textContent) {
-      // For images, generate summary using vision
-      // For now, return a simple status
-      return NextResponse.json({
-        summary: null,
-        status: "completed",
-      });
+    if (file.type === "image") {
+      // ===== IMAGE SUMMARY — send as inline vision data =====
+      let base64 = "";
+      const chunkSize = 8192;
+      for (let i = 0; i < fileBytes.length; i += chunkSize) {
+        const chunk = fileBytes.subarray(i, i + chunkSize);
+        base64 += String.fromCharCode(...chunk);
+      }
+      base64 = btoa(base64);
+
+      const mimeType =
+        file.mime_type || `image/${ext === "jpg" ? "jpeg" : ext}`;
+      const imagePrompt =
+        "Summarize the content of this image in 2 to 3 sentences. Describe what is shown, any visible text, and the overall context.";
+
+      summaryText = await callGenerativeModelWithImage(
+        geminiApiKey,
+        imagePrompt,
+        base64,
+        mimeType,
+        1024,
+      );
+    } else {
+      // ===== DOCUMENT SUMMARY — extract text and send as prompt =====
+      const textContent = extractTextFromBytes(
+        fileBytes,
+        file.mime_type,
+        file.name,
+      );
+
+      if (!textContent) {
+        // extractTextFromBytes returned null — file is an image type, shouldn't reach here
+        return NextResponse.json({ summary: null, status: "not_applicable" });
+      }
+
+      const truncated = truncateToTokenLimit(textContent, 8000);
+      const prompt = `Summarize this document in 2 to 3 sentences. Be concise and factual. Focus on what the document contains, not how it is structured.\n\n${truncated}`;
+
+      summaryText = await callGenerativeModel(geminiApiKey, prompt, 1024);
     }
 
-    const truncated = truncateToTokenLimit(textContent, 8000);
-    const prompt = `Summarize this document in 2 to 3 sentences. Be concise and factual. Focus on what the document contains, not how it is structured.\n\n${truncated}`;
-
-    const summaryText = await callGenerativeModel(geminiApiKey, prompt, 512);
+    // Ensure summary ends cleanly — if truncated mid-sentence, append ellipsis
+    const endsCleanly = /[.!?]$/.test(summaryText.trim());
+    const finalSummary = endsCleanly
+      ? summaryText.trim()
+      : summaryText.trim() + "...";
 
     // Cache the summary
     await supabase
       .from("ai_metadata")
-      .update({ summary: summaryText })
+      .update({ summary: finalSummary })
       .eq("file_id", fileId);
 
     return NextResponse.json({
-      summary: summaryText,
+      summary: finalSummary,
       status: "completed",
     });
   } catch (error) {
