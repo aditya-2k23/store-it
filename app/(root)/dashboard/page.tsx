@@ -7,15 +7,17 @@ import FormattedDateTime from "@/components/FormattedDateTime";
 import Thumbnail from "@/components/Thumbnail";
 import { Separator } from "@/components/ui/separator";
 import { getFiles, getTotalSpaceUsed, getStorageSnapshot } from "@/lib/actions/file.actions";
+import { getActiveWorkspaceId } from "@/lib/actions/workspace.actions";
 import { convertFileSize, getUsageSummary } from "@/lib/utils";
 import EmptyState from "@/components/EmptyState";
 
 const Dashboard = async () => {
   // Parallel requests
-  const [files, totalSpace, snapshot] = await Promise.all([
+  const [files, totalSpace, snapshot, activeWorkspaceId] = await Promise.all([
     getFiles({ types: [], limit: 10 }),
     getTotalSpaceUsed(),
     getStorageSnapshot(),
+    getActiveWorkspaceId(),
   ]);
 
   // Get usage summary
@@ -33,6 +35,7 @@ const Dashboard = async () => {
           used={totalSpace.used}
           insightText={convertFileSize(totalSpace.used ?? 0) || "0 B"}
           snapshotText={snapshotText}
+          workspaceId={activeWorkspaceId as string}
         />
 
         {/* Uploaded file type summaries */}

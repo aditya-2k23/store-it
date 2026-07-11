@@ -97,7 +97,18 @@ export default function SSOContinuePage() {
             return;
           }
 
-          const url = decorateUrl("/");
+          let redirectPath = "/workspaces";
+          try {
+            if (typeof window !== "undefined" && window.localStorage) {
+              if (localStorage.getItem("storey_previous_workspace")) {
+                redirectPath = "/dashboard";
+              }
+            }
+          } catch (e) {
+            console.error("Failed to access localStorage:", e);
+          }
+
+          const url = decorateUrl(redirectPath);
           if (url.startsWith("http")) {
             window.location.href = url;
           } else {
@@ -130,7 +141,18 @@ export default function SSOContinuePage() {
             return;
           }
 
-          const url = decorateUrl("/");
+          let redirectPath = "/workspaces";
+          try {
+            if (typeof window !== "undefined" && window.localStorage) {
+              if (localStorage.getItem("storey_previous_workspace")) {
+                redirectPath = "/dashboard";
+              }
+            }
+          } catch (e) {
+            console.error("Failed to access localStorage:", e);
+          }
+
+          const url = decorateUrl(redirectPath);
           if (url.startsWith("http")) {
             window.location.href = url;
           } else {
@@ -227,7 +249,17 @@ export default function SSOContinuePage() {
 
   useEffect(() => {
     if (isSignedIn) {
-      router.replace("/");
+      let redirectPath = "/workspaces";
+      try {
+        if (typeof window !== "undefined" && window.localStorage) {
+          if (localStorage.getItem("storey_previous_workspace")) {
+            redirectPath = "/dashboard";
+          }
+        }
+      } catch (e) {
+        console.error("Failed to access localStorage:", e);
+      }
+      router.replace(redirectPath);
       return;
     }
 
@@ -325,7 +357,9 @@ export default function SSOContinuePage() {
       <div className="flex min-h-screen items-center justify-center bg-white px-4">
         <div className="flex flex-col items-center gap-4 text-center">
           <Loader2 className="h-6 w-6 animate-spin text-brand" />
-          <p className="text-sm text-slate-600">Finishing your sign in...</p>
+          <p className="text-sm text-slate-600">
+            {signUp?.status ? "Finishing your sign up..." : "Finishing your sign in..."}
+          </p>
         </div>
       </div>
     );

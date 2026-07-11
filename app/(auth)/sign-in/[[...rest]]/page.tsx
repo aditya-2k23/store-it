@@ -73,7 +73,18 @@ export default function SignInPage() {
               return;
             }
 
-            const url = decorateUrl("/");
+            let redirectPath = "/workspaces";
+            try {
+              if (typeof window !== "undefined" && window.localStorage) {
+                if (localStorage.getItem("storey_previous_workspace")) {
+                  redirectPath = "/dashboard";
+                }
+              }
+            } catch (e) {
+              console.error("Failed to access localStorage:", e);
+            }
+
+            const url = decorateUrl(redirectPath);
             if (url.startsWith("http")) {
               window.location.href = url;
             } else {

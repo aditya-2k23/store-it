@@ -8,9 +8,15 @@ import {
 } from "@/lib/utils";
 import Link from "next/link";
 import EmptyState from "@/components/EmptyState";
+import { notFound } from "next/navigation";
 
 const Page = async ({ searchParams, params }: SearchParamProps) => {
   const type = ((await params)?.type as string) || "";
+  const validTypes = ["documents", "images", "media", "others"];
+  if (!validTypes.includes(type.toLowerCase())) {
+    return notFound();
+  }
+
   const searchText = ((await searchParams)?.query as string) || "";
   const sort = ((await searchParams)?.sort as string) || "";
   const pageParam = ((await searchParams)?.page as string) || "1";
