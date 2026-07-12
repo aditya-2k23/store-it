@@ -337,6 +337,13 @@ export const updateWorkspaceAppearance = async (workspaceId: string, icon: strin
   const supabase = createSupabaseAdmin();
 
   try {
+    if (!icon.startsWith("lucide:") && !icon.startsWith("emoji:")) {
+      throw new Error("Invalid icon format");
+    }
+    if (!/^#[0-9A-Fa-f]{6}$/.test(themeColor)) {
+      throw new Error("Invalid theme color format");
+    }
+
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 

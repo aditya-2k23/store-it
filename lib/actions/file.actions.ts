@@ -20,7 +20,7 @@ type FileRow = Database["public"]["Tables"]["files"]["Row"];
 type UserRow = Database["public"]["Tables"]["users"]["Row"];
 type AiMetaJoin = {
   tags: string[] | null;
-  processing_status: string;
+  processing_status: AiProcessingStatus;
 } | null;
 type FileRowWithOwner = FileRow & {
   owner: Pick<UserRow, "id" | "full_name" | "email" | "avatar_url"> | null;
