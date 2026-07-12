@@ -16,8 +16,14 @@ const Dashboard = async () => {
   const [files, totalSpace, snapshot, activeWorkspaceId] = await Promise.all([
     getFiles({ types: [], limit: 10 }),
     getTotalSpaceUsed(),
-    getStorageSnapshot(),
-    getActiveWorkspaceId(),
+    getStorageSnapshot().catch((err) => {
+      console.error("Failed to load storage snapshot:", err);
+      return null;
+    }),
+    getActiveWorkspaceId().catch((err) => {
+      console.error("Failed to load active workspace ID:", err);
+      return "";
+    }),
   ]);
 
   // Get usage summary
@@ -35,7 +41,7 @@ const Dashboard = async () => {
           used={totalSpace.used}
           insightText={convertFileSize(totalSpace.used ?? 0) || "0 B"}
           snapshotText={snapshotText}
-          workspaceId={activeWorkspaceId as string}
+          workspaceId={activeWorkspaceId || ""}
         />
 
         {/* Uploaded file type summaries */}

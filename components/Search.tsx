@@ -4,7 +4,7 @@ import { Input } from "./ui/input";
 import { getFiles } from "@/lib/actions/file.actions";
 import { Mic, Search as SearchIcon, Sparkles } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Thumbnail from "./Thumbnail";
 import { useDebounce } from "use-debounce";
 
@@ -63,6 +63,27 @@ const Search = () => {
   const path = usePathname();
 
   const [debouncedQuery] = useDebounce(query.trim(), 400);
+
+  const fetchSemanticResults = useCallback(async (
+    q: string,
+    signal?: AbortSignal,
+  ): Promise<SemanticResult[]> => {
+    try {
+      // Get workspaceId from cookie — we'll read it from the current page context
+      // Since we can't read httpOnly cookies client-side, we pass workspaceId via API
+      const res = await fetch("/api/ai/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q }),
+        signal,
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.results || [];
+    } catch {
+      return [];
+    }
+  }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -139,28 +160,7 @@ const Search = () => {
       isActive = false;
       controller.abort();
     };
-  }, [debouncedQuery, path, router, searchParams]);
-
-  const fetchSemanticResults = async (
-    q: string,
-    signal?: AbortSignal,
-  ): Promise<SemanticResult[]> => {
-    try {
-      // Get workspaceId from cookie — we'll read it from the current page context
-      // Since we can't read httpOnly cookies client-side, we pass workspaceId via API
-      const res = await fetch("/api/ai/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q }),
-        signal,
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.results || [];
-    } catch {
-      return [];
-    }
-  };
+  }, [debouncedQuery, path, router, searchParams, fetchSemanticResults]);
 
   const handleClickItem = (file: FileItem) => {
     setOpen(false);

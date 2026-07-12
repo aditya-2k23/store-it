@@ -55,6 +55,9 @@ async function generateEmbedding(
       }
       return embedding;
     } catch (err) {
+      if ((err as Error).message.includes("non-retryable")) {
+        throw err;
+      }
       lastError = `${EMBEDDING_MODEL}: ${(err as Error).message}`;
       if (attempt < MAX_RETRIES - 1) {
         await delay(1000 * Math.pow(2, attempt));
@@ -140,9 +143,10 @@ export async function POST(req: Request) {
 
     if (error) {
       console.error("Semantic search RPC error:", error);
-      // Fallback: raw SQL query via supabase
-      // If RPC doesn't exist, we'll create it
-      return NextResponse.json({ results: [] });
+      return NextResponse.json(
+        { error: "Semantic search failed" },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({ results: results || [] });

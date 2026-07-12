@@ -9,7 +9,6 @@ import {
 
 // File types that should be processed with AI
 const PROCESSABLE_TYPES = new Set(["document", "image"]);
-const SKIP_TYPES = new Set(["video", "audio", "archive", "code", "other"]);
 
 // Image extensions for inline processing
 const IMAGE_EXTENSIONS = new Set([
@@ -153,10 +152,7 @@ Deno.serve(async (req: Request) => {
     const supabase = getSupabaseClient();
 
     // Determine if we should process this file type
-    if (
-      SKIP_TYPES.has(fileRecord.type) ||
-      !PROCESSABLE_TYPES.has(fileRecord.type)
-    ) {
+    if (!PROCESSABLE_TYPES.has(fileRecord.type)) {
       await supabase.from("ai_metadata").upsert(
         {
           file_id: fileRecord.id,

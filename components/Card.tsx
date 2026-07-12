@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import Thumbnail from "./Thumbnail";
 import { convertFileSize } from "@/lib/utils";
 import FormattedDateTime from "./FormattedDateTime";
@@ -7,10 +10,29 @@ import ActionsDropdown from "./ActionsDropdown";
 const Card = ({ file }: { file: FileItem }) => {
   const fileHref = file.downloadUrl || file.url || "#";
 
-  // Show a subtle message only for files still being processed after the first 2 minutes
-  const isStaleProcessing =
-    (file.aiStatus === "pending" || file.aiStatus === "processing") &&
-    Date.now() - new Date(file.createdAt).getTime() > 2 * 60 * 1000;
+  const isProcessing = file.aiStatus === "pending" || file.aiStatus === "processing";
+  const [isStaleProcessing, setIsStaleProcessing] = useState(false);
+
+  useEffect(() => {
+    if (!isProcessing) {
+      setIsStaleProcessing(false);
+      return;
+    }
+
+    const timeSinceCreated = Date.now() - new Date(file.createdAt).getTime();
+    const threshold = 2 * 60 * 1000;
+
+    if (timeSinceCreated > threshold) {
+      setIsStaleProcessing(true);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setIsStaleProcessing(true);
+    }, threshold - timeSinceCreated);
+
+    return () => clearTimeout(timer);
+  }, [isProcessing, file.createdAt]);
 
   return (
     <Link href={fileHref} target="_blank" className="file-card">

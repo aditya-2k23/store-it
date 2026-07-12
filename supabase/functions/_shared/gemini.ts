@@ -68,11 +68,14 @@ export async function callGenerativeModel(
           generationConfig: { maxOutputTokens: options.maxOutputTokens },
         };
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
         const resp = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey 
+          },
           body: JSON.stringify(body),
         });
 
@@ -133,7 +136,7 @@ export async function callEmbeddingModel(
 
   for (let attempt = 0; attempt < MAX_RETRIES_PER_MODEL; attempt++) {
     try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent`;
 
       const body = {
         model: `models/${model}`,
@@ -142,7 +145,10 @@ export async function callEmbeddingModel(
 
       const resp = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey
+        },
         body: JSON.stringify(body),
       });
 
@@ -168,6 +174,9 @@ export async function callEmbeddingModel(
 
       return { embedding, model };
     } catch (err) {
+      if ((err as Error).message.includes("non-retryable")) {
+        throw err;
+      }
       lastError = `${model}: ${(err as Error).message}`;
       if (attempt < MAX_RETRIES_PER_MODEL - 1) {
         const delayMs = 1000 * Math.pow(2, attempt);

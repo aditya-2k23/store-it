@@ -32,7 +32,8 @@ export function WorkspaceAppearancePicker({
       const saved = localStorage.getItem("storey_custom_colors");
       if (saved) {
         const parsed = JSON.parse(saved);
-        return parsed.filter((c: string) => !WORKSPACE_THEME_COLORS.includes(c));
+        const array = Array.isArray(parsed) ? parsed : [];
+        return array.filter((c: string) => !WORKSPACE_THEME_COLORS.includes(c));
       }
     } catch (error) {
       console.error("Failed to load custom colors", error);
@@ -40,16 +41,12 @@ export function WorkspaceAppearancePicker({
     return [];
   });
 
-  useEffect(() => {
-    if (themeColorValue) {
-      handleCustomColorAdd(themeColorValue);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const handleCustomColorAdd = (color: string) => {
     onThemeColorChange(color);
-    if (!WORKSPACE_THEME_COLORS.includes(color) && !customColors.includes(color)) {
+    if (
+      !WORKSPACE_THEME_COLORS.includes(color) &&
+      !customColors.includes(color)
+    ) {
       const updated = [...customColors, color];
       setCustomColors(updated);
       try {
@@ -73,6 +70,16 @@ export function WorkspaceAppearancePicker({
       onThemeColorChange(WORKSPACE_THEME_COLORS[0]);
     }
   };
+
+  const initialized = useRef(false);
+  useEffect(() => {
+    if (!initialized.current) {
+      initialized.current = true;
+      if (themeColorValue) {
+        handleCustomColorAdd(themeColorValue);
+      }
+    }
+  }, [themeColorValue, handleCustomColorAdd]);
 
   return (
     <div>
@@ -123,7 +130,7 @@ export function WorkspaceAppearancePicker({
                 e.stopPropagation();
                 handleCustomColorRemove(color);
               }}
-              className="absolute -top-1 -right-1 hidden size-4 items-center justify-center rounded-full bg-red text-white hover:bg-red/80 group-hover:flex cursor-pointer shadow-sm"
+              className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-red text-white hover:bg-red/80 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 cursor-pointer shadow-sm transition-opacity"
               aria-label="Remove custom color"
             >
               <X className="size-2.5" />
@@ -137,7 +144,8 @@ export function WorkspaceAppearancePicker({
             type="color"
             ref={colorInputRef}
             value="#000000"
-            onChange={(e) => handleCustomColorAdd(e.target.value)}
+            onChange={(e) => onThemeColorChange(e.target.value)}
+            onBlur={(e) => handleCustomColorAdd(e.target.value)}
             className="sr-only"
             aria-label="Custom color picker"
           />
