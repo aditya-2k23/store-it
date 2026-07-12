@@ -239,7 +239,7 @@ export async function GET(
     // Check ai_metadata for this file
     const { data: aiMeta } = await supabase
       .from("ai_metadata")
-      .select("summary, processing_status, error_message")
+      .select("summary, processing_status, error_message, updated_at")
       .eq("file_id", fileId)
       .maybeSingle();
 
@@ -295,79 +295,94 @@ export async function GET(
       return NextResponse.json({ summary: null, status: "not_applicable" });
     }
 
-    // Download file for summary generation
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
-      .download(file.storage_key);
-
-    if (downloadError || !fileData) {
-      return NextResponse.json({
-        summary: null,
-        status: "failed",
-        error: "Failed to download file",
-      });
+    // 60-second guard to avoid duplicate generation triggers on polling
+    if (aiMeta.updated_at) {
+      const secondsSinceUpdate =
+        (Date.now() - new Date(aiMeta.updated_at).getTime()) / 1000;
+      if (secondsSinceUpdate < 60) {
+        return NextResponse.json({ summary: null, status: "processing" });
+      }
     }
 
-    const fileBytes = new Uint8Array(await fileData.arrayBuffer());
-    let summaryText = "";
-
-    if (file.type === "image") {
-      // ===== IMAGE SUMMARY — send as inline vision data =====
-      let base64 = "";
-      const chunkSize = 8192;
-      for (let i = 0; i < fileBytes.length; i += chunkSize) {
-        const chunk = fileBytes.subarray(i, i + chunkSize);
-        base64 += String.fromCharCode(...chunk);
-      }
-      base64 = btoa(base64);
-
-      const mimeType =
-        file.mime_type || `image/${ext === "jpg" ? "jpeg" : ext}`;
-      const imagePrompt =
-        "Summarize the content of this image in 2 to 3 sentences. Describe what is shown, any visible text, and the overall context.";
-
-      summaryText = await callGenerativeModelWithImage(
-        geminiApiKey,
-        imagePrompt,
-        base64,
-        mimeType,
-        1024,
-      );
-    } else {
-      // ===== DOCUMENT SUMMARY — extract text and send as prompt =====
-      const textContent = extractTextFromBytes(
-        fileBytes,
-        file.mime_type,
-        file.name,
-      );
-
-      if (!textContent) {
-        // extractTextFromBytes returned null — file is an image type, shouldn't reach here
-        return NextResponse.json({ summary: null, status: "not_applicable" });
-      }
-
-      const truncated = truncateToTokenLimit(textContent, 8000);
-      const prompt = `Summarize this document in 2 to 3 sentences. Be concise and factual. Focus on what the document contains, not how it is structured.\n\n${truncated}`;
-
-      summaryText = await callGenerativeModel(geminiApiKey, prompt, 1024);
-    }
-
-    // Ensure summary ends cleanly — if truncated mid-sentence, append ellipsis
-    const endsCleanly = /[.!?]$/.test(summaryText.trim());
-    const finalSummary = endsCleanly
-      ? summaryText.trim()
-      : summaryText.trim() + "...";
-
-    // Cache the summary
+    // Immediately bump updated_at to indicate generation has started
     await supabase
       .from("ai_metadata")
-      .update({ summary: finalSummary })
+      .update({ updated_at: new Date().toISOString() })
       .eq("file_id", fileId);
 
-    return NextResponse.json({
-      summary: finalSummary,
-      status: "completed",
-    });
+    // Kick off generation asynchronously
+    (async () => {
+      try {
+        const { data: fileData, error: downloadError } = await supabase.storage
+          .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+          .download(file.storage_key);
+
+        if (downloadError || !fileData) {
+          console.error("Failed to download file for summary");
+          return;
+        }
+
+        const fileBytes = new Uint8Array(await fileData.arrayBuffer());
+        let summaryText = "";
+
+        if (file.type === "image") {
+          let base64 = "";
+          const chunkSize = 8192;
+          for (let i = 0; i < fileBytes.length; i += chunkSize) {
+            const chunk = fileBytes.subarray(i, i + chunkSize);
+            base64 += String.fromCharCode(...chunk);
+          }
+          base64 = btoa(base64);
+
+          const mimeType =
+            file.mime_type || `image/${ext === "jpg" ? "jpeg" : ext}`;
+          const imagePrompt =
+            "Summarize the content of this image in 2 to 3 sentences. Describe what is shown, any visible text, and the overall context.";
+
+          summaryText = await callGenerativeModelWithImage(
+            geminiApiKey,
+            imagePrompt,
+            base64,
+            mimeType,
+            1024,
+          );
+        } else {
+          const textContent = extractTextFromBytes(
+            fileBytes,
+            file.mime_type,
+            file.name,
+          );
+
+          if (!textContent) {
+            await supabase
+              .from("ai_metadata")
+              .update({ processing_status: "not_applicable" })
+              .eq("file_id", fileId);
+            return;
+          }
+
+          const truncated = truncateToTokenLimit(textContent, 8000);
+          const prompt = `Summarize this document in 2 to 3 sentences. Be concise and factual. Focus on what the document contains, not how it is structured.\n\n${truncated}`;
+
+          summaryText = await callGenerativeModel(geminiApiKey, prompt, 1024);
+        }
+
+        const endsCleanly = /[.!?]$/.test(summaryText.trim());
+        const finalSummary = endsCleanly
+          ? summaryText.trim()
+          : summaryText.trim() + "...";
+
+        await supabase
+          .from("ai_metadata")
+          .update({ summary: finalSummary })
+          .eq("file_id", fileId);
+      } catch (err: any) {
+        console.error("Async summary generation failed:", err);
+      }
+    })();
+
+    // Return processing immediately while generation runs in background
+    return NextResponse.json({ summary: null, status: "processing" });
   } catch (error) {
     console.error("AI summary error:", error);
     return NextResponse.json(

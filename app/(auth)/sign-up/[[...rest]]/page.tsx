@@ -11,6 +11,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { navigateToAuthSuccess } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -110,23 +111,7 @@ export default function SignUpPage() {
               return;
             }
 
-            let redirectPath = "/workspaces";
-            try {
-              if (typeof window !== "undefined" && window.localStorage) {
-                if (localStorage.getItem("storey_previous_workspace")) {
-                  redirectPath = "/dashboard";
-                }
-              }
-            } catch (e) {
-              console.error("Failed to access localStorage:", e);
-            }
-
-            const url = decorateUrl(redirectPath);
-            if (url.startsWith("http")) {
-              window.location.href = url;
-            } else {
-              router.push(url);
-            }
+            navigateToAuthSuccess(decorateUrl, router);
           },
         });
         return;
@@ -219,23 +204,7 @@ export default function SignUpPage() {
               return;
             }
 
-            let redirectPath = "/workspaces";
-            try {
-              if (typeof window !== "undefined" && window.localStorage) {
-                if (localStorage.getItem("storey_previous_workspace")) {
-                  redirectPath = "/dashboard";
-                }
-              }
-            } catch (e) {
-              console.error("Failed to access localStorage:", e);
-            }
-
-            const url = decorateUrl(redirectPath);
-            if (url.startsWith("http")) {
-              window.location.href = url;
-            } else {
-              router.push(url);
-            }
+            navigateToAuthSuccess(decorateUrl, router);
           },
         });
       } else {
@@ -272,23 +241,7 @@ export default function SignUpPage() {
                   return;
                 }
 
-                let redirectPath = "/workspaces";
-                try {
-                  if (typeof window !== "undefined" && window.localStorage) {
-                    if (localStorage.getItem("storey_previous_workspace")) {
-                      redirectPath = "/dashboard";
-                    }
-                  }
-                } catch (e) {
-                  console.error("Failed to access localStorage:", e);
-                }
-
-                const url = decorateUrl(redirectPath);
-                if (url.startsWith("http")) {
-                  window.location.href = url;
-                } else {
-                  router.push(url);
-                }
+                navigateToAuthSuccess(decorateUrl, router);
               },
             });
             return;

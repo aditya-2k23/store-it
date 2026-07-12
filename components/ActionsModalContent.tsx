@@ -45,27 +45,63 @@ const AiSummarySection = ({ fileId }: { fileId: string }) => {
 
   useEffect(() => {
     let cancelled = false;
+    let intervalId: NodeJS.Timeout;
 
     const fetchSummary = async () => {
+      if (cancelled) return;
       try {
         const res = await fetch(`/api/ai/summary/${fileId}`);
         if (!res.ok) {
-          setStatus("failed");
+          if (!cancelled) setStatus("failed");
+          clearInterval(intervalId);
           return;
         }
         const data = await res.json();
-        if (!cancelled) {
-          setSummary(data.summary);
-          setStatus(data.status as AiSummaryStatus);
+        if (cancelled) return;
+
+        setSummary(data.summary);
+        setStatus(data.status as AiSummaryStatus);
+
+        if (
+          data.status === "completed" ||
+          data.status === "failed" ||
+          data.status === "not_applicable"
+        ) {
+          clearInterval(intervalId);
+        }
+      } catch {
+        if (!cancelled) setStatus("failed");
+        clearInterval(intervalId);
+      }
+    };
+
+    const initialFetch = async () => {
+      if (cancelled) return;
+      try {
+        const res = await fetch(`/api/ai/summary/${fileId}`);
+        if (!res.ok) {
+          if (!cancelled) setStatus("failed");
+          return;
+        }
+        const data = await res.json();
+        if (cancelled) return;
+
+        setSummary(data.summary);
+        setStatus(data.status as AiSummaryStatus);
+
+        if (data.status === "processing" || data.status === "pending") {
+          intervalId = setInterval(fetchSummary, 3000);
         }
       } catch {
         if (!cancelled) setStatus("failed");
       }
     };
 
-    fetchSummary();
+    initialFetch();
+
     return () => {
       cancelled = true;
+      clearInterval(intervalId);
     };
   }, [fileId]);
 

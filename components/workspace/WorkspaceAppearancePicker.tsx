@@ -26,26 +26,26 @@ export function WorkspaceAppearancePicker({
   showLabel = false,
 }: WorkspaceAppearancePickerProps) {
   const colorInputRef = useRef<HTMLInputElement>(null);
-  const [customColors, setCustomColors] = useState<string[]>([]);
-
-  useEffect(() => {
+  const [customColors, setCustomColors] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [];
     try {
       const saved = localStorage.getItem("storey_custom_colors");
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Ensure any currently selected custom color (e.g. from props) is included
-        const merged = Array.from(new Set([...parsed, themeColorValue]));
-        // Keep only actual custom colors
-        const filtered = merged.filter((c) => !WORKSPACE_THEME_COLORS.includes(c));
-        setCustomColors(filtered);
-      } else if (!WORKSPACE_THEME_COLORS.includes(themeColorValue)) {
-        // If no saved colors, but there is a custom color selected
-        setCustomColors([themeColorValue]);
+        return parsed.filter((c: string) => !WORKSPACE_THEME_COLORS.includes(c));
       }
     } catch (error) {
       console.error("Failed to load custom colors", error);
     }
-  }, [themeColorValue]);
+    return [];
+  });
+
+  useEffect(() => {
+    if (themeColorValue) {
+      handleCustomColorAdd(themeColorValue);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCustomColorAdd = (color: string) => {
     onThemeColorChange(color);

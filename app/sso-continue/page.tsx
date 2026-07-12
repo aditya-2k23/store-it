@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { navigateToAuthSuccess, getAuthRedirectPath } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -97,23 +98,7 @@ export default function SSOContinuePage() {
             return;
           }
 
-          let redirectPath = "/workspaces";
-          try {
-            if (typeof window !== "undefined" && window.localStorage) {
-              if (localStorage.getItem("storey_previous_workspace")) {
-                redirectPath = "/dashboard";
-              }
-            }
-          } catch (e) {
-            console.error("Failed to access localStorage:", e);
-          }
-
-          const url = decorateUrl(redirectPath);
-          if (url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.push(url);
-          }
+          navigateToAuthSuccess(decorateUrl, router);
         },
       });
     } catch (err: any) {
@@ -141,23 +126,7 @@ export default function SSOContinuePage() {
             return;
           }
 
-          let redirectPath = "/workspaces";
-          try {
-            if (typeof window !== "undefined" && window.localStorage) {
-              if (localStorage.getItem("storey_previous_workspace")) {
-                redirectPath = "/dashboard";
-              }
-            }
-          } catch (e) {
-            console.error("Failed to access localStorage:", e);
-          }
-
-          const url = decorateUrl(redirectPath);
-          if (url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.push(url);
-          }
+          navigateToAuthSuccess(decorateUrl, router);
         },
       });
     } catch (err: any) {
@@ -249,17 +218,7 @@ export default function SSOContinuePage() {
 
   useEffect(() => {
     if (isSignedIn) {
-      let redirectPath = "/workspaces";
-      try {
-        if (typeof window !== "undefined" && window.localStorage) {
-          if (localStorage.getItem("storey_previous_workspace")) {
-            redirectPath = "/dashboard";
-          }
-        }
-      } catch (e) {
-        console.error("Failed to access localStorage:", e);
-      }
-      router.replace(redirectPath);
+      router.replace(getAuthRedirectPath());
       return;
     }
 
