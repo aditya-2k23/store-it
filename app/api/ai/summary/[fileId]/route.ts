@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 
 // Reuse the same model chains as the Edge Function
 const GENERATIVE_MODELS = [
@@ -134,11 +134,13 @@ function truncateToTokenLimit(text: string, maxTokens = 8000): string {
 // Extensions that can be meaningfully text-extracted without a parser library
 const SUMMARIZABLE_EXTENSIONS = new Set([
   "txt", "md", "csv", "html", "htm", "rtf", "log",
-  "json", "xml", "yaml", "yml", "pdf", "doc", "docx",
+  "json", "xml", "yaml", "yml", "pdf",
 ]);
 
 // Binary formats that produce garbage when decoded as UTF-8
+// doc/docx are also binary (OLE/ZIP-XML) — no lightweight extraction without a dependency
 const BINARY_DOCUMENT_EXTENSIONS = new Set([
+  "doc", "docx",
   "xls", "xlsx", "ods", "ppt", "pptx", "odp",
   "pages", "numbers", "key", "fig", "psd", "ai",
   "indd", "xd", "sketch", "afdesign", "afphoto", "epub",
@@ -278,6 +280,20 @@ export async function GET(
       });
     }
 
+    // Summary generation previously failed — don't retry indefinitely, but don't
+    // touch processing_status since tags/embedding are independently completed
+    if (
+      aiMeta.processing_status === "completed" &&
+      !aiMeta.summary &&
+      aiMeta.error_message
+    ) {
+      return NextResponse.json({
+        summary: null,
+        status: "failed",
+        error: aiMeta.error_message,
+      });
+    }
+
     // Status is 'completed' (tags done) but no summary yet — generate on demand
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
@@ -310,16 +326,15 @@ export async function GET(
       .update({ updated_at: new Date().toISOString() })
       .eq("file_id", fileId);
 
-    // Kick off generation asynchronously
-    (async () => {
+    // Use after() so Vercel keeps the function alive until generation completes
+    after(async () => {
       try {
         const { data: fileData, error: downloadError } = await supabase.storage
           .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
           .download(file.storage_key);
 
         if (downloadError || !fileData) {
-          console.error("Failed to download file for summary");
-          return;
+          throw new Error("Failed to download file for summary");
         }
 
         const fileBytes = new Uint8Array(await fileData.arrayBuffer());
@@ -377,11 +392,19 @@ export async function GET(
           .update({ summary: finalSummary })
           .eq("file_id", fileId);
       } catch (err: any) {
-        console.error("Async summary generation failed:", err);
+        console.error("Background summary generation failed:", err);
+        // Only record the error message — do NOT touch processing_status, which
+        // tracks tags/embedding pipeline status and may be 'completed' (tags done).
+        await supabase
+          .from("ai_metadata")
+          .update({
+            error_message: err?.message ?? "Summary generation failed",
+          })
+          .eq("file_id", fileId);
       }
-    })();
+    });
 
-    // Return processing immediately while generation runs in background
+    // Return processing immediately — after() runs once this response is sent
     return NextResponse.json({ summary: null, status: "processing" });
   } catch (error) {
     console.error("AI summary error:", error);

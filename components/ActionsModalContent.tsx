@@ -46,9 +46,12 @@ const AiSummarySection = ({ fileId }: { fileId: string }) => {
   useEffect(() => {
     let cancelled = false;
     let intervalId: NodeJS.Timeout;
+    let pollCount = 0;
+    const MAX_POLLS = 10;
 
     const fetchSummary = async () => {
       if (cancelled) return;
+      pollCount += 1;
       try {
         const res = await fetch(`/api/ai/summary/${fileId}`);
         if (!res.ok) {
@@ -68,10 +71,18 @@ const AiSummarySection = ({ fileId }: { fileId: string }) => {
           data.status === "not_applicable"
         ) {
           clearInterval(intervalId);
+          return;
         }
       } catch {
         if (!cancelled) setStatus("failed");
         clearInterval(intervalId);
+        return;
+      }
+
+      // Stop polling after MAX_POLLS attempts and show failure UI
+      if (pollCount >= MAX_POLLS) {
+        clearInterval(intervalId);
+        if (!cancelled) setStatus("failed");
       }
     };
 
