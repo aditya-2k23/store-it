@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import {
   renameWorkspace,
+  updateWorkspaceAppearance,
   updateMemberRole,
   removeMember,
   createInviteLink,
@@ -39,9 +40,13 @@ import {
   AlertTriangle,
   Home,
   Users,
+  Palette,
+  Shield,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { fadeIn, staggerChildren } from "@/components/landing/animations";
+import { WorkspaceAppearancePicker } from "./WorkspaceAppearancePicker";
+import { WorkspaceAvatar } from "./WorkspaceAvatar";
 
 interface WorkspaceSettingsClientProps {
   workspace: WorkspaceWithRole;
@@ -114,6 +119,90 @@ const GeneralSection = ({ workspace }: { workspace: WorkspaceWithRole }) => {
           Slug: <span className="font-medium">{workspace.slug}</span>
         </p>
       )}
+    </motion.section>
+  );
+};
+
+// ——— Section 1.5: Appearance ———
+const AppearanceSection = ({ workspace }: { workspace: WorkspaceWithRole }) => {
+  const router = useRouter();
+  const [icon, setIcon] = useState(workspace.icon || "lucide:building2");
+  const [themeColor, setThemeColor] = useState(
+    workspace.themeColor || "#FA7275",
+  );
+  const [isPending, startTransition] = useTransition();
+
+  const handleSave = () => {
+    if (icon === workspace.icon && themeColor === workspace.themeColor) return;
+    startTransition(async () => {
+      try {
+        await updateWorkspaceAppearance(workspace.id, icon, themeColor);
+        toast({
+          description: <p className="body-2 text-white">Appearance updated.</p>,
+          className: "success-toast",
+        });
+        router.refresh();
+      } catch {
+        toast({
+          description: (
+            <p className="body-2 text-white">Failed to update appearance.</p>
+          ),
+          className: "error-toast",
+        });
+      }
+    });
+  };
+
+  return (
+    <motion.section variants={fadeIn}>
+      <h3 className="h3 text-dark-100 flex items-center gap-2">
+        <Palette className="size-5" /> Appearance
+      </h3>
+      <div className="mt-4 flex flex-col gap-4 max-w-sm">
+        <WorkspaceAppearancePicker
+          iconValue={icon}
+          themeColorValue={themeColor}
+          onIconChange={setIcon}
+          onThemeColorChange={setThemeColor}
+        />
+        <Button
+          onClick={handleSave}
+          disabled={
+            isPending ||
+            (icon === workspace.icon && themeColor === workspace.themeColor)
+          }
+          className="primary-btn h-11 px-6 text-white cursor-pointer w-32"
+        >
+          {isPending ? <Loader2 className="size-4 animate-spin" /> : "Save"}
+        </Button>
+      </div>
+    </motion.section>
+  );
+};
+
+// ——— Section 1.7: Privacy ———
+const PrivacySection = ({ workspaceId }: { workspaceId: string }) => {
+  const router = useRouter();
+
+  return (
+    <motion.section variants={fadeIn}>
+      <h3 className="h3 text-dark-100 flex items-center gap-2">
+        <Shield className="size-5" /> Privacy & Data
+      </h3>
+      <p className="caption mt-1 text-light-200">
+        Review how AI processes your files in this workspace.
+      </p>
+      <div className="mt-4">
+        <Button
+          onClick={() =>
+            router.push(`/workspaces/${workspaceId}/settings/privacy`)
+          }
+          variant="outline"
+          className="h-11 px-6 border-light-300 text-light-100 cursor-pointer hover:bg-light-400/50"
+        >
+          View Privacy Dashboard
+        </Button>
+      </div>
     </motion.section>
   );
 };
@@ -837,11 +926,12 @@ const WorkspaceSettingsClient = ({
       <motion.div variants={fadeIn}>
         <h1 className="h1 text-dark-100">Workspace Settings</h1>
         <div className="mt-2 flex items-center gap-3">
-          <TypeIcon
-            className={cn(
-              "size-5",
-              workspace.type === "personal" ? "text-brand" : "text-blue",
-            )}
+          <WorkspaceAvatar
+            name={workspace.name}
+            icon={workspace.icon}
+            themeColor={workspace.themeColor}
+            className="size-6 text-[10px]"
+            iconClassName="size-3.5"
           />
           <span className="body-1 text-light-100">{workspace.name}</span>
           <span
@@ -862,8 +952,14 @@ const WorkspaceSettingsClient = ({
         <>
           <GeneralSection workspace={workspace} />
           <Separator className="bg-light-300" />
+          <AppearanceSection workspace={workspace} />
+          <Separator className="bg-light-300" />
         </>
       )}
+
+      {/* Privacy Section (all members) */}
+      <PrivacySection workspaceId={workspace.id} />
+      <Separator className="bg-light-300" />
 
       {/* Section 2: Members */}
       <MembersSection

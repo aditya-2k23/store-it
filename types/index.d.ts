@@ -1,4 +1,5 @@
 declare type FileType = "document" | "image" | "video" | "audio" | "other";
+declare type AiProcessingStatus = "pending" | "processing" | "completed" | "failed" | "not_applicable";
 
 declare interface ActionType {
   label: string;
@@ -44,6 +45,8 @@ declare interface FileItem {
   storageKey: string;
   owner: FileOwner;
   sharedWith: string[];
+  tags?: string[] | null;
+  aiStatus?: AiProcessingStatus;
 }
 
 declare interface UploadFileProps {

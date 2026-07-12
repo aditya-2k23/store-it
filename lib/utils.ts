@@ -7,6 +7,32 @@ export function cn(...inputs: ClassValue[]) {
 export const parseStringify = (value: unknown) =>
   JSON.parse(JSON.stringify(value));
 
+export const getAuthRedirectPath = () => {
+  let redirectPath = "/workspaces";
+  try {
+    if (typeof window !== "undefined" && window.localStorage) {
+      if (localStorage.getItem("storey_previous_workspace")) {
+        redirectPath = "/dashboard";
+      }
+    }
+  } catch (e) {
+    console.error("Failed to access localStorage:", e);
+  }
+  return redirectPath;
+};
+
+export const navigateToAuthSuccess = (
+  decorateUrl: (url: string) => string,
+  router: { push: (url: string) => void }
+) => {
+  const url = decorateUrl(getAuthRedirectPath());
+  if (url.startsWith("http")) {
+    window.location.href = url;
+  } else {
+    router.push(url);
+  }
+};
+
 export const convertFileToUrl = (file: File) => URL.createObjectURL(file);
 
 export const convertFileSize = (sizeInBytes: number, digits?: number) => {

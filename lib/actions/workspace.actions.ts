@@ -333,6 +333,40 @@ export const renameWorkspace = async (workspaceId: string, name: string) => {
   }
 };
 
+export const updateWorkspaceAppearance = async (workspaceId: string, icon: string, themeColor: string) => {
+  const supabase = createSupabaseAdmin();
+
+  try {
+    if (!icon.startsWith("lucide:") && !icon.startsWith("emoji:")) {
+      throw new Error("Invalid icon format");
+    }
+    if (!/^#[0-9A-Fa-f]{6}$/.test(themeColor)) {
+      throw new Error("Invalid theme color format");
+    }
+
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
+
+    const role = await getCallerRole(supabase, currentUser.id, workspaceId);
+    if (!canManageWorkspace(role!)) {
+      throw new Error("Only the owner can update workspace appearance");
+    }
+
+    const { data, error } = await supabase
+      .from("workspaces")
+      .update({ icon, theme_color: themeColor, updated_at: new Date().toISOString() })
+      .eq("id", workspaceId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return parseStringify(data);
+  } catch (error) {
+    handleError(error, "Failed to update workspace appearance");
+  }
+};
+
 export const deleteWorkspace = async (workspaceId: string) => {
   const supabase = createSupabaseAdmin();
 

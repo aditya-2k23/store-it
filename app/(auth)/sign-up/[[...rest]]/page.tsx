@@ -11,6 +11,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { navigateToAuthSuccess } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -110,12 +111,7 @@ export default function SignUpPage() {
               return;
             }
 
-            const url = decorateUrl("/");
-            if (url.startsWith("http")) {
-              window.location.href = url;
-            } else {
-              router.push(url);
-            }
+            navigateToAuthSuccess(decorateUrl, router);
           },
         });
         return;
@@ -208,12 +204,7 @@ export default function SignUpPage() {
               return;
             }
 
-            const url = decorateUrl("/");
-            if (url.startsWith("http")) {
-              window.location.href = url;
-            } else {
-              router.push(url);
-            }
+            navigateToAuthSuccess(decorateUrl, router);
           },
         });
       } else {
@@ -250,12 +241,7 @@ export default function SignUpPage() {
                   return;
                 }
 
-                const url = decorateUrl("/");
-                if (url.startsWith("http")) {
-                  window.location.href = url;
-                } else {
-                  router.push(url);
-                }
+                navigateToAuthSuccess(decorateUrl, router);
               },
             });
             return;

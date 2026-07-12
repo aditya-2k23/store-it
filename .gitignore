@@ -41,7 +41,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
 # Ignore Git Commit Genie data
+.gitgenie
 .gitgenie/**
 
 *.ideas.md

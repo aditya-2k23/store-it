@@ -1,10 +1,10 @@
 {
   "name": "storey",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "node --no-deprecation node_modules/next/dist/bin/next dev --turbopack",
+    "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",

@@ -3,13 +3,18 @@ import { calculatePercentage, convertFileSize } from "@/lib/utils";
 import { Sparkles } from "lucide-react";
 import { Button } from "./ui/button";
 import type { CSSProperties } from "react";
+import Link from "next/link";
 
 const Chart = ({
   used = 0,
   insightText,
+  snapshotText,
+  workspaceId,
 }: {
   used: number;
   insightText: string;
+  snapshotText?: string | null;
+  workspaceId: string;
 }) => {
   const percentage = Number(calculatePercentage(used));
   const clampedPercentage = Math.min(Math.max(percentage, 0), 100);
@@ -85,12 +90,20 @@ const Chart = ({
             </div>
           </div>
 
-          <Button
-            type="button"
-            className="h-10 w-fit rounded-xl bg-white/95 px-4 text-sm font-semibold text-slate-700 shadow-lg transition-transform duration-300 hover:-translate-y-0.5 hover:bg-white cursor-pointer"
-          >
-            Review AI Insights
-          </Button>
+          {snapshotText && (
+            <p className="text-xs text-white/70 mt-0.5">
+              {snapshotText}
+            </p>
+          )}
+
+          <Link href={`/workspaces/${workspaceId}/settings/privacy`}>
+            <Button
+              type="button"
+              className="h-10 w-fit rounded-xl bg-white/95 px-4 text-sm font-semibold text-slate-700 shadow-lg transition-transform duration-300 hover:-translate-y-0.5 hover:bg-white cursor-pointer"
+            >
+              Review AI Insights
+            </Button>
+          </Link>
         </div>
       </div>
     </section>

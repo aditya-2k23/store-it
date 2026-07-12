@@ -1,4 +1,3 @@
-import React from "react";
 import { cn } from "@/lib/utils";
 import { WORKSPACE_ICONS } from "@/lib/workspace-icons";
 
@@ -30,11 +29,12 @@ export function WorkspaceAvatar({
     );
   } else if (icon?.startsWith("lucide:")) {
     const iconName = icon.replace("lucide:", "");
-    const IconComponent = WORKSPACE_ICONS[iconName as keyof typeof WORKSPACE_ICONS];
-    
+    const IconComponent =
+      WORKSPACE_ICONS[iconName as keyof typeof WORKSPACE_ICONS];
+
     if (IconComponent) {
       content = (
-        <IconComponent className={cn("size-5 text-white", iconClassName)} />
+        <IconComponent className={cn("size-8 text-white", iconClassName)} />
       );
     } else {
       content = (
@@ -56,7 +56,7 @@ export function WorkspaceAvatar({
     <div
       className={cn(
         "flex shrink-0 items-center justify-center rounded-xl",
-        className
+        className,
       )}
       style={{ backgroundColor: bgColor }}
     >

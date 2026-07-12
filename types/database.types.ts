@@ -650,6 +650,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      match_files_by_embedding: {
+        Args: {
+          query_embedding: string
+          target_workspace_id: string
+          match_limit?: number
+        }
+        Returns: {
+          id: string
+          name: string
+          type: string
+          extension: string
+          size: number
+          created_at: string
+          storage_key: string
+          similarity: number
+        }[]
+      }
       requesting_clerk_user_id: { Args: never; Returns: string }
       transfer_workspace_ownership: {
         Args: {

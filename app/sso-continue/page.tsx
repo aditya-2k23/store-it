@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { navigateToAuthSuccess, getAuthRedirectPath } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -97,12 +98,7 @@ export default function SSOContinuePage() {
             return;
           }
 
-          const url = decorateUrl("/");
-          if (url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.push(url);
-          }
+          navigateToAuthSuccess(decorateUrl, router);
         },
       });
     } catch (err: any) {
@@ -130,12 +126,7 @@ export default function SSOContinuePage() {
             return;
           }
 
-          const url = decorateUrl("/");
-          if (url.startsWith("http")) {
-            window.location.href = url;
-          } else {
-            router.push(url);
-          }
+          navigateToAuthSuccess(decorateUrl, router);
         },
       });
     } catch (err: any) {
@@ -227,7 +218,7 @@ export default function SSOContinuePage() {
 
   useEffect(() => {
     if (isSignedIn) {
-      router.replace("/");
+      router.replace(getAuthRedirectPath());
       return;
     }
 
@@ -325,7 +316,9 @@ export default function SSOContinuePage() {
       <div className="flex min-h-screen items-center justify-center bg-white px-4">
         <div className="flex flex-col items-center gap-4 text-center">
           <Loader2 className="h-6 w-6 animate-spin text-brand" />
-          <p className="text-sm text-slate-600">Finishing your sign in...</p>
+          <p className="text-sm text-slate-600">
+            {signUp?.status ? "Finishing your sign up..." : "Finishing your sign in..."}
+          </p>
         </div>
       </div>
     );

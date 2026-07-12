@@ -1,5 +1,7 @@
+"use client";
+
 import Link from "next/link";
-import React from "react";
+import { useState, useEffect } from "react";
 import Thumbnail from "./Thumbnail";
 import { convertFileSize } from "@/lib/utils";
 import FormattedDateTime from "./FormattedDateTime";
@@ -7,6 +9,30 @@ import ActionsDropdown from "./ActionsDropdown";
 
 const Card = ({ file }: { file: FileItem }) => {
   const fileHref = file.downloadUrl || file.url || "#";
+
+  const isProcessing = file.aiStatus === "pending" || file.aiStatus === "processing";
+  const [isStaleProcessing, setIsStaleProcessing] = useState(false);
+
+  useEffect(() => {
+    if (!isProcessing) {
+      setIsStaleProcessing(false);
+      return;
+    }
+
+    const timeSinceCreated = Date.now() - new Date(file.createdAt).getTime();
+    const threshold = 2 * 60 * 1000;
+
+    if (timeSinceCreated > threshold) {
+      setIsStaleProcessing(true);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setIsStaleProcessing(true);
+    }, threshold - timeSinceCreated);
+
+    return () => clearTimeout(timer);
+  }, [isProcessing, file.createdAt]);
 
   return (
     <Link href={fileHref} target="_blank" className="file-card">
@@ -29,6 +55,30 @@ const Card = ({ file }: { file: FileItem }) => {
 
       <div className="file-card-details">
         <p className="subtitle-2 line-clamp-1">{file.name}</p>
+
+        {isStaleProcessing && (
+          <p className="text-[10px] text-light-200 mt-1 italic">
+            AI tagging in progress...
+          </p>
+        )}
+
+        {file.tags && file.tags.length > 0 && file.aiStatus === "completed" && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {file.tags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20"
+              >
+                {tag}
+              </span>
+            ))}
+            {file.tags.length > 3 && (
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-light-300 text-light-200">
+                +{file.tags.length - 3} more
+              </span>
+            )}
+          </div>
+        )}
 
         <FormattedDateTime
           date={file.createdAt}

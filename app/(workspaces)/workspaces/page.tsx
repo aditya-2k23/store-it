@@ -2,6 +2,9 @@ import { getUserWorkspaces } from "@/lib/actions/workspace.actions";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import WorkspacesGrid from "@/components/WorkspacesGrid";
+import ClerkUserButton from "@/components/ClerkUserButton";
+
+export const dynamic = "force-dynamic";
 
 export default async function WorkspacesPage() {
   const workspaces: WorkspaceWithRole[] = (await getUserWorkspaces()) ?? [];
@@ -16,7 +19,11 @@ export default async function WorkspacesPage() {
   const canCreateNew = teamCount < 5;
 
   return (
-    <div className="flex min-h-screen flex-col items-center px-5 py-12">
+    <div className="relative flex min-h-screen flex-col items-center px-5 py-12">
+      <div className="absolute top-6 right-6">
+        <ClerkUserButton />
+      </div>
+
       <Image
         src="/assets/icons/logo_brand.png"
         alt="Storey"
