@@ -190,7 +190,7 @@ export const createWorkspace = async (
       throw memberError;
     }
 
-    logActivity({
+    await logActivity({
       userId: currentUser.id,
       workspaceId: workspace.id,
       action: "workspace.create",
@@ -348,7 +348,7 @@ export const renameWorkspace = async (workspaceId: string, name: string) => {
 
     if (error) throw error;
 
-    logActivity({
+    await logActivity({
       userId: currentUser.id,
       workspaceId,
       action: "workspace.rename",
@@ -394,7 +394,7 @@ export const updateWorkspaceAppearance = async (workspaceId: string, icon: strin
 
     if (error) throw error;
 
-    logActivity({
+    await logActivity({
       userId: currentUser.id,
       workspaceId,
       action: "workspace.appearance.update",
@@ -437,7 +437,7 @@ export const deleteWorkspace = async (workspaceId: string) => {
     }
 
     // Log BEFORE deleting workspace row (workspace_id FK on activity_logs)
-    logActivity({
+    await logActivity({
       userId: currentUser.id,
       workspaceId,
       action: "workspace.delete",
@@ -481,6 +481,17 @@ export const deleteWorkspace = async (workspaceId: string) => {
 
       if (deleteFilesError) throw deleteFilesError;
     }
+
+    // Delete all activity_logs rows for this workspace before deleting the
+    // workspace itself — activity_logs.workspace_id has a FK to workspaces(id)
+    // with no cascade, so skipping this step causes a FK violation on any
+    // workspace that has activity history (i.e. essentially all of them).
+    const { error: deleteLogsError } = await supabase
+      .from("activity_logs")
+      .delete()
+      .eq("workspace_id", workspaceId);
+
+    if (deleteLogsError) throw deleteLogsError;
 
     const { error: deleteFoldersError } = await supabase
       .from("folders")
@@ -540,7 +551,7 @@ export const leaveWorkspace = async (workspaceId: string) => {
       cookieStore.delete(ACTIVE_WORKSPACE_COOKIE);
     }
 
-    logActivity({
+    await logActivity({
       userId: currentUser.id,
       workspaceId,
       action: "workspace.member.leave",
@@ -598,7 +609,7 @@ export const transferOwnership = async (
 
     if (txError) throw txError;
 
-    logActivity({
+    await logActivity({
       userId: currentUser.id,
       workspaceId,
       action: "workspace.member.ownership_transfer",
@@ -701,7 +712,7 @@ export const updateMemberRole = async (
 
     if (error) throw error;
 
-    logActivity({
+    await logActivity({
       userId: currentUser.id,
       workspaceId,
       action: "workspace.member.role_change",
@@ -762,7 +773,7 @@ export const removeMember = async (
 
     if (error) throw error;
 
-    logActivity({
+    await logActivity({
       userId: currentUser.id,
       workspaceId,
       action: "workspace.member.remove",
@@ -847,7 +858,7 @@ export const createInviteLink = async (
 
     const inviteUrl = `/invite/${activeSlug}/${data.token}`;
 
-    logActivity({
+    await logActivity({
       userId: currentUser.id,
       workspaceId,
       action: "workspace.member.invite",
@@ -1084,7 +1095,7 @@ export const acceptInvite = async (token: string) => {
     // Set as active workspace
     await setActiveWorkspace(workspaceId);
 
-    logActivity({
+    await logActivity({
       userId: currentUser.id,
       workspaceId,
       action: "workspace.member.join",

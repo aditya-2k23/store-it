@@ -43,6 +43,26 @@ async function logActivity(params: {
 export { logActivity };
 
 /**
+ * Validates that a cursor object has a real ISO date string and a UUID v4 id.
+ * Invalid cursors are silently ignored (pagination resets to first page).
+ */
+function isValidCursor(
+  cursor: unknown,
+): cursor is { createdAt: string; id: string } {
+  if (!cursor || typeof cursor !== "object") return false;
+  const c = cursor as { createdAt?: unknown; id?: unknown };
+  if (typeof c.createdAt !== "string" || typeof c.id !== "string") return false;
+  if (isNaN(new Date(c.createdAt).getTime())) return false;
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      c.id,
+    )
+  )
+    return false;
+  return true;
+}
+
+/**
  * Returns a paginated list of activity log entries for the given workspace.
  * The caller must be a member of the workspace.
  *
@@ -84,7 +104,9 @@ export const getWorkspaceActivity = async (
 
     // Apply cursor for pagination — rows strictly before the cursor position
     // using both created_at and id as tie-breaker for stability.
-    if (cursor) {
+    // Cursor is validated before use to guard against malformed input from
+    // the Server Action boundary (invalid cursor silently resets to page 1).
+    if (cursor && isValidCursor(cursor)) {
       query = query.or(
         `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`,
       );

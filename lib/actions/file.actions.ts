@@ -279,7 +279,7 @@ export const uploadFile = async ({ file, path }: UploadFileProps) => {
     revalidatePath(path);
     revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });
 
-    logActivity({
+    await logActivity({
       userId: currentUser.id,
       workspaceId: currentUser.workspaceId,
       fileId: fileId,
@@ -413,7 +413,7 @@ export const renameFile = async ({
 
     revalidatePath(path);
 
-    logActivity({
+    await logActivity({
       userId: currentUser.id,
       workspaceId: (fileRecord as any).workspace_id,
       fileId,
@@ -502,7 +502,7 @@ export const updateFileUsers = async ({
     );
 
     for (const email of addedEmails) {
-      logActivity({
+      await logActivity({
         userId: currentUser.id,
         workspaceId: (fileRecord as any).workspace_id,
         fileId,
@@ -517,7 +517,7 @@ export const updateFileUsers = async ({
     }
 
     for (const email of removedEmails) {
-      logActivity({
+      await logActivity({
         userId: currentUser.id,
         workspaceId: (fileRecord as any).workspace_id,
         fileId,
@@ -586,7 +586,7 @@ export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
     revalidatePath(path);
     revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });
 
-    logActivity({
+    await logActivity({
       userId: currentUser.id,
       workspaceId: fileRecord.workspace_id,
       fileId,
