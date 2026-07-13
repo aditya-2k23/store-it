@@ -146,3 +146,14 @@ declare interface WorkspaceInvitation {
   expiresAt: string;
   createdAt: string;
 }
+
+declare interface ActivityLogItem {
+  id: string;
+  userId: string | null;
+  workspaceId: string | null;
+  fileId: string | null;
+  folderId: string | null;
+  action: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}

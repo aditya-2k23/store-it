@@ -12,6 +12,7 @@ import {
   canRemoveMember,
   type WorkspaceRole,
 } from "@/lib/permissions";
+import { logActivity } from "./activity.actions";
 
 const handleError = (error: unknown, message: string) => {
   console.error(message, error);
@@ -189,6 +190,17 @@ export const createWorkspace = async (
       throw memberError;
     }
 
+    await logActivity({
+      userId: currentUser.id,
+      workspaceId: workspace.id,
+      action: "workspace.create",
+      metadata: {
+        name: trimmed,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
+
     return parseStringify(workspace);
   } catch (error) {
     handleError(error, "Failed to create workspace");
@@ -315,6 +327,15 @@ export const renameWorkspace = async (workspaceId: string, name: string) => {
       throw new Error("Only the owner can rename a workspace");
     }
 
+    // Fetch current name for activity log snapshot
+    const { data: currentWs, error: currentWsError } = await supabase
+      .from("workspaces")
+      .select("name")
+      .eq("id", workspaceId)
+      .single();
+    if (currentWsError) throw currentWsError;
+    const oldName = currentWs.name;
+
     const slugBase = generateSlugBase(trimmed);
     const slug = await ensureUniqueSlug(supabase, slugBase, workspaceId);
 
@@ -326,6 +347,18 @@ export const renameWorkspace = async (workspaceId: string, name: string) => {
       .single();
 
     if (error) throw error;
+
+    await logActivity({
+      userId: currentUser.id,
+      workspaceId,
+      action: "workspace.rename",
+      metadata: {
+        oldName,
+        newName: trimmed,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
 
     return parseStringify(data);
   } catch (error) {
@@ -361,6 +394,18 @@ export const updateWorkspaceAppearance = async (workspaceId: string, icon: strin
 
     if (error) throw error;
 
+    await logActivity({
+      userId: currentUser.id,
+      workspaceId,
+      action: "workspace.appearance.update",
+      metadata: {
+        icon,
+        themeColor,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
+
     return parseStringify(data);
   } catch (error) {
     handleError(error, "Failed to update workspace appearance");
@@ -382,7 +427,7 @@ export const deleteWorkspace = async (workspaceId: string) => {
     // Verify it's a team workspace
     const { data: ws, error: wsError } = await supabase
       .from("workspaces")
-      .select("type")
+      .select("type, name")
       .eq("id", workspaceId)
       .single();
 
@@ -390,6 +435,31 @@ export const deleteWorkspace = async (workspaceId: string) => {
     if (ws.type === "personal") {
       throw new Error("Personal workspaces cannot be deleted");
     }
+
+    // Log BEFORE deleting workspace row (workspace_id FK on activity_logs)
+    await logActivity({
+      userId: currentUser.id,
+      workspaceId,
+      action: "workspace.delete",
+      metadata: {
+        name: ws.name,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
+
+    // Delete all activity_logs rows for this workspace before touching files.
+    // activity_logs.file_id has a FK to files(id) with no cascade — if files
+    // are deleted first, Postgres rejects it because activity_logs rows still
+    // reference those file ids. Clearing activity_logs here (after the
+    // logActivity write above, which inserted the last row for this workspace)
+    // ensures zero FK conflicts for every subsequent delete step.
+    const { error: deleteLogsError } = await supabase
+      .from("activity_logs")
+      .delete()
+      .eq("workspace_id", workspaceId);
+
+    if (deleteLogsError) throw deleteLogsError;
 
     // Delete all files from R2 storage first
     const { data: files, error: filesError } = await supabase
@@ -483,6 +553,17 @@ export const leaveWorkspace = async (workspaceId: string) => {
       cookieStore.delete(ACTIVE_WORKSPACE_COOKIE);
     }
 
+    await logActivity({
+      userId: currentUser.id,
+      workspaceId,
+      action: "workspace.member.leave",
+      metadata: {
+        role,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
+
     return parseStringify({ status: "success" });
   } catch (error) {
     handleError(error, "Failed to leave workspace");
@@ -514,6 +595,13 @@ export const transferOwnership = async (
       throw new Error("Target user is not a member of this workspace");
     }
 
+    // Fetch new owner's name/email for metadata snapshot
+    const { data: newOwnerUser } = await supabase
+      .from("users")
+      .select("full_name, email")
+      .eq("id", newOwnerId)
+      .maybeSingle();
+
     // Atomic transaction using RPC function
     const { error: txError } = await supabase.rpc("transfer_workspace_ownership", {
       p_workspace_id: workspaceId,
@@ -522,6 +610,18 @@ export const transferOwnership = async (
     });
 
     if (txError) throw txError;
+
+    await logActivity({
+      userId: currentUser.id,
+      workspaceId,
+      action: "workspace.member.ownership_transfer",
+      metadata: {
+        newOwnerName: newOwnerUser?.full_name ?? null,
+        newOwnerEmail: newOwnerUser?.email ?? null,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
 
     return parseStringify({ status: "success" });
   } catch (error) {
@@ -599,6 +699,13 @@ export const updateMemberRole = async (
       throw new Error("You do not have permission to assign this role");
     }
 
+    // Fetch target user's name/email for metadata snapshot
+    const { data: targetUserData } = await supabase
+      .from("users")
+      .select("full_name, email")
+      .eq("id", targetUserId)
+      .maybeSingle();
+
     const { error } = await supabase
       .from("workspace_members")
       .update({ role: newRole })
@@ -606,6 +713,20 @@ export const updateMemberRole = async (
       .eq("user_id", targetUserId);
 
     if (error) throw error;
+
+    await logActivity({
+      userId: currentUser.id,
+      workspaceId,
+      action: "workspace.member.role_change",
+      metadata: {
+        targetUserName: targetUserData?.full_name ?? null,
+        targetUserEmail: targetUserData?.email ?? null,
+        oldRole: targetRole,
+        newRole,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
 
     return parseStringify({ status: "success" });
   } catch (error) {
@@ -639,6 +760,13 @@ export const removeMember = async (
       throw new Error("You do not have permission to remove this member");
     }
 
+    // Fetch target user's name/email for metadata snapshot
+    const { data: removedUserData } = await supabase
+      .from("users")
+      .select("full_name, email")
+      .eq("id", targetUserId)
+      .maybeSingle();
+
     const { error } = await supabase
       .from("workspace_members")
       .delete()
@@ -646,6 +774,19 @@ export const removeMember = async (
       .eq("user_id", targetUserId);
 
     if (error) throw error;
+
+    await logActivity({
+      userId: currentUser.id,
+      workspaceId,
+      action: "workspace.member.remove",
+      metadata: {
+        removedUserName: removedUserData?.full_name ?? null,
+        removedUserEmail: removedUserData?.email ?? null,
+        role: targetRole,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
 
     return parseStringify({ status: "success" });
   } catch (error) {
@@ -718,6 +859,17 @@ export const createInviteLink = async (
     if (error) throw error;
 
     const inviteUrl = `/invite/${activeSlug}/${data.token}`;
+
+    await logActivity({
+      userId: currentUser.id,
+      workspaceId,
+      action: "workspace.member.invite",
+      metadata: {
+        role,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
 
     return parseStringify({
       ...data,
@@ -944,6 +1096,17 @@ export const acceptInvite = async (token: string) => {
 
     // Set as active workspace
     await setActiveWorkspace(workspaceId);
+
+    await logActivity({
+      userId: currentUser.id,
+      workspaceId,
+      action: "workspace.member.join",
+      metadata: {
+        role,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
 
     return parseStringify({ workspaceId });
   } catch (error) {
