@@ -448,6 +448,19 @@ export const deleteWorkspace = async (workspaceId: string) => {
       },
     });
 
+    // Delete all activity_logs rows for this workspace before touching files.
+    // activity_logs.file_id has a FK to files(id) with no cascade — if files
+    // are deleted first, Postgres rejects it because activity_logs rows still
+    // reference those file ids. Clearing activity_logs here (after the
+    // logActivity write above, which inserted the last row for this workspace)
+    // ensures zero FK conflicts for every subsequent delete step.
+    const { error: deleteLogsError } = await supabase
+      .from("activity_logs")
+      .delete()
+      .eq("workspace_id", workspaceId);
+
+    if (deleteLogsError) throw deleteLogsError;
+
     // Delete all files from R2 storage first
     const { data: files, error: filesError } = await supabase
       .from("files")
@@ -481,17 +494,6 @@ export const deleteWorkspace = async (workspaceId: string) => {
 
       if (deleteFilesError) throw deleteFilesError;
     }
-
-    // Delete all activity_logs rows for this workspace before deleting the
-    // workspace itself — activity_logs.workspace_id has a FK to workspaces(id)
-    // with no cascade, so skipping this step causes a FK violation on any
-    // workspace that has activity history (i.e. essentially all of them).
-    const { error: deleteLogsError } = await supabase
-      .from("activity_logs")
-      .delete()
-      .eq("workspace_id", workspaceId);
-
-    if (deleteLogsError) throw deleteLogsError;
 
     const { error: deleteFoldersError } = await supabase
       .from("folders")
