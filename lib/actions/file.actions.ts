@@ -461,13 +461,20 @@ export const updateFileUsers = async ({
     );
 
     // Fetch existing shares before delete for diff-based logging
-    const { data: existingShareRows } = await supabase
+    const { data: existingShareRows, error: existingShareError } = await supabase
       .from("direct_file_shares")
       .select("shared_with_email")
       .eq("file_id", fileId);
-    const existingEmails = (existingShareRows || []).map(
-      (row) => row.shared_with_email,
-    );
+
+    if (existingShareError) {
+      console.error(
+        "Failed to fetch existing shares for audit logging:",
+        existingShareError,
+      );
+    }
+    const existingEmails = existingShareError
+      ? null
+      : (existingShareRows || []).map((row) => row.shared_with_email);
 
     const { error: deleteError } = await supabase
       .from("direct_file_shares")
@@ -494,41 +501,43 @@ export const updateFileUsers = async ({
     revalidatePath(path);
 
     // Compute diff and log per-email changes
-    const addedEmails = normalizedEmails.filter(
-      (email) => !existingEmails.includes(email),
-    );
-    const removedEmails = existingEmails.filter(
-      (email) => !normalizedEmails.includes(email),
-    );
+    if (existingEmails !== null) {
+      const addedEmails = normalizedEmails.filter(
+        (email) => !existingEmails.includes(email),
+      );
+      const removedEmails = existingEmails.filter(
+        (email) => !normalizedEmails.includes(email),
+      );
 
-    for (const email of addedEmails) {
-      await logActivity({
-        userId: currentUser.id,
-        workspaceId: (fileRecord as any).workspace_id,
-        fileId,
-        action: "file.share.create",
-        metadata: {
-          fileName: (fileRecord as any).name,
-          email,
-          actorName: currentUser.fullName,
-          actorEmail: currentUser.email,
-        },
-      });
-    }
+      for (const email of addedEmails) {
+        await logActivity({
+          userId: currentUser.id,
+          workspaceId: (fileRecord as any).workspace_id,
+          fileId,
+          action: "file.share.create",
+          metadata: {
+            fileName: (fileRecord as any).name,
+            email,
+            actorName: currentUser.fullName,
+            actorEmail: currentUser.email,
+          },
+        });
+      }
 
-    for (const email of removedEmails) {
-      await logActivity({
-        userId: currentUser.id,
-        workspaceId: (fileRecord as any).workspace_id,
-        fileId,
-        action: "file.share.remove",
-        metadata: {
-          fileName: (fileRecord as any).name,
-          email,
-          actorName: currentUser.fullName,
-          actorEmail: currentUser.email,
-        },
-      });
+      for (const email of removedEmails) {
+        await logActivity({
+          userId: currentUser.id,
+          workspaceId: (fileRecord as any).workspace_id,
+          fileId,
+          action: "file.share.remove",
+          metadata: {
+            fileName: (fileRecord as any).name,
+            email,
+            actorName: currentUser.fullName,
+            actorEmail: currentUser.email,
+          },
+        });
+      }
     }
 
     return parseStringify({ status: "success" });

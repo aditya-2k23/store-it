@@ -95,7 +95,7 @@ export const getWorkspaceActivity = async (
     let query = supabase
       .from("activity_logs")
       .select(
-        "id, user_id, workspace_id, file_id, folder_id, action, metadata, created_at, users:user_id(full_name, email, avatar_url)",
+        "id, user_id, workspace_id, file_id, folder_id, action, metadata, created_at",
       )
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: false })

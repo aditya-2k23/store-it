@@ -51,7 +51,7 @@ function formatAction(item: ActivityLogItem): string {
       return `${actor} deleted workspace "${m.name ?? "this workspace"}"`;
 
     case "workspace.member.invite":
-      return `${actor} created a ${m.role ?? ""} invite link`.trim();
+      return `${actor} created a${m.role ? ` ${m.role}` : ""} invite link`;
 
     case "workspace.member.join":
       return `${actor} joined the workspace as ${m.role ?? "a member"}`;
@@ -83,9 +83,11 @@ export default function ActivityFeed({
     initialCursor,
   );
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
 
   const handleLoadMore = () => {
     if (!cursor) return;
+    setError(null);
     startTransition(async () => {
       try {
         const result = await getWorkspaceActivity(workspaceId, cursor);
@@ -95,6 +97,7 @@ export default function ActivityFeed({
         }
       } catch (err) {
         console.error("Failed to load more activity:", err);
+        setError("Failed to load more activity. Please try again.");
       }
     });
   };
@@ -129,7 +132,8 @@ export default function ActivityFeed({
       ))}
 
       {cursor && (
-        <div className="pt-2">
+        <div className="pt-2 space-y-2">
+          {error && <p className="caption text-red-500 text-center">{error}</p>}
           <Button
             onClick={handleLoadMore}
             disabled={isPending}
@@ -137,7 +141,10 @@ export default function ActivityFeed({
             className="w-full h-10 rounded-xl border-light-300 text-light-100 cursor-pointer hover:bg-light-400/50"
           >
             {isPending ? (
-              <Loader2 className="size-4 animate-spin" />
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                <span className="sr-only">Loading...</span>
+              </>
             ) : (
               "Load more"
             )}
