@@ -6,6 +6,7 @@ import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { getCurrentUser } from "./user.actions";
 import { canUpload, canDeleteOthers, type WorkspaceRole } from "@/lib/permissions";
 import { MAX_FILE_SIZE } from "@/constants";
+import { logActivity } from "./activity.actions";
 
 import type { Database } from "@/types/database.types";
 
@@ -278,6 +279,20 @@ export const uploadFile = async ({ file, path }: UploadFileProps) => {
     revalidatePath(path);
     revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });
 
+    logActivity({
+      userId: currentUser.id,
+      workspaceId: currentUser.workspaceId,
+      fileId: fileId,
+      action: "file.upload",
+      metadata: {
+        fileName: file.name,
+        fileId,
+        size: file.size,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
+
     return parseStringify(fileItem);
   } catch (error) {
     handleError(error, "Failed to upload file");
@@ -380,7 +395,7 @@ export const renameFile = async ({
 
     const { data: fileRecord, error: fetchError } = await supabase
       .from("files")
-      .select("owner_id")
+      .select("owner_id, name, workspace_id")
       .eq("id", fileId)
       .single();
 
@@ -397,6 +412,19 @@ export const renameFile = async ({
     if (updateError) throw updateError;
 
     revalidatePath(path);
+
+    logActivity({
+      userId: currentUser.id,
+      workspaceId: (fileRecord as any).workspace_id,
+      fileId,
+      action: "file.rename",
+      metadata: {
+        oldName: (fileRecord as any).name,
+        newName,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
 
     return parseStringify({ status: "success" });
   } catch (error) {
@@ -417,7 +445,7 @@ export const updateFileUsers = async ({
 
     const { data: fileRecord, error: fetchError } = await supabase
       .from("files")
-      .select("owner_id")
+      .select("owner_id, name, workspace_id")
       .eq("id", fileId)
       .single();
 
@@ -430,6 +458,15 @@ export const updateFileUsers = async ({
       new Set(
         emails.map((email) => email.trim().toLowerCase()).filter(Boolean),
       ),
+    );
+
+    // Fetch existing shares before delete for diff-based logging
+    const { data: existingShareRows } = await supabase
+      .from("direct_file_shares")
+      .select("shared_with_email")
+      .eq("file_id", fileId);
+    const existingEmails = (existingShareRows || []).map(
+      (row) => row.shared_with_email,
     );
 
     const { error: deleteError } = await supabase
@@ -456,6 +493,44 @@ export const updateFileUsers = async ({
 
     revalidatePath(path);
 
+    // Compute diff and log per-email changes
+    const addedEmails = normalizedEmails.filter(
+      (email) => !existingEmails.includes(email),
+    );
+    const removedEmails = existingEmails.filter(
+      (email) => !normalizedEmails.includes(email),
+    );
+
+    for (const email of addedEmails) {
+      logActivity({
+        userId: currentUser.id,
+        workspaceId: (fileRecord as any).workspace_id,
+        fileId,
+        action: "file.share.create",
+        metadata: {
+          fileName: (fileRecord as any).name,
+          email,
+          actorName: currentUser.fullName,
+          actorEmail: currentUser.email,
+        },
+      });
+    }
+
+    for (const email of removedEmails) {
+      logActivity({
+        userId: currentUser.id,
+        workspaceId: (fileRecord as any).workspace_id,
+        fileId,
+        action: "file.share.remove",
+        metadata: {
+          fileName: (fileRecord as any).name,
+          email,
+          actorName: currentUser.fullName,
+          actorEmail: currentUser.email,
+        },
+      });
+    }
+
     return parseStringify({ status: "success" });
   } catch (error) {
     handleError(error, "Failed to update file shares");
@@ -471,7 +546,7 @@ export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
 
     const { data: fileRecord, error: fetchError } = await supabase
       .from("files")
-      .select("owner_id, storage_key, workspace_id")
+      .select("owner_id, name, storage_key, workspace_id")
       .eq("id", fileId)
       .single();
 
@@ -510,6 +585,18 @@ export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
 
     revalidatePath(path);
     revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });
+
+    logActivity({
+      userId: currentUser.id,
+      workspaceId: fileRecord.workspace_id,
+      fileId,
+      action: "file.delete",
+      metadata: {
+        fileName: (fileRecord as any).name,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
 
     return parseStringify({ status: "success" });
   } catch (error) {

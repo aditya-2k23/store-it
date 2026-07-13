@@ -42,11 +42,13 @@ import {
   Users,
   Palette,
   Shield,
+  Activity,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { fadeIn, staggerChildren } from "@/components/landing/animations";
 import { WorkspaceAppearancePicker } from "./WorkspaceAppearancePicker";
 import { WorkspaceAvatar } from "./WorkspaceAvatar";
+import ActivityFeed from "./ActivityFeed";
 
 interface WorkspaceSettingsClientProps {
   workspace: WorkspaceWithRole;
@@ -54,6 +56,8 @@ interface WorkspaceSettingsClientProps {
   members: WorkspaceMember[];
   invitations: WorkspaceInvitation[];
   currentUserId: string;
+  initialActivity: ActivityLogItem[];
+  initialCursor: { createdAt: string; id: string } | null;
 }
 
 interface InviteLinkResult {
@@ -433,6 +437,35 @@ const MembersSection = ({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </motion.section>
+  );
+};
+
+// ——— Section 2.5: Activity (all members) ———
+const ActivitySection = ({
+  workspace,
+  initialActivity,
+  initialCursor,
+}: {
+  workspace: WorkspaceWithRole;
+  initialActivity: ActivityLogItem[];
+  initialCursor: { createdAt: string; id: string } | null;
+}) => {
+  return (
+    <motion.section variants={fadeIn}>
+      <h3 className="h3 text-dark-100 flex items-center gap-2">
+        <Activity className="size-5" /> Activity
+      </h3>
+      <p className="caption mt-1 text-light-200">
+        Recent actions in this workspace.
+      </p>
+      <div className="mt-4">
+        <ActivityFeed
+          workspaceId={workspace.id}
+          initialItems={initialActivity}
+          initialCursor={initialCursor}
+        />
+      </div>
     </motion.section>
   );
 };
@@ -912,6 +945,8 @@ const WorkspaceSettingsClient = ({
   members,
   invitations,
   currentUserId,
+  initialActivity,
+  initialCursor,
 }: WorkspaceSettingsClientProps) => {
   const TypeIcon = workspace.type === "personal" ? Home : Users;
 
@@ -967,6 +1002,15 @@ const WorkspaceSettingsClient = ({
         userRole={userRole}
         members={members}
         currentUserId={currentUserId}
+      />
+
+      <Separator className="bg-light-300" />
+
+      {/* Section 2.5: Activity (all members) */}
+      <ActivitySection
+        workspace={workspace}
+        initialActivity={initialActivity}
+        initialCursor={initialCursor}
       />
 
       <Separator className="bg-light-300" />
