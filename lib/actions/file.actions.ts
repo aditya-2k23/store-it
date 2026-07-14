@@ -578,6 +578,14 @@ export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
       }
     }
 
+    // Unlink existing activity logs from this file to prevent FK violation on delete
+    const { error: unlinkLogsError } = await supabase
+      .from("activity_logs")
+      .update({ file_id: null })
+      .eq("file_id", fileId);
+
+    if (unlinkLogsError) throw unlinkLogsError;
+
     const { error: deleteError } = await supabase
       .from("files")
       .delete()
@@ -598,7 +606,6 @@ export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
     await logActivity({
       userId: currentUser.id,
       workspaceId: fileRecord.workspace_id,
-      fileId,
       action: "file.delete",
       metadata: {
         fileName: (fileRecord as any).name,

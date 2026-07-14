@@ -12,6 +12,7 @@
 | 2026-06 | v1.2    | Workspace Identity — added `expected_members`, `icon`, and `theme_color` to workspaces                                                                                  |
 | 2026-06 | v1.3    | AI Features — typed `embedding` to `vector(768)`, added IVFFlat index, enabled `pg_net`, added `trigger_process_file_ai` webhook trigger on files INSERT, added `match_files_by_embedding` RPC |
 | 2026-06 | v1.4    | Embedding Model Migration — changed `embedding` from `vector(768)` to `vector(3072)` for `gemini-embedding-2`, dropped IVFFlat index (pgvector 0.8.0 has 2000-dim limit, using exact scan), reset all existing embeddings to force reprocessing |
+| 2026-07 | v1.5    | Unique personal workspace — added partial unique index `workspaces_one_personal_per_owner` on `(owner_id) WHERE type = 'personal'` to prevent duplicate personal workspaces from concurrent `getCurrentUser` calls |
 
 ---
 
@@ -20,7 +21,7 @@
 - **File-level sharing only** — no folder-level sharing at launch. `direct_file_shares` operates on `files` only.
 - **Private R2 storage** — `storage_key` and `thumbnail_key` are R2 object paths. Signed URLs are generated per-request and never stored.
 - **Clerk for auth, Supabase for data** — Clerk handles authentication. User records are synced to Supabase via webhooks. Workspaces are fully Supabase-native and decoupled from Clerk Organizations.
-- **Personal workspace** — one auto-created per user on first login (`type = 'personal'`). Cannot be deleted.
+- **Personal workspace** — one auto-created per user on first login (`type = 'personal'`). Cannot be deleted. Uniqueness enforced at DB level by partial unique index `workspaces_one_personal_per_owner` on `(owner_id) WHERE type = 'personal'` — app code handles `23505` conflict gracefully.
 - **Team workspaces** — user-created, max 5 per user (`type = 'team'`). Enforced server-side.
 - **Active workspace** — tracked via an httpOnly cookie `storey-active-workspace` containing the workspace UUID.
 - **Roles** — `owner > admin > editor > viewer`. Owner is immutable via role change; must transfer ownership to leave.
@@ -77,9 +78,11 @@ A workspace is the top-level container for files and members.
 
 **Relationships:** `owner_id` → `users(id)`
 
+**Indexes:** `workspaces_one_personal_per_owner` — partial unique index on `(owner_id) WHERE type = 'personal'`. Ensures at most one personal workspace per user. Added v1.5.
+
 **Business rules:**
 
-- `type = 'personal'` — one per user, auto-created, cannot be deleted
+- `type = 'personal'` — one per user (enforced by unique partial index), auto-created, cannot be deleted
 - `type = 'team'` — max 5 per user (enforced server-side), user-created
 
 ---

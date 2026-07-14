@@ -163,30 +163,40 @@ export const getCurrentUser = cache(async () => {
       throw new Error("User upsert failed");
     }
 
-    const { data: existingWorkspace, error: workspaceError } = await supabase
+    // Attempt to insert a personal workspace directly — the unique partial
+    // index (workspaces_one_personal_per_owner) is the source of truth for
+    // uniqueness, not an application-level pre-check.  If a concurrent request
+    // already created this user's personal workspace, Postgres rejects with
+    // 23505 and we fall back to a SELECT (mirroring the users-table pattern
+    // a few lines above).
+    let workspaceId: string;
+
+    const { data: newWorkspace, error: createWorkspaceError } = await supabase
       .from("workspaces")
+      .insert({
+        name: `${fullName}'s Workspace`,
+        type: "personal",
+        owner_id: user.id,
+      })
       .select("id")
-      .eq("owner_id", user.id)
-      .eq("type", "personal")
-      .maybeSingle();
+      .single();
 
-    if (workspaceError) throw workspaceError;
-
-    let workspaceId = existingWorkspace?.id;
-
-    if (!workspaceId) {
-      const { data: newWorkspace, error: createWorkspaceError } = await supabase
+    if (createWorkspaceError?.code === "23505") {
+      // Concurrent request already created the personal workspace — select it.
+      // .single() is safe here because the unique index guarantees at most one row.
+      const { data: existingWorkspace, error: existingWsError } = await supabase
         .from("workspaces")
-        .insert({
-          name: `${fullName}'s Workspace`,
-          type: "personal",
-          owner_id: user.id,
-        })
         .select("id")
+        .eq("owner_id", user.id)
+        .eq("type", "personal")
         .single();
 
-      if (createWorkspaceError) throw createWorkspaceError;
+      if (existingWsError) throw existingWsError;
 
+      workspaceId = existingWorkspace.id;
+    } else if (createWorkspaceError) {
+      throw createWorkspaceError;
+    } else {
       workspaceId = newWorkspace.id;
     }
 
