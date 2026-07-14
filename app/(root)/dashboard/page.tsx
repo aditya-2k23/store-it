@@ -1,3 +1,4 @@
+import { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -7,9 +8,27 @@ import FormattedDateTime from "@/components/FormattedDateTime";
 import Thumbnail from "@/components/Thumbnail";
 import { Separator } from "@/components/ui/separator";
 import { getFiles, getTotalSpaceUsed, getStorageSnapshot } from "@/lib/actions/file.actions";
-import { getActiveWorkspaceId } from "@/lib/actions/workspace.actions";
+import { getActiveWorkspaceId, getUserWorkspaces } from "@/lib/actions/workspace.actions";
 import { convertFileSize, getUsageSummary } from "@/lib/utils";
 import EmptyState from "@/components/EmptyState";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const activeWorkspaceId = await getActiveWorkspaceId();
+  if (activeWorkspaceId) {
+    const workspaces = await getUserWorkspaces();
+    const activeWorkspace = (workspaces || []).find(
+      (w: any) => w.id === activeWorkspaceId
+    );
+    if (activeWorkspace) {
+      return {
+        title: `Storey - ${activeWorkspace.name} Dashboard`,
+      };
+    }
+  }
+  return {
+    title: "Storey - Dashboard",
+  };
+}
 
 const Dashboard = async () => {
   // Parallel requests
