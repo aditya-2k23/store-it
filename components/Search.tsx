@@ -4,7 +4,7 @@ import { Input } from "./ui/input";
 import { getFileAccessUrl, getFiles } from "@/lib/actions/file.actions";
 import { useToast } from "@/hooks/use-toast";
 import { isLikelyFilenameQuery } from "@/lib/utils";
-import { Mic, Search as SearchIcon, Sparkles } from "lucide-react";
+import { Mic, Search as SearchIcon, Sparkles, Square } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Thumbnail from "./Thumbnail";
@@ -28,6 +28,8 @@ const Search = () => {
   const [semanticResults, setSemanticResults] = useState<SemanticResult[]>([]);
   const [open, setOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const [isListening, setIsListening] = useState(false);
   const minQueryLength = 2;
   const { toast } = useToast();
 
@@ -45,6 +47,66 @@ const Search = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SpeechRecognition =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = true;
+
+        recognitionRef.current.onresult = (event: any) => {
+          let currentTranscript = "";
+          for (let i = 0; i < event.results.length; i++) {
+            currentTranscript += event.results[i][0].transcript;
+          }
+          setQuery(currentTranscript);
+        };
+
+        recognitionRef.current.onerror = (event: any) => {
+          console.error("Speech recognition error", event.error);
+          setIsListening(false);
+        };
+
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+      }
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      if (!recognitionRef.current) {
+        toast({
+          variant: "destructive",
+          title: "Voice input not supported",
+          description: "Your browser does not support voice input.",
+        });
+        return;
+      }
+      try {
+        setQuery(""); // Clear query when starting new voice input
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (e) {
+        console.error("Error starting speech recognition", e);
+      }
+    }
+  };
 
   const router = useRouter();
   const path = usePathname();
@@ -199,10 +261,19 @@ const Search = () => {
         />
         <button
           type="button"
-          aria-label="Use voice input"
-          className="inline-flex size-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-500 transition-colors hover:text-[#ff6b6b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35"
+          aria-label={isListening ? "Stop voice input" : "Use voice input"}
+          onClick={toggleListening}
+          className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 ${
+            isListening
+              ? "border-brand bg-red-50 text-brand shadow-[0_0_15px_rgba(250,114,117,0.7)] animate-pulse"
+              : "border-white/80 bg-white/90 text-slate-500 hover:text-brand"
+          }`}
         >
-          <Mic className="size-4" />
+          {isListening ? (
+            <Square className="size-4 fill-current cursor-pointer" />
+          ) : (
+            <Mic className="size-4 cursor-pointer" />
+          )}
         </button>
 
         {open && (
@@ -226,10 +297,10 @@ const Search = () => {
                         <button
                           type="button"
                           onClick={() => handleClickSemantic(result)}
-                          className="flex w-full items-center justify-between gap-4 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35"
+                          className="flex w-full items-center justify-between gap-4 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35 cursor-pointer"
                         >
                           <div className="flex min-w-0 items-center gap-3">
-                            <Sparkles className="size-4 shrink-0 text-brand/60" />
+                            <Sparkles className="size-4 shrink-0 text-brand/60 cursor-pointer" />
                             <p className="line-clamp-1 text-sm font-medium text-slate-700">
                               {result.name}
                             </p>
@@ -261,7 +332,7 @@ const Search = () => {
                         <button
                           type="button"
                           onClick={() => handleClickItem(file)}
-                          className="flex w-full items-center justify-between gap-4 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35"
+                          className="flex w-full items-center justify-between gap-4 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35 cursor-pointer"
                         >
                           <div className="flex min-w-0 items-center gap-3">
                             <Thumbnail
@@ -269,7 +340,7 @@ const Search = () => {
                               extension={file.extension}
                               url={file.url}
                               thumbnailUrl={file.thumbnailUrl}
-                              className="size-9 min-w-9"
+                              className="size-9 min-w-9 cursor-pointer"
                             />
                             <p className="line-clamp-1 text-sm font-medium text-slate-700">
                               {file.name}
