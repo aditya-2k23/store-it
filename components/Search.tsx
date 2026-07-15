@@ -1,7 +1,9 @@
 "use client";
 import FormattedDateTime from "./FormattedDateTime";
 import { Input } from "./ui/input";
-import { getFiles } from "@/lib/actions/file.actions";
+import { getFileAccessUrl, getFiles } from "@/lib/actions/file.actions";
+import { useToast } from "@/hooks/use-toast";
+import { isLikelyFilenameQuery } from "@/lib/utils";
 import { Mic, Search as SearchIcon, Sparkles } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -19,22 +21,6 @@ interface SemanticResult {
   similarity: number;
 }
 
-const isSemanticQuery = (q: string): boolean => {
-  if (q.split(" ").length >= 4) return true;
-  const semanticPrefixes = [
-    "find",
-    "show",
-    "what",
-    "which",
-    "where",
-    "who",
-    "list",
-    "get",
-    "give",
-  ];
-  return semanticPrefixes.some((p) => q.toLowerCase().startsWith(p));
-};
-
 const Search = () => {
   const [query, setQuery] = useState("");
   const searchParams = useSearchParams();
@@ -43,6 +29,7 @@ const Search = () => {
   const [open, setOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const minQueryLength = 2;
+  const { toast } = useToast();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -64,26 +51,26 @@ const Search = () => {
 
   const [debouncedQuery] = useDebounce(query.trim(), 400);
 
-  const fetchSemanticResults = useCallback(async (
-    q: string,
-    signal?: AbortSignal,
-  ): Promise<SemanticResult[]> => {
-    try {
-      // Get workspaceId from cookie — we'll read it from the current page context
-      // Since we can't read httpOnly cookies client-side, we pass workspaceId via API
-      const res = await fetch("/api/ai/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q }),
-        signal,
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.results || [];
-    } catch {
-      return [];
-    }
-  }, []);
+  const fetchSemanticResults = useCallback(
+    async (q: string, signal?: AbortSignal): Promise<SemanticResult[]> => {
+      try {
+        // Get workspaceId from cookie — we'll read it from the current page context
+        // Since we can't read httpOnly cookies client-side, we pass workspaceId via API
+        const res = await fetch("/api/ai/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: q }),
+          signal,
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.results || [];
+      } catch {
+        return [];
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     let isActive = true;
@@ -117,8 +104,8 @@ const Search = () => {
         limit: 8,
       });
 
-      // Run semantic search only if query looks semantic
-      const shouldRunSemantic = isSemanticQuery(debouncedQuery);
+      // Skip embeddings for literal filename lookups; keyword search still runs.
+      const shouldRunSemantic = !isLikelyFilenameQuery(debouncedQuery);
       const semanticPromise = shouldRunSemantic
         ? fetchSemanticResults(debouncedQuery, controller.signal)
         : Promise.resolve([]);
@@ -172,15 +159,27 @@ const Search = () => {
     );
   };
 
-  const handleClickSemantic = (result: SemanticResult) => {
+  const handleClickSemantic = async (result: SemanticResult) => {
     setOpen(false);
     setResults([]);
     setSemanticResults([]);
 
-    const type = result.type;
-    router.push(
-      `/${type === "video" || type === "audio" ? "media" : type + "s"}`,
-    );
+    try {
+      const url = await getFileAccessUrl(result.id);
+      if (url) {
+        window.open(url, "_blank");
+        return;
+      }
+    } catch (error) {
+      console.error("Failed to open semantic search result:", error);
+    }
+
+    toast({
+      variant: "destructive",
+      title: "Unable to open file",
+      description:
+        "This file is no longer available or you no longer have access.",
+    });
   };
 
   const hasSemanticResults = semanticResults.length > 0;

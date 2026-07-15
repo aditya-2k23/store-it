@@ -1,10 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
+import { fetchSharedFileIds } from "@/lib/actions/file.actions";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 const EMBEDDING_MODEL = "gemini-embedding-2";
 const MAX_RETRIES = 3;
+const MIN_SIMILARITY_THRESHOLD = 0.5; // initial guess — expect to tune against real usage
 
 async function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -43,9 +45,7 @@ async function generateEmbedding(
           await delay(1000 * Math.pow(2, attempt));
           continue;
         }
-        throw new Error(
-          `Embedding model failed (non-retryable): ${lastError}`,
-        );
+        throw new Error(`Embedding model failed (non-retryable): ${lastError}`);
       }
 
       const data = await resp.json();
@@ -79,10 +79,7 @@ export async function POST(req: Request) {
     const { query } = await req.json();
 
     if (!query) {
-      return NextResponse.json(
-        { error: "Missing query" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Missing query" }, { status: 400 });
     }
 
     // Read workspace from httpOnly cookie
@@ -109,7 +106,7 @@ export async function POST(req: Request) {
     // Verify user exists and has workspace membership
     const { data: user } = await supabase
       .from("users")
-      .select("id")
+      .select("id, email")
       .eq("clerk_id", userId)
       .single();
 
@@ -128,6 +125,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
+    const sharedFileIds = await fetchSharedFileIds(
+      supabase,
+      user.email.toLowerCase(),
+    );
+
     // Generate embedding for the search query
     const queryEmbedding = await generateEmbedding(geminiApiKey, query);
 
@@ -135,11 +137,15 @@ export async function POST(req: Request) {
     const embeddingStr = `[${queryEmbedding.join(",")}]`;
 
     // Query using pgvector cosine similarity
-    const { data: results, error } = await supabase.rpc("match_files_by_embedding", {
-      query_embedding: embeddingStr,
-      target_workspace_id: workspaceId,
-      match_limit: 5,
-    });
+    const { data: results, error } = await supabase.rpc(
+      "match_files_by_embedding",
+      {
+        query_embedding: embeddingStr,
+        target_workspace_id: workspaceId,
+        match_limit: 5,
+        shared_file_ids: sharedFileIds,
+      },
+    );
 
     if (error) {
       console.error("Semantic search RPC error:", error);
@@ -149,7 +155,11 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ results: results || [] });
+    const filteredResults = (results || []).filter(
+      (result) => result.similarity >= MIN_SIMILARITY_THRESHOLD,
+    );
+
+    return NextResponse.json({ results: filteredResults });
   } catch (error) {
     console.error("AI search error:", error);
     return NextResponse.json(
