@@ -108,10 +108,11 @@ export const getFileType = (fileName: string) => {
 };
 
 export const isLikelyFilenameQuery = (query: string): boolean => {
-  const lastDotIndex = query.lastIndexOf(".");
+  const trimmedQuery = query.trim();
+  const lastDotIndex = trimmedQuery.lastIndexOf(".");
   if (lastDotIndex === -1) return false;
 
-  const extension = query.slice(lastDotIndex + 1).toLowerCase();
+  const extension = trimmedQuery.slice(lastDotIndex + 1).toLowerCase();
   return [
     ...documentExtensions,
     ...imageExtensions,

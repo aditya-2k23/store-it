@@ -115,32 +115,11 @@ const fetchWorkspaceFiles = async (
     searchText,
   ).eq("workspace_id", workspaceId);
 
-  if (!searchText) {
-    const { data, error } = await filesQuery;
-    if (error) throw error;
-
-    return {
-      files: (data || []) as FileRowWithOwner[],
-      candidateFileIds: [],
-    };
-  }
-
-  const candidateIdsQuery = applyFilters(
-    supabase.from("files").select("id"),
-    types,
-    "",
-  ).eq("workspace_id", workspaceId);
-
-  const [{ data: candidateIds, error: candidateIdsError }, { data, error }] =
-    await Promise.all([candidateIdsQuery, filesQuery]);
-  if (candidateIdsError) throw candidateIdsError;
+  const { data, error } = await filesQuery;
   if (error) throw error;
 
   return {
     files: (data || []) as FileRowWithOwner[],
-    candidateFileIds: (candidateIds || []).map(
-      (file: { id: string }) => file.id,
-    ),
   };
 };
 
@@ -182,19 +161,25 @@ const fetchFilesByIds = async (
 
 const fetchTagMatchedWorkspaceFiles = async (
   supabase: ReturnType<typeof createSupabaseAdmin>,
-  workspaceFileIds: string[],
   types: FileType[],
   searchText: string,
   workspaceId: string,
 ) => {
-  if (!searchText || workspaceFileIds.length === 0) {
+  if (!searchText) {
     return [] as FileRowWithOwner[];
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("ai_metadata")
-    .select("file_id, tags")
-    .in("file_id", workspaceFileIds);
+    .select("file_id, tags, files!inner(workspace_id, type, is_trashed)")
+    .eq("files.workspace_id", workspaceId)
+    .eq("files.is_trashed", false);
+
+  if (types.length > 0) {
+    query = query.in("files.type", types);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
 
   const normalizedSearchText = searchText.toLowerCase();
@@ -206,7 +191,9 @@ const fetchTagMatchedWorkspaceFiles = async (
     )
     .map((metadata) => metadata.file_id);
 
-  return fetchFilesByIds(supabase, matchingFileIds, types, "", workspaceId);
+  const boundedIds = matchingFileIds.slice(0, 100);
+
+  return fetchFilesByIds(supabase, boundedIds, types, "", workspaceId);
 };
 
 const fetchShareMap = async (
@@ -376,7 +363,7 @@ export const getFiles = async ({
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const { files: workspaceFiles, candidateFileIds: workspaceFileIds } =
+    const { files: workspaceFiles } =
       await fetchWorkspaceFiles(
         supabase,
         currentUser.workspaceId,
@@ -401,7 +388,6 @@ export const getFiles = async ({
     if (searchText) {
       tagMatchedWorkspaceFiles = await fetchTagMatchedWorkspaceFiles(
         supabase,
-        workspaceFileIds,
         types,
         searchText,
         currentUser.workspaceId,
