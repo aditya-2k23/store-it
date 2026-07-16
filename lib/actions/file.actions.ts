@@ -4,7 +4,11 @@ import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { getFileType, parseStringify } from "@/lib/utils";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { getCurrentUser } from "./user.actions";
-import { canUpload, canDeleteOthers, type WorkspaceRole } from "@/lib/permissions";
+import {
+  canUpload,
+  canDeleteOthers,
+  type WorkspaceRole,
+} from "@/lib/permissions";
 import { MAX_FILE_SIZE } from "@/constants";
 import { logActivity } from "./activity.actions";
 
@@ -105,19 +109,21 @@ const fetchWorkspaceFiles = async (
   types: FileType[],
   searchText: string,
 ) => {
-  const baseQuery = supabase.from("files").select(FILE_SELECT);
-  const filteredQuery = applyFilters(baseQuery, types, searchText).eq(
-    "workspace_id",
-    workspaceId,
-  );
+  const filesQuery = applyFilters(
+    supabase.from("files").select(FILE_SELECT),
+    types,
+    searchText,
+  ).eq("workspace_id", workspaceId);
 
-  const { data, error } = await filteredQuery;
+  const { data, error } = await filesQuery;
   if (error) throw error;
 
-  return (data || []) as FileRowWithOwner[];
+  return {
+    files: (data || []) as FileRowWithOwner[],
+  };
 };
 
-const fetchSharedFileIds = async (
+export const fetchSharedFileIds = async (
   supabase: ReturnType<typeof createSupabaseAdmin>,
   email: string,
 ) => {
@@ -151,6 +157,44 @@ const fetchFilesByIds = async (
   if (error) throw error;
 
   return (data || []) as FileRowWithOwner[];
+};
+
+const fetchTagMatchedWorkspaceFiles = async (
+  supabase: ReturnType<typeof createSupabaseAdmin>,
+  types: FileType[],
+  searchText: string,
+  workspaceId: string,
+) => {
+  if (!searchText) {
+    return [] as FileRowWithOwner[];
+  }
+
+  // Filter tag matches in the database using ilike on the STORED generated column
+  // tags_search (= array_to_string(tags, ' ')). This replaces the former pattern of
+  // fetching all ai_metadata rows unbounded and filtering in JS — that approach
+  // silently returned incomplete results for workspaces with >db.max_rows ai_metadata
+  // rows because PostgREST's row cap applied before the JS filter ran.
+  //
+  // ilike is case-insensitive, matching the previous .toLowerCase().includes() behavior.
+  // The .limit(100) cap is now enforced by the database, not by post-fetch .slice().
+  let query = supabase
+    .from("ai_metadata")
+    .select("file_id, files!inner(workspace_id, type, is_trashed)")
+    .eq("files.workspace_id", workspaceId)
+    .eq("files.is_trashed", false)
+    .ilike("tags_search", `%${searchText}%`)
+    .limit(100);
+
+  if (types.length > 0) {
+    query = query.in("files.type", types);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  const matchingFileIds = (data || []).map((metadata) => metadata.file_id);
+
+  return fetchFilesByIds(supabase, matchingFileIds, types, "", workspaceId);
 };
 
 const fetchShareMap = async (
@@ -226,7 +270,9 @@ export const uploadFile = async ({ file, path }: UploadFileProps) => {
       .maybeSingle();
 
     if (!membership?.role || !canUpload(membership.role as WorkspaceRole)) {
-      throw new Error("You do not have permission to upload files in this workspace");
+      throw new Error(
+        "You do not have permission to upload files in this workspace",
+      );
     }
 
     const { type, extension } = getFileType(file.name);
@@ -261,10 +307,16 @@ export const uploadFile = async ({ file, path }: UploadFileProps) => {
           .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
           .remove([storageKey]);
         if (removeError) {
-          console.error("Failed to remove storage blob after insert failure:", removeError);
+          console.error(
+            "Failed to remove storage blob after insert failure:",
+            removeError,
+          );
         }
       } catch (err) {
-        console.error("Failed to remove storage blob after insert failure:", err);
+        console.error(
+          "Failed to remove storage blob after insert failure:",
+          err,
+        );
       }
       throw insertError;
     }
@@ -312,12 +364,13 @@ export const getFiles = async ({
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const workspaceFiles = await fetchWorkspaceFiles(
-      supabase,
-      currentUser.workspaceId,
-      types,
-      searchText,
-    );
+    const { files: workspaceFiles } =
+      await fetchWorkspaceFiles(
+        supabase,
+        currentUser.workspaceId,
+        types,
+        searchText,
+      );
 
     const sharedFileIds = await fetchSharedFileIds(
       supabase,
@@ -332,13 +385,25 @@ export const getFiles = async ({
       currentUser.workspaceId,
     );
 
+    let tagMatchedWorkspaceFiles: FileRowWithOwner[] = [];
+    if (searchText) {
+      tagMatchedWorkspaceFiles = await fetchTagMatchedWorkspaceFiles(
+        supabase,
+        types,
+        searchText,
+        currentUser.workspaceId,
+      );
+    }
+
     const combinedMap = new Map<string, FileRowWithOwner>();
-    [...workspaceFiles, ...sharedFiles].forEach((file) => {
-      combinedMap.set(file.id, file);
-    });
+    [...workspaceFiles, ...sharedFiles, ...tagMatchedWorkspaceFiles].forEach(
+      (file) => {
+        combinedMap.set(file.id, file);
+      },
+    );
 
     const combinedFiles = Array.from(combinedMap.values());
-    const total = combinedFiles.length;
+    const total = combinedMap.size;
 
     const sortedFiles = sortFiles(combinedFiles, sort);
     const start = offset || 0;
@@ -362,7 +427,8 @@ export const getFiles = async ({
 
     const signedUrlMap = new Map<string, string>();
     (signedUrls || []).forEach((entry) => {
-      if (entry.signedUrl && entry.path) signedUrlMap.set(entry.path, entry.signedUrl);
+      if (entry.signedUrl && entry.path)
+        signedUrlMap.set(entry.path, entry.signedUrl);
     });
 
     const documents = pagedFiles.map((file) =>
@@ -376,6 +442,50 @@ export const getFiles = async ({
     return parseStringify({ documents, total });
   } catch (error) {
     handleError(error, "Failed to get files");
+  }
+};
+
+export const getFileAccessUrl = async (
+  fileId: string,
+): Promise<string | null> => {
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) return null;
+
+    const supabase = createSupabaseAdmin();
+    const { data: file, error: fileError } = await supabase
+      .from("files")
+      .select("owner_id, workspace_id, storage_key, is_trashed")
+      .eq("id", fileId)
+      .maybeSingle();
+
+    if (fileError || !file || file.is_trashed) return null;
+
+    const { data: membership, error: membershipError } = await supabase
+      .from("workspace_members")
+      .select("id")
+      .eq("user_id", currentUser.id)
+      .eq("workspace_id", file.workspace_id)
+      .maybeSingle();
+
+    if (membershipError) return null;
+
+    if (!membership) {
+      const { data: share, error: shareError } = await supabase
+        .from("direct_file_shares")
+        .select("id")
+        .eq("file_id", fileId)
+        .eq("shared_with_email", currentUser.email.toLowerCase())
+        .maybeSingle();
+
+      if (shareError || !share) return null;
+    }
+
+    const signedUrl = await createSignedDownloadUrl(supabase, file.storage_key);
+    return signedUrl || null;
+  } catch (error) {
+    console.error("Failed to get file access URL:", error);
+    return null;
   }
 };
 
@@ -461,10 +571,11 @@ export const updateFileUsers = async ({
     );
 
     // Fetch existing shares before delete for diff-based logging
-    const { data: existingShareRows, error: existingShareError } = await supabase
-      .from("direct_file_shares")
-      .select("shared_with_email")
-      .eq("file_id", fileId);
+    const { data: existingShareRows, error: existingShareError } =
+      await supabase
+        .from("direct_file_shares")
+        .select("shared_with_email")
+        .eq("file_id", fileId);
 
     if (existingShareError) {
       console.error(

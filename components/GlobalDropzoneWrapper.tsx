@@ -34,7 +34,7 @@ const GlobalDropzoneWrapper = ({
         if (file.size > MAX_FILE_SIZE) {
           return toast({
             description: (
-              <p className="body-2 text-white">
+              <p className="body-2">
                 <span className="font-semibold">{file.name}</span> is too large.
                 Max file size is 50MB.
               </p>
@@ -43,17 +43,74 @@ const GlobalDropzoneWrapper = ({
           });
         }
 
-        return uploadFile({ file, path }).catch((err) => {
-          console.error("Upload failed for", file.name, err);
-          toast({
-            description: (
-              <p className="body-2 text-white">
-                Failed to upload <span className="font-semibold">{file.name}</span>.
-              </p>
-            ),
-            className: "error-toast",
-          });
+        const uploadToast = toast({
+          title: "Uploading",
+          description: (
+            <p className="body-2">
+              <span className="font-semibold">{file.name}</span> is uploading... 0%
+            </p>
+          ),
         });
+
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+          progress += 5;
+          if (progress > 90) {
+            clearInterval(progressInterval);
+          } else {
+            uploadToast.update({
+              id: uploadToast.id,
+              title: "Uploading",
+              description: (
+                <p className="body-2">
+                  <span className="font-semibold">{file.name}</span> is uploading... {progress}%
+                </p>
+              ),
+            });
+          }
+        }, 150);
+
+        return uploadFile({ file, path })
+          .then((uploadedFile) => {
+            clearInterval(progressInterval);
+            if (uploadedFile) {
+              uploadToast.update({
+                id: uploadToast.id,
+                title: "Success",
+                description: (
+                  <p className="body-2 text-dark-100">
+                    <span className="font-semibold text-green">{file.name}</span> has been uploaded successfully
+                  </p>
+                ),
+                className: "success-toast",
+              });
+            } else {
+              uploadToast.update({
+                id: uploadToast.id,
+                title: "Error",
+                description: (
+                  <p className="body-2">
+                    Failed to upload <span className="font-semibold">{file.name}</span>.
+                  </p>
+                ),
+                className: "error-toast",
+              });
+            }
+          })
+          .catch((err) => {
+            clearInterval(progressInterval);
+            console.error("Upload failed for", file.name, err);
+            uploadToast.update({
+              id: uploadToast.id,
+              title: "Error",
+              description: (
+                <p className="body-2">
+                  Failed to upload <span className="font-semibold">{file.name}</span>.
+                </p>
+              ),
+              className: "error-toast",
+            });
+          });
       });
 
       try {

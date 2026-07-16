@@ -17,6 +17,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSyncExternalStore, useEffect } from "react";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
+import { APP_VERSION } from "@/constants";
 
 const safeLocalStorage = {
   getItem(key: string): string | null {
@@ -37,7 +38,7 @@ const safeLocalStorage = {
     } catch (e) {
       console.error(`Failed to set item ${key} to localStorage:`, e);
     }
-  }
+  },
 };
 
 const sidebarLinks = [
@@ -123,15 +124,20 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
                 : "w-[148px] opacity-100",
             )}
           >
-            <Image
-              src="/assets/icons/logo_brand.png"
-              alt="Storey"
-              width={148}
-              height={148}
-              loading="eager"
-              priority
-              className="shrink-0"
-            />
+            <div className="relative">
+              <Image
+                src="/assets/icons/logo_brand.png"
+                alt="Storey"
+                width={148}
+                height={148}
+                loading="eager"
+                priority
+                className="shrink-0"
+              />
+              <span className="absolute bottom-3 right-px text-[9.5px] font-bold text-brand">
+                {APP_VERSION}
+              </span>
+            </div>
           </Link>
 
           {/* Expand/Collapse Button */}

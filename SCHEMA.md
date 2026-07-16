@@ -5,14 +5,16 @@
 
 ## Changelog
 
-| Date    | Version | Description                                                                                                                                                             |
-| ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2025-06 | v1.0    | Initial schema — users, workspaces, workspace_members, folders, files, file_versions, direct_file_shares, public_file_links, favorite_files, ai_metadata, activity_logs |
-| 2025-06 | v1.1    | Workspace system — renamed role `member` → `editor` in workspace_members; added `slug` column to workspaces; added `workspace_invitations` table                        |
-| 2026-06 | v1.2    | Workspace Identity — added `expected_members`, `icon`, and `theme_color` to workspaces                                                                                  |
-| 2026-06 | v1.3    | AI Features — typed `embedding` to `vector(768)`, added IVFFlat index, enabled `pg_net`, added `trigger_process_file_ai` webhook trigger on files INSERT, added `match_files_by_embedding` RPC |
-| 2026-06 | v1.4    | Embedding Model Migration — changed `embedding` from `vector(768)` to `vector(3072)` for `gemini-embedding-2`, dropped IVFFlat index (pgvector 0.8.0 has 2000-dim limit, using exact scan), reset all existing embeddings to force reprocessing |
-| 2026-07 | v1.5    | Unique personal workspace — added partial unique index `workspaces_one_personal_per_owner` on `(owner_id) WHERE type = 'personal'` to prevent duplicate personal workspaces from concurrent `getCurrentUser` calls |
+| Date    | Version | Description                                                                                                                                                                                                                                                                                                                                            |
+| ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2025-06 | v1.0    | Initial schema — users, workspaces, workspace_members, folders, files, file_versions, direct_file_shares, public_file_links, favorite_files, ai_metadata, activity_logs                                                                                                                                                                                |
+| 2025-06 | v1.1    | Workspace system — renamed role `member` → `editor` in workspace_members; added `slug` column to workspaces; added `workspace_invitations` table                                                                                                                                                                                                       |
+| 2026-06 | v1.2    | Workspace Identity — added `expected_members`, `icon`, and `theme_color` to workspaces                                                                                                                                                                                                                                                                 |
+| 2026-06 | v1.3    | AI Features — typed `embedding` to `vector(768)`, added IVFFlat index, enabled `pg_net`, added `trigger_process_file_ai` webhook trigger on files INSERT, added `match_files_by_embedding` RPC                                                                                                                                                         |
+| 2026-06 | v1.4    | Embedding Model Migration — changed `embedding` from `vector(768)` to `vector(3072)` for `gemini-embedding-2`, dropped IVFFlat index (pgvector 0.8.0 has 2000-dim limit, using exact scan), reset all existing embeddings to force reprocessing                                                                                                        |
+| 2026-07 | v1.5    | Unique personal workspace — added partial unique index `workspaces_one_personal_per_owner` on `(owner_id) WHERE type = 'personal'` to prevent duplicate personal workspaces from concurrent `getCurrentUser` calls                                                                                                                                     |
+| 2026-07 | v1.6    | Semantic search — added `shared_file_ids` to `match_files_by_embedding` so directly shared files are included in search results                                                                                                                                                                                                                        |
+| 2026-07 | v1.7    | Native tag search — added `tags_search` STORED generated column to `ai_metadata` (via `immutable_array_to_string` wrapper); added `immutable_array_to_string` helper function. Replaces in-memory JS tag filtering with a native `.ilike` database query, closing a silent-truncation bug where the PostgREST row cap applied before JS filtering ran. |
 
 ---
 
@@ -28,7 +30,7 @@
 - **Invite links** — token-based, 7-day expiry, single-use. No email sent (phase 1). URL: `/invite/[slug]/[token]`.
 - **storage_used** — maintained on `workspaces` via a Postgres trigger that fires on file insert/delete.
 - **Full-text search** — `search_tsv` tsvector + GIN index on `files` and `folders`.
-- **AI embeddings** — `vector(3072)` column in `ai_metadata` with `embedding_model` text column. Uses `gemini-embedding-2` (3072 dimensions). No vector index (pgvector 0.8.0 IVFFlat/HNSW limit is 2000 dims) — exact scan via `<=>` operator in `match_files_by_embedding` RPC. Sufficient for small-to-medium datasets.
+- **AI embeddings** — `vector(3072)` column in `ai_metadata` with `embedding_model` text column. Uses `gemini-embedding-2` (3072 dimensions). No vector index (pgvector 0.8.0 IVFFlat/HNSW limit is 2000 dims) — exact scan via `<=>` operator in `match_files_by_embedding` RPC. Semantic search matches the active workspace and files directly shared with the caller. Sufficient for small-to-medium datasets.
 - **Activity log actions** — dot-namespaced plain text (e.g. `file.upload`, `workspace.member.invite`) — not an enum, to allow new event types without migrations.
 - **Workspace Identity** — workspaces optionally store `icon` (emoji or lucide) and `theme_color` to provide customizable avatars, along with `expected_members` to track team size intent.
 
@@ -277,19 +279,20 @@ Per-user file favorites. Simple junction table.
 
 AI processing results per file. One-to-one with files.
 
-| Column              | Type        | Constraints                      | Notes                                                                                  |
-| ------------------- | ----------- | -------------------------------- | -------------------------------------------------------------------------------------- |
-| `id`                | uuid        | PK, default gen_random_uuid()    |                                                                                        |
-| `file_id`           | uuid        | NOT NULL, UNIQUE, FK → files(id) | One-to-one                                                                             |
-| `summary`           | text        | nullable                         | AI-generated document summary                                                          |
-| `tags`              | text[]      | nullable                         | Auto-generated tags                                                                    |
-| `embedding`         | vector(3072) | nullable                         | pgvector embedding for `gemini-embedding-2` (3072 dimensions). No vector index — pgvector 0.8.0 caps IVFFlat/HNSW at 2000 dims; exact scan via `<=>` is used instead. |
-| `embedding_model`   | text        | nullable                         | e.g. `gemini-embedding-2`. Stored alongside embedding to know which model produced it. |
-| `processing_status` | text        | NOT NULL, default `'pending'`    | CHECK: `pending \| processing \| completed \| failed \| not_applicable`                |
-| `error_message`     | text        | nullable                         | Populated if processing_status = 'failed'                                              |
-| `processed_at`      | timestamptz | nullable                         | When processing completed                                                              |
-| `created_at`        | timestamptz | NOT NULL, default now()          |                                                                                        |
-| `updated_at`        | timestamptz | NOT NULL, default now()          |                                                                                        |
+| Column              | Type         | Constraints                      | Notes                                                                                                                                                                                          |
+| ------------------- | ------------ | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                | uuid         | PK, default gen_random_uuid()    |                                                                                                                                                                                                |
+| `file_id`           | uuid         | NOT NULL, UNIQUE, FK → files(id) | One-to-one                                                                                                                                                                                     |
+| `summary`           | text         | nullable                         | AI-generated document summary                                                                                                                                                                  |
+| `tags`              | text[]       | nullable                         | Auto-generated tags                                                                                                                                                                            |
+| `embedding`         | vector(3072) | nullable                         | pgvector embedding for `gemini-embedding-2` (3072 dimensions). No vector index — pgvector 0.8.0 caps IVFFlat/HNSW at 2000 dims; exact scan via `<=>` is used instead.                          |
+| `embedding_model`   | text         | nullable                         | e.g. `gemini-embedding-2`. Stored alongside embedding to know which model produced it.                                                                                                         |
+| `processing_status` | text         | NOT NULL, default `'pending'`    | CHECK: `pending \| processing \| completed \| failed \| not_applicable`                                                                                                                        |
+| `error_message`     | text         | nullable                         | Populated if processing_status = 'failed'                                                                                                                                                      |
+| `processed_at`      | timestamptz  | nullable                         | When processing completed                                                                                                                                                                      |
+| `tags_search`       | text         | STORED GENERATED (never write)   | `immutable_array_to_string(tags, ' ')` — space-joined tag string used for native `.ilike` substring search. Not intended to be read or displayed directly; use `tags` for display. Added v1.7. |
+| `created_at`        | timestamptz  | NOT NULL, default now()          |                                                                                                                                                                                                |
+| `updated_at`        | timestamptz  | NOT NULL, default now()          |                                                                                                                                                                                                |
 
 ---
 

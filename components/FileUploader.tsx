@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useRef } from "react";
 
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
@@ -19,38 +19,117 @@ interface Props {
 const FileUploader = ({ className }: Props) => {
   const path = usePathname();
   const { toast } = useToast();
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<{ id: string; file: File }[]>([]);
+  const [uploadProgresses, setUploadProgresses] = useState<{ [key: string]: number }>({});
+  const removedFileIds = useRef<Set<string>>(new Set());
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
-      setFiles(acceptedFiles);
+      const validFiles: { id: string; file: File }[] = [];
 
-      const uploadPromises = acceptedFiles.map(async (file) => {
+      acceptedFiles.forEach(file => {
         if (file.size > MAX_FILE_SIZE) {
-          setFiles((prevFiles) =>
-            prevFiles.filter((f) => f.name !== file.name)
-          );
-
-          return toast({
+          toast({
             description: (
-              <p className="body-2 text-white">
+              <p className="body-2">
                 <span className="font-semibold">{file.name}</span> is too large.
                 Max file size is 50MB.
               </p>
             ),
             className: "error-toast",
           });
+        } else {
+          validFiles.push({
+            id: crypto.randomUUID(),
+            file
+          });
         }
+      });
 
-        return uploadFile({ file, path }).then(
-          (uploadedFile) => {
-            if (uploadedFile) {
-              setFiles((prevFiles) =>
-                prevFiles.filter((f) => f.name !== file.name)
-              );
-            }
+      if (validFiles.length === 0) return;
+
+      setFiles((prev) => [...prev, ...validFiles]);
+
+      // Initialize progress for each file
+      setUploadProgresses((prev) => {
+        const newProgresses = { ...prev };
+        validFiles.forEach(({ id }) => {
+          newProgresses[id] = 0;
+        });
+        return newProgresses;
+      });
+
+      const uploadPromises = validFiles.map(async ({ id, file }) => {
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+          if (removedFileIds.current.has(id)) {
+            clearInterval(progressInterval);
+            return;
           }
-        );
+          progress += 5;
+          if (progress > 90) {
+            clearInterval(progressInterval);
+          }
+          setUploadProgresses((prev) => ({
+            ...prev,
+            [id]: Math.min(progress, 90),
+          }));
+        }, 150);
+
+        return uploadFile({ file, path })
+          .then((uploadedFile) => {
+            clearInterval(progressInterval);
+            
+            if (removedFileIds.current.has(id)) return;
+            
+            if (uploadedFile) {
+              setUploadProgresses((prev) => ({
+                ...prev,
+                [id]: 100,
+              }));
+              setFiles((prevFiles) =>
+                prevFiles.filter((f) => f.id !== id)
+              );
+              toast({
+                title: "Success",
+                description: (
+                  <p className="body-2 text-dark-100">
+                    <span className="font-semibold text-green">{file.name}</span> has been uploaded successfully
+                  </p>
+                ),
+                className: "success-toast",
+              });
+            } else {
+              setFiles((prevFiles) =>
+                prevFiles.filter((f) => f.id !== id)
+              );
+              toast({
+                title: "Error",
+                description: (
+                  <p className="body-2">
+                    Failed to upload <span className="font-semibold">{file.name}</span>
+                  </p>
+                ),
+                className: "error-toast",
+              });
+            }
+          })
+          .catch(() => {
+            clearInterval(progressInterval);
+            if (removedFileIds.current.has(id)) return;
+            setFiles((prevFiles) =>
+              prevFiles.filter((f) => f.id !== id)
+            );
+            toast({
+              title: "Error",
+              description: (
+                <p className="body-2">
+                  Failed to upload <span className="font-semibold">{file.name}</span>
+                </p>
+              ),
+              className: "error-toast",
+            });
+          });
       });
 
       await Promise.all(uploadPromises);
@@ -62,10 +141,11 @@ const FileUploader = ({ className }: Props) => {
 
   const handleRemoveFile = (
     e: React.MouseEvent<HTMLImageElement, MouseEvent>,
-    fileName: string
+    id: string
   ) => {
     e.stopPropagation();
-    setFiles((prevFiles) => prevFiles.filter((file) => file.name !== fileName));
+    removedFileIds.current.add(id);
+    setFiles((prevFiles) => prevFiles.filter((f) => f.id !== id));
   };
 
   return (
@@ -84,12 +164,13 @@ const FileUploader = ({ className }: Props) => {
         <ul className="uploader-preview-list">
           <h4 className="h4 text-light-100">Uploading</h4>
 
-          {files.map((file, index) => {
+          {files.map(({ id, file }) => {
             const { type, extension } = getFileType(file.name);
+            const currentProgress = uploadProgresses[id] || 0;
 
             return (
               <li
-                key={`${file.name}-${index}`}
+                key={id}
                 className="uploader-preview-item"
               >
                 <div className="flex items-center gap-3">
@@ -99,14 +180,15 @@ const FileUploader = ({ className }: Props) => {
                     url={convertFileToUrl(file)}
                   />
 
-                  <div className="preview-item-name">
-                    {file.name}
+                  <div className="preview-item-name flex items-center gap-2">
+                    <span className="truncate">{file.name}</span>
                     <Image
                       src="/assets/icons/file-loader.gif"
                       width={80}
                       height={26}
                       alt="Loader"
                     />
+                    <span className="text-brand text-[12px] font-semibold">{currentProgress}%</span>
                   </div>
                 </div>
 
@@ -115,7 +197,7 @@ const FileUploader = ({ className }: Props) => {
                   width={24}
                   height={24}
                   alt="Remove"
-                  onClick={(e) => handleRemoveFile(e, file.name)}
+                  onClick={(e) => handleRemoveFile(e, id)}
                 />
               </li>
             );

@@ -1,8 +1,10 @@
 "use client";
 import FormattedDateTime from "./FormattedDateTime";
 import { Input } from "./ui/input";
-import { getFiles } from "@/lib/actions/file.actions";
-import { Mic, Search as SearchIcon, Sparkles } from "lucide-react";
+import { getFileAccessUrl, getFiles } from "@/lib/actions/file.actions";
+import { useToast } from "@/hooks/use-toast";
+import { isLikelyFilenameQuery } from "@/lib/utils";
+import { Mic, Search as SearchIcon, Sparkles, Square } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Thumbnail from "./Thumbnail";
@@ -19,22 +21,6 @@ interface SemanticResult {
   similarity: number;
 }
 
-const isSemanticQuery = (q: string): boolean => {
-  if (q.split(" ").length >= 4) return true;
-  const semanticPrefixes = [
-    "find",
-    "show",
-    "what",
-    "which",
-    "where",
-    "who",
-    "list",
-    "get",
-    "give",
-  ];
-  return semanticPrefixes.some((p) => q.toLowerCase().startsWith(p));
-};
-
 const Search = () => {
   const [query, setQuery] = useState("");
   const searchParams = useSearchParams();
@@ -42,7 +28,10 @@ const Search = () => {
   const [semanticResults, setSemanticResults] = useState<SemanticResult[]>([]);
   const [open, setOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const [isListening, setIsListening] = useState(false);
   const minQueryLength = 2;
+  const { toast } = useToast();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -59,31 +48,91 @@ const Search = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const SpeechRecognition =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = true;
+
+        recognitionRef.current.onresult = (event: any) => {
+          let currentTranscript = "";
+          for (let i = 0; i < event.results.length; i++) {
+            currentTranscript += event.results[i][0].transcript;
+          }
+          setQuery(currentTranscript);
+        };
+
+        recognitionRef.current.onerror = (event: any) => {
+          console.error("Speech recognition error", event.error);
+          setIsListening(false);
+        };
+
+        recognitionRef.current.onend = () => {
+          setIsListening(false);
+        };
+      }
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      if (!recognitionRef.current) {
+        toast({
+          variant: "destructive",
+          title: "Voice input not supported",
+          description: "Your browser does not support voice input.",
+        });
+        return;
+      }
+      try {
+        setQuery(""); // Clear query when starting new voice input
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (e) {
+        console.error("Error starting speech recognition", e);
+      }
+    }
+  };
+
   const router = useRouter();
   const path = usePathname();
 
   const [debouncedQuery] = useDebounce(query.trim(), 400);
 
-  const fetchSemanticResults = useCallback(async (
-    q: string,
-    signal?: AbortSignal,
-  ): Promise<SemanticResult[]> => {
-    try {
-      // Get workspaceId from cookie — we'll read it from the current page context
-      // Since we can't read httpOnly cookies client-side, we pass workspaceId via API
-      const res = await fetch("/api/ai/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q }),
-        signal,
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.results || [];
-    } catch {
-      return [];
-    }
-  }, []);
+  const fetchSemanticResults = useCallback(
+    async (q: string, signal?: AbortSignal): Promise<SemanticResult[]> => {
+      try {
+        // Get workspaceId from cookie — we'll read it from the current page context
+        // Since we can't read httpOnly cookies client-side, we pass workspaceId via API
+        const res = await fetch("/api/ai/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: q }),
+          signal,
+        });
+        if (!res.ok) return [];
+        const data = await res.json();
+        return data.results || [];
+      } catch {
+        return [];
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     let isActive = true;
@@ -117,8 +166,8 @@ const Search = () => {
         limit: 8,
       });
 
-      // Run semantic search only if query looks semantic
-      const shouldRunSemantic = isSemanticQuery(debouncedQuery);
+      // Skip embeddings for literal filename lookups; keyword search still runs.
+      const shouldRunSemantic = !isLikelyFilenameQuery(debouncedQuery);
       const semanticPromise = shouldRunSemantic
         ? fetchSemanticResults(debouncedQuery, controller.signal)
         : Promise.resolve([]);
@@ -172,15 +221,34 @@ const Search = () => {
     );
   };
 
-  const handleClickSemantic = (result: SemanticResult) => {
+  const handleClickSemantic = async (result: SemanticResult) => {
     setOpen(false);
     setResults([]);
     setSemanticResults([]);
 
-    const type = result.type;
-    router.push(
-      `/${type === "video" || type === "audio" ? "media" : type + "s"}`,
-    );
+    // Open a blank tab synchronously to avoid browser popup blockers
+    const newTab = window.open("about:blank", "_blank");
+
+    try {
+      const url = await getFileAccessUrl(result.id);
+      if (url && newTab) {
+        newTab.location.href = url;
+        return;
+      }
+    } catch (error) {
+      console.error("Failed to open semantic search result:", error);
+    }
+
+    if (newTab) {
+      newTab.close();
+    }
+
+    toast({
+      variant: "destructive",
+      title: "Unable to open file",
+      description:
+        "This file is no longer available or you no longer have access.",
+    });
   };
 
   const hasSemanticResults = semanticResults.length > 0;
@@ -200,10 +268,19 @@ const Search = () => {
         />
         <button
           type="button"
-          aria-label="Use voice input"
-          className="inline-flex size-9 items-center justify-center rounded-full border border-white/80 bg-white/90 text-slate-500 transition-colors hover:text-[#ff6b6b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35"
+          aria-label={isListening ? "Stop voice input" : "Use voice input"}
+          onClick={toggleListening}
+          className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 ${
+            isListening
+              ? "border-brand bg-red-50 text-brand shadow-[0_0_15px_rgba(250,114,117,0.7)] animate-pulse"
+              : "border-white/80 bg-white/90 text-slate-500 hover:text-brand"
+          }`}
         >
-          <Mic className="size-4" />
+          {isListening ? (
+            <Square className="size-4 fill-current cursor-pointer" />
+          ) : (
+            <Mic className="size-4 cursor-pointer" />
+          )}
         </button>
 
         {open && (
@@ -227,10 +304,10 @@ const Search = () => {
                         <button
                           type="button"
                           onClick={() => handleClickSemantic(result)}
-                          className="flex w-full items-center justify-between gap-4 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35"
+                          className="flex w-full items-center justify-between gap-4 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35 cursor-pointer"
                         >
                           <div className="flex min-w-0 items-center gap-3">
-                            <Sparkles className="size-4 shrink-0 text-brand/60" />
+                            <Sparkles className="size-4 shrink-0 text-brand/60 cursor-pointer" />
                             <p className="line-clamp-1 text-sm font-medium text-slate-700">
                               {result.name}
                             </p>
@@ -262,7 +339,7 @@ const Search = () => {
                         <button
                           type="button"
                           onClick={() => handleClickItem(file)}
-                          className="flex w-full items-center justify-between gap-4 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35"
+                          className="flex w-full items-center justify-between gap-4 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35 cursor-pointer"
                         >
                           <div className="flex min-w-0 items-center gap-3">
                             <Thumbnail
@@ -270,7 +347,7 @@ const Search = () => {
                               extension={file.extension}
                               url={file.url}
                               thumbnailUrl={file.thumbnailUrl}
-                              className="size-9 min-w-9"
+                              className="size-9 min-w-9 cursor-pointer"
                             />
                             <p className="line-clamp-1 text-sm font-medium text-slate-700">
                               {file.name}

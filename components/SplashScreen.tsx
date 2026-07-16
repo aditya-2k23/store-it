@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { APP_VERSION } from "@/constants";
 
 const SplashScreen = () => {
   const [show, setShow] = useState(true);
@@ -27,7 +28,10 @@ const SplashScreen = () => {
         >
           {/* Ambient background blur elements */}
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#ff6b6b]/10 rounded-full blur-[100px] pointer-events-none -z-10 animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue/10 rounded-full blur-[100px] pointer-events-none -z-10 animate-pulse" style={{ animationDelay: "1s" }} />
+          <div
+            className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue/10 rounded-full blur-[100px] pointer-events-none -z-10 animate-pulse"
+            style={{ animationDelay: "1s" }}
+          />
 
           <motion.div
             initial={{ scale: 0.8, opacity: 0, y: 20 }}
@@ -43,7 +47,7 @@ const SplashScreen = () => {
               transition={{
                 duration: 2.5,
                 ease: "easeInOut",
-                repeat: Infinity
+                repeat: Infinity,
               }}
               className="relative"
             >
@@ -60,12 +64,12 @@ const SplashScreen = () => {
                 className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-12 h-2 bg-brand/20 rounded-full blur-xs"
                 animate={{
                   scale: [1, 1.5, 1],
-                  opacity: [0.5, 0.2, 0.5]
+                  opacity: [0.5, 0.2, 0.5],
                 }}
                 transition={{
                   duration: 2.5,
                   ease: "easeInOut",
-                  repeat: Infinity
+                  repeat: Infinity,
                 }}
               />
             </motion.div>
@@ -75,7 +79,7 @@ const SplashScreen = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.5 }}
-              className="mt-6"
+              className="mt-6 relative"
             >
               <Image
                 src="/assets/icons/logo_brand.png"
@@ -86,6 +90,9 @@ const SplashScreen = () => {
                 priority
                 loading="eager"
               />
+              <span className="absolute bottom-2 right-0 text-[10px] font-bold text-brand">
+                {APP_VERSION}
+              </span>
             </motion.div>
 
             {/* A loader line */}
@@ -101,7 +108,7 @@ const SplashScreen = () => {
                 transition={{
                   repeat: Infinity,
                   duration: 1.2,
-                  ease: "easeInOut"
+                  ease: "easeInOut",
                 }}
                 className="absolute top-0 bottom-0 w-1/3 bg-brand rounded-full shadow-[0_0_8px_rgba(250,114,117,0.8)]"
               />

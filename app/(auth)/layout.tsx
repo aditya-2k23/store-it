@@ -3,6 +3,7 @@ import Image from "next/image";
 import React from "react";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { APP_VERSION } from "@/constants";
 
 const Layout = async ({ children }: { children: React.ReactNode }) => {
   const { userId } = await auth();
@@ -37,15 +38,20 @@ const Layout = async ({ children }: { children: React.ReactNode }) => {
               }}
             />
 
-            <Image
-              src="/assets/icons/logo_brand.png"
-              alt="Storey"
-              width={200}
-              height={200}
-              className="relative z-10 pt-2"
-              loading="eager"
-              priority
-            />
+            <div className="relative">
+              <Image
+                src="/assets/icons/logo_brand.png"
+                alt="Storey"
+                width={200}
+                height={200}
+                className="relative z-10 pt-2"
+                loading="eager"
+                priority
+              />
+              <span className="absolute top-7.5 right-1.5 z-20 text-[10px] font-bold text-brand">
+                {APP_VERSION}
+              </span>
+            </div>
           </div>
 
           <div className="space-y-5 text-white">
@@ -67,7 +73,7 @@ const Layout = async ({ children }: { children: React.ReactNode }) => {
       </section>
 
       <section className="flex flex-1 flex-col items-center bg-white p-4 py-10 lg:justify-center lg:p-10 lg:py-0">
-        <div className="mb-16 lg:hidden">
+        <div className="mb-16 lg:hidden relative">
           <Image
             src="/assets/icons/logo_brand.png"
             alt="Storey"
@@ -76,6 +82,9 @@ const Layout = async ({ children }: { children: React.ReactNode }) => {
             loading="eager"
             priority
           />
+          <span className="absolute bottom-2 right-0 text-[10px] font-bold text-brand">
+            {APP_VERSION}
+          </span>
         </div>
         {children}
       </section>
