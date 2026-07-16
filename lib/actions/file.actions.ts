@@ -169,11 +169,21 @@ const fetchTagMatchedWorkspaceFiles = async (
     return [] as FileRowWithOwner[];
   }
 
+  // Filter tag matches in the database using ilike on the STORED generated column
+  // tags_search (= array_to_string(tags, ' ')). This replaces the former pattern of
+  // fetching all ai_metadata rows unbounded and filtering in JS — that approach
+  // silently returned incomplete results for workspaces with >db.max_rows ai_metadata
+  // rows because PostgREST's row cap applied before the JS filter ran.
+  //
+  // ilike is case-insensitive, matching the previous .toLowerCase().includes() behavior.
+  // The .limit(100) cap is now enforced by the database, not by post-fetch .slice().
   let query = supabase
     .from("ai_metadata")
-    .select("file_id, tags, files!inner(workspace_id, type, is_trashed)")
+    .select("file_id, files!inner(workspace_id, type, is_trashed)")
     .eq("files.workspace_id", workspaceId)
-    .eq("files.is_trashed", false);
+    .eq("files.is_trashed", false)
+    .ilike("tags_search", `%${searchText}%`)
+    .limit(100);
 
   if (types.length > 0) {
     query = query.in("files.type", types);
@@ -182,18 +192,9 @@ const fetchTagMatchedWorkspaceFiles = async (
   const { data, error } = await query;
   if (error) throw error;
 
-  const normalizedSearchText = searchText.toLowerCase();
-  const matchingFileIds = (data || [])
-    .filter((metadata) =>
-      (metadata.tags || []).some((tag) =>
-        tag.toLowerCase().includes(normalizedSearchText),
-      ),
-    )
-    .map((metadata) => metadata.file_id);
+  const matchingFileIds = (data || []).map((metadata) => metadata.file_id);
 
-  const boundedIds = matchingFileIds.slice(0, 100);
-
-  return fetchFilesByIds(supabase, boundedIds, types, "", workspaceId);
+  return fetchFilesByIds(supabase, matchingFileIds, types, "", workspaceId);
 };
 
 const fetchShareMap = async (

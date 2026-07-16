@@ -88,6 +88,9 @@ export type Database = {
           processing_status: string;
           summary: string | null;
           tags: string[] | null;
+          /** STORED generated column — Postgres computes this as array_to_string(tags, ' ').
+           *  Read-only: never include in Insert or Update types. */
+          tags_search: string | null;
           updated_at: string;
         };
         Insert: {
