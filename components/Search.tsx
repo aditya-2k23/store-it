@@ -226,14 +226,21 @@ const Search = () => {
     setResults([]);
     setSemanticResults([]);
 
+    // Open a blank tab synchronously to avoid browser popup blockers
+    const newTab = window.open("about:blank", "_blank");
+
     try {
       const url = await getFileAccessUrl(result.id);
-      if (url) {
-        window.open(url, "_blank");
+      if (url && newTab) {
+        newTab.location.href = url;
         return;
       }
     } catch (error) {
       console.error("Failed to open semantic search result:", error);
+    }
+
+    if (newTab) {
+      newTab.close();
     }
 
     toast({

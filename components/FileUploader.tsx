@@ -19,26 +19,31 @@ interface Props {
 const FileUploader = ({ className }: Props) => {
   const path = usePathname();
   const { toast } = useToast();
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<{ id: string; file: File }[]>([]);
   const [uploadProgresses, setUploadProgresses] = useState<{ [key: string]: number }>({});
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
-      setFiles(acceptedFiles);
+      const newFiles = acceptedFiles.map(file => ({
+        id: crypto.randomUUID(),
+        file
+      }));
+
+      setFiles((prev) => [...prev, ...newFiles]);
 
       // Initialize progress for each file
       setUploadProgresses((prev) => {
         const newProgresses = { ...prev };
-        acceptedFiles.forEach((file) => {
-          newProgresses[file.name] = 0;
+        newFiles.forEach(({ id }) => {
+          newProgresses[id] = 0;
         });
         return newProgresses;
       });
 
-      const uploadPromises = acceptedFiles.map(async (file) => {
+      const uploadPromises = newFiles.map(async ({ id, file }) => {
         if (file.size > MAX_FILE_SIZE) {
           setFiles((prevFiles) =>
-            prevFiles.filter((f) => f.name !== file.name)
+            prevFiles.filter((f) => f.id !== id)
           );
 
           return toast({
@@ -60,21 +65,21 @@ const FileUploader = ({ className }: Props) => {
           }
           setUploadProgresses((prev) => ({
             ...prev,
-            [file.name]: Math.min(progress, 90),
+            [id]: Math.min(progress, 90),
           }));
         }, 150);
 
         return uploadFile({ file, path })
           .then((uploadedFile) => {
             clearInterval(progressInterval);
-            setUploadProgresses((prev) => ({
-              ...prev,
-              [file.name]: 100,
-            }));
             
             if (uploadedFile) {
+              setUploadProgresses((prev) => ({
+                ...prev,
+                [id]: 100,
+              }));
               setFiles((prevFiles) =>
-                prevFiles.filter((f) => f.name !== file.name)
+                prevFiles.filter((f) => f.id !== id)
               );
               toast({
                 title: "Success",
@@ -86,6 +91,9 @@ const FileUploader = ({ className }: Props) => {
                 className: "success-toast",
               });
             } else {
+              setFiles((prevFiles) =>
+                prevFiles.filter((f) => f.id !== id)
+              );
               toast({
                 title: "Error",
                 description: (
@@ -99,6 +107,9 @@ const FileUploader = ({ className }: Props) => {
           })
           .catch(() => {
             clearInterval(progressInterval);
+            setFiles((prevFiles) =>
+              prevFiles.filter((f) => f.id !== id)
+            );
             toast({
               title: "Error",
               description: (
@@ -120,10 +131,10 @@ const FileUploader = ({ className }: Props) => {
 
   const handleRemoveFile = (
     e: React.MouseEvent<HTMLImageElement, MouseEvent>,
-    fileName: string
+    id: string
   ) => {
     e.stopPropagation();
-    setFiles((prevFiles) => prevFiles.filter((file) => file.name !== fileName));
+    setFiles((prevFiles) => prevFiles.filter((f) => f.id !== id));
   };
 
   return (
@@ -142,13 +153,13 @@ const FileUploader = ({ className }: Props) => {
         <ul className="uploader-preview-list">
           <h4 className="h4 text-light-100">Uploading</h4>
 
-          {files.map((file, index) => {
+          {files.map(({ id, file }) => {
             const { type, extension } = getFileType(file.name);
-            const currentProgress = uploadProgresses[file.name] || 0;
+            const currentProgress = uploadProgresses[id] || 0;
 
             return (
               <li
-                key={`${file.name}-${index}`}
+                key={id}
                 className="uploader-preview-item"
               >
                 <div className="flex items-center gap-3">
@@ -175,7 +186,7 @@ const FileUploader = ({ className }: Props) => {
                   width={24}
                   height={24}
                   alt="Remove"
-                  onClick={(e) => handleRemoveFile(e, file.name)}
+                  onClick={(e) => handleRemoveFile(e, id)}
                 />
               </li>
             );
