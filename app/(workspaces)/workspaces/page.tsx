@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Image from "next/image";
 import WorkspacesGrid from "@/components/WorkspacesGrid";
 import ClerkUserButton from "@/components/ClerkUserButton";
+import { APP_VERSION } from "@/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -24,13 +25,18 @@ export default async function WorkspacesPage() {
         <ClerkUserButton />
       </div>
 
-      <Image
-        src="/assets/icons/logo_brand.png"
-        alt="Storey"
-        width={160}
-        height={160}
-        priority
-      />
+      <div className="relative">
+        <Image
+          src="/assets/icons/logo_brand.png"
+          alt="Storey"
+          width={160}
+          height={160}
+          priority
+        />
+        <span className="absolute bottom-3 right-0 text-[10px] font-bold text-brand">
+          {APP_VERSION}
+        </span>
+      </div>
 
       <h1 className="h1 mt-8 font-dynapuff font-light">Your Workspaces</h1>
       <p className="body-1 mt-2 text-light-200">

@@ -143,7 +143,8 @@ export default function SignInPage() {
         {/* Centered Heading */}
         <div className="text-center mb-8">
           <h2 className="text-2xl font-bold text-slate-800 tracking-tight">
-            Sign in to <span className="text-brand">Storey</span>
+            Sign in to{" "}
+            <span className="text-brand font-dynapuff font-medium">Storey</span>
           </h2>
           <p className="text-lg text-slate-500 mt-1">
             Welcome back! Please sign in to continue

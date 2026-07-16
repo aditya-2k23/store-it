@@ -22,6 +22,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import FileUploader from "./FileUploader";
 import { Home, Users } from "lucide-react";
+import { APP_VERSION } from "@/constants";
 
 interface Props {
   fullName: string;
@@ -38,13 +39,30 @@ const mobileLinks = [
   { name: "Others", href: "/others", icon: Ellipsis },
 ];
 
-const MobileNavigation = ({ fullName, email, activeWorkspaceName, activeWorkspaceType }: Props) => {
+const MobileNavigation = ({
+  fullName,
+  email,
+  activeWorkspaceName,
+  activeWorkspaceType,
+}: Props) => {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
   return (
     <header className="mobile-header">
-      <Image src="/assets/icons/logo_brand.png" alt="Storey" width={132} height={132} loading="eager" priority />
+      <div className="relative">
+        <Image
+          src="/assets/icons/logo_brand.png"
+          alt="Storey"
+          width={132}
+          height={132}
+          loading="eager"
+          priority
+        />
+        <span className="absolute bottom-2.5 right-0 text-[10px] font-bold text-brand">
+          {APP_VERSION}
+        </span>
+      </div>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
@@ -56,7 +74,10 @@ const MobileNavigation = ({ fullName, email, activeWorkspaceName, activeWorkspac
             <Menu className="size-5" />
           </button>
         </SheetTrigger>
-        <SheetContent side="left" className="shad-sheet h-screen w-[84%] max-w-[320px] border-r border-white/70 bg-[#f4f6fa] px-4 py-6">
+        <SheetContent
+          side="left"
+          className="shad-sheet h-screen w-[84%] max-w-[320px] border-r border-white/70 bg-[#f4f6fa] px-4 py-6"
+        >
           <SheetTitle className="sr-only">Navigation menu</SheetTitle>
 
           <div className="mb-6 flex items-center gap-3 rounded-2xl border border-white/75 bg-white/80 p-3">
@@ -101,7 +122,7 @@ const MobileNavigation = ({ fullName, email, activeWorkspaceName, activeWorkspac
                       onClick={() => setOpen(false)}
                       className={cn(
                         "mobile-nav-item",
-                        isActive && "shad-active"
+                        isActive && "shad-active",
                       )}
                     >
                       <Icon className="size-4.5" />

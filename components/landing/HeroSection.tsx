@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Sparkles, ArrowRight, Search, MousePointer2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { fadeIn, staggerChildren } from "./animations";
+import { APP_VERSION } from "@/constants";
 
 export const HeroSection = () => {
   return (
@@ -26,7 +27,7 @@ export const HeroSection = () => {
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 text-brand text-sm font-semibold mb-6"
           >
             <Sparkles className="w-4 h-4" />
-            <span>Introducing Storey AI 1.0</span>
+            <span>Introducing Storey {APP_VERSION}</span>
           </motion.div>
 
           <motion.h1

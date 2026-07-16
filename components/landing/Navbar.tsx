@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { APP_VERSION } from "@/constants";
 
 export const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -51,13 +52,18 @@ export const Navbar = () => {
     >
       <div className="max-w-7xl mx-auto pt-2 px-6 md:px-12 flex justify-between items-center">
         <Link href="/">
-          <Image
-            src="/assets/icons/logo_brand.png"
-            alt="Storey Logo"
-            width={180}
-            height={180}
-            loading="eager"
-          />
+          <div className="relative">
+            <Image
+              src="/assets/icons/logo_brand.png"
+              alt="Storey Logo"
+              width={180}
+              height={180}
+              loading="eager"
+            />
+            <span className="absolute bottom-3 right-0 text-[10px] font-bold text-brand">
+              {APP_VERSION}
+            </span>
+          </div>
         </Link>
 
         <div className="hidden md:flex items-center gap-8">

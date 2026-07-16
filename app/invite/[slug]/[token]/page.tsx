@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import AcceptInviteButtons from "@/components/AcceptInviteButtons";
+import { APP_VERSION } from "@/constants";
 
 const roleBadgeStyles: Record<string, string> = {
   owner: "bg-brand/10 text-brand",
@@ -54,14 +55,18 @@ export default async function InvitePage({ params }: InvitePageProps) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-light-400/50 p-4">
         <div className="w-full max-w-sm rounded-[30px] border border-light-300 bg-white p-10 shadow-drop-1 text-center">
-          <Image
-            src="/assets/icons/logo_brand.png"
-            alt="Storey"
-            width={180}
-            height={180}
-            className="mx-auto"
-            priority
-          />
+          <div className="relative w-fit mx-auto">
+            <Image
+              src="/assets/icons/logo_brand.png"
+              alt="Storey"
+              width={180}
+              height={180}
+              priority
+            />
+            <span className="absolute bottom-3 right-0 text-[10px] font-bold text-brand">
+              {APP_VERSION}
+            </span>
+          </div>
 
           <p className="caption mt-6 text-light-200">
             You&apos;ve been invited to join
@@ -105,14 +110,18 @@ export default async function InvitePage({ params }: InvitePageProps) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-light-400/50 p-4">
       <div className="w-full max-w-sm rounded-[30px] border border-light-300 bg-white p-10 shadow-drop-1 text-center">
-        <Image
-          src="/assets/icons/logo_brand.png"
-          alt="Storey"
-          width={180}
-          height={180}
-          className="mx-auto"
-          priority
-        />
+        <div className="relative w-fit mx-auto">
+          <Image
+            src="/assets/icons/logo_brand.png"
+            alt="Storey"
+            width={180}
+            height={180}
+            priority
+          />
+          <span className="absolute bottom-3 right-0 text-[10px] font-bold text-brand">
+            {APP_VERSION}
+          </span>
+        </div>
 
         <p className="text-lg mt-6 text-light-100">
           You&apos;ve been invited to join

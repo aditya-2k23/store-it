@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { MessageSquare } from "lucide-react";
+import { APP_VERSION } from "@/constants";
 
 /* ─── Custom SVG Social Icons ─── */
 
@@ -53,14 +54,19 @@ export const Footer = () => {
           {/* Logo & Social Section */}
           <div className="shrink-0 md:basis-[28%]">
             <div className="flex items-center gap-2 mb-3 select-none">
-              <Image
-                src="/assets/icons/logo_brand.png"
-                alt="Storey Logo"
-                width={140}
-                height={140}
-                loading="eager"
-                priority
-              />
+              <div className="relative">
+                <Image
+                  src="/assets/icons/logo_brand.png"
+                  alt="Storey Logo"
+                  width={140}
+                  height={140}
+                  loading="eager"
+                  priority
+                />
+                <span className="absolute bottom-1.5 right-0 text-[10px] font-bold text-brand">
+                  {APP_VERSION}
+                </span>
+              </div>
             </div>
             <p className="text-sm text-light-100 max-w-xs leading-relaxed">
               The smart workspace that organizes, summarizes, and connects your

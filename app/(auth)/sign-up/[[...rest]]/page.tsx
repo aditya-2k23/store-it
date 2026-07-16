@@ -30,7 +30,9 @@ import {
 
 const signUpSchema = z.object({
   fullName: z.string().min(2, { message: "Full name is required" }),
-  username: z.string().min(3, { message: "Username must be at least 3 characters" }),
+  username: z
+    .string()
+    .min(3, { message: "Username must be at least 3 characters" }),
   email: z.string().email({ message: "Invalid email address" }),
   password: z
     .string()
@@ -118,10 +120,12 @@ export default function SignUpPage() {
       }
 
       if (missingFields.length > 0) {
-        const details = getRequirementDetails(signUp as {
-          missingFields?: string[];
-          unverifiedFields?: string[];
-        });
+        const details = getRequirementDetails(
+          signUp as {
+            missingFields?: string[];
+            unverifiedFields?: string[];
+          },
+        );
         toast({
           title: "Additional info required",
           description:
@@ -148,15 +152,16 @@ export default function SignUpPage() {
           variant: "default",
         });
       } else {
-        const details = getRequirementDetails(signUp as {
-          missingFields?: string[];
-          unverifiedFields?: string[];
-        });
+        const details = getRequirementDetails(
+          signUp as {
+            missingFields?: string[];
+            unverifiedFields?: string[];
+          },
+        );
         toast({
           title: "Sign up incomplete",
           description:
-            details ||
-            `Status is: ${signUp.status}. Please try again.`,
+            details || `Status is: ${signUp.status}. Please try again.`,
           variant: "destructive",
         });
       }
@@ -184,8 +189,9 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
-      const { error: verifyError } =
-        await signUp.verifications.verifyEmailCode({ code: verificationCode });
+      const { error: verifyError } = await signUp.verifications.verifyEmailCode(
+        { code: verificationCode },
+      );
 
       if (verifyError) {
         throw verifyError;
@@ -208,10 +214,12 @@ export default function SignUpPage() {
           },
         });
       } else {
-        const details = getRequirementDetails(signUp as {
-          missingFields?: string[];
-          unverifiedFields?: string[];
-        });
+        const details = getRequirementDetails(
+          signUp as {
+            missingFields?: string[];
+            unverifiedFields?: string[];
+          },
+        );
         console.warn("Uncompleted verification status:", signUp.status);
         toast({
           title: "Verification Incomplete",
@@ -270,8 +278,7 @@ export default function SignUpPage() {
   const handleResendCode = async () => {
     if (!signUp) return;
     try {
-      const { error: resendError } =
-        await signUp.verifications.sendEmailCode();
+      const { error: resendError } = await signUp.verifications.sendEmailCode();
 
       if (resendError) {
         throw resendError;
@@ -334,10 +341,13 @@ export default function SignUpPage() {
           >
             {/* Centered Heading */}
             <div className="text-center mb-8">
-              <h2 className="text-xl font-bold text-slate-800 tracking-tight">
-                Create your Storey account
+              <h2 className="text-2xl font-bold text-slate-800 tracking-tight">
+                Write your{" "}
+                <span className="text-brand font-dynapuff font-medium">
+                  Storey
+                </span>{" "}
               </h2>
-              <p className="text-[13px] text-slate-500 mt-1">
+              <p className="text-lg text-slate-500 mt-1">
                 Get started by creating your account
               </p>
             </div>
@@ -357,11 +367,13 @@ export default function SignUpPage() {
                   <Image
                     src="https://img.icons8.com/color/48/000000/google-logo.png"
                     alt="Google"
-                    width={18}
-                    height={18}
+                    width={20}
+                    height={20}
                   />
                 )}
-                <span className="font-semibold text-xs text-slate-700">Google</span>
+                <span className="font-semibold text-sm text-slate-700">
+                  Google
+                </span>
               </Button>
 
               <Button
@@ -377,24 +389,29 @@ export default function SignUpPage() {
                   <Image
                     src="https://img.icons8.com/color/48/000000/microsoft.png"
                     alt="Microsoft"
-                    width={18}
-                    height={18}
+                    width={20}
+                    height={20}
                   />
                 )}
-                <span className="font-semibold text-xs text-slate-700">Microsoft</span>
+                <span className="font-semibold text-sm text-slate-700">
+                  Microsoft
+                </span>
               </Button>
             </div>
 
             {/* Centered or Divider */}
             <div className="text-center my-6">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">
+              <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">
                 or
               </span>
             </div>
 
             {/* Registration Form */}
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="fullName"
@@ -524,13 +541,15 @@ export default function SignUpPage() {
           >
             {/* Centered Heading for OTP */}
             <div className="text-center mb-8">
-              <h2 className="text-xl font-bold text-slate-800 tracking-tight">
+              <h2 className="text-2xl font-bold text-slate-800 tracking-tight">
                 Verify your email
               </h2>
-              <p className="text-[13px] text-slate-500 mt-2">
-                We've sent a 6-digit verification code to{" "}
-                <span className="font-semibold text-slate-800">{userEmail}</span>.
-                Please enter it below to verify your account.
+              <p className="text-lg text-slate-500 mt-2">
+                We&apos;ve sent a 6-digit verification code to{" "}
+                <span className="font-semibold text-slate-800">
+                  {userEmail}
+                </span>
+                . Please enter it below to verify your account.
               </p>
             </div>
 
