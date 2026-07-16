@@ -109,15 +109,26 @@ const fetchWorkspaceFiles = async (
   types: FileType[],
   searchText: string,
 ) => {
-  const candidateIdsQuery = applyFilters(
-    supabase.from("files").select("id"),
-    types,
-    "",
-  ).eq("workspace_id", workspaceId);
   const filesQuery = applyFilters(
     supabase.from("files").select(FILE_SELECT),
     types,
     searchText,
+  ).eq("workspace_id", workspaceId);
+
+  if (!searchText) {
+    const { data, error } = await filesQuery;
+    if (error) throw error;
+
+    return {
+      files: (data || []) as FileRowWithOwner[],
+      candidateFileIds: [],
+    };
+  }
+
+  const candidateIdsQuery = applyFilters(
+    supabase.from("files").select("id"),
+    types,
+    "",
   ).eq("workspace_id", workspaceId);
 
   const [{ data: candidateIds, error: candidateIdsError }, { data, error }] =
