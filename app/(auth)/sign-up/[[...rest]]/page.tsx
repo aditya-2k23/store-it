@@ -120,12 +120,7 @@ export default function SignUpPage() {
       }
 
       if (missingFields.length > 0) {
-        const details = getRequirementDetails(
-          signUp as {
-            missingFields?: string[];
-            unverifiedFields?: string[];
-          },
-        );
+        const details = getRequirementDetails(signUp);
         toast({
           title: "Additional info required",
           description:
@@ -152,12 +147,7 @@ export default function SignUpPage() {
           variant: "default",
         });
       } else {
-        const details = getRequirementDetails(
-          signUp as {
-            missingFields?: string[];
-            unverifiedFields?: string[];
-          },
-        );
+        const details = getRequirementDetails(signUp);
         toast({
           title: "Sign up incomplete",
           description:
@@ -214,12 +204,7 @@ export default function SignUpPage() {
           },
         });
       } else {
-        const details = getRequirementDetails(
-          signUp as {
-            missingFields?: string[];
-            unverifiedFields?: string[];
-          },
-        );
+        const details = getRequirementDetails(signUp);
         console.warn("Uncompleted verification status:", signUp.status);
         toast({
           title: "Verification Incomplete",
