@@ -72,7 +72,8 @@ function isValidCursor(
 export const getWorkspaceActivity = async (
   workspaceId: string,
   cursor?: { createdAt: string; id: string },
-  limit: number = 30,
+  limit: number = 5,
+  category: string = "all"
 ) => {
   const supabase = createSupabaseAdmin();
 
@@ -101,6 +102,17 @@ export const getWorkspaceActivity = async (
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(limit);
+
+    if (category === "files") {
+      query = query.like("action", "file.%");
+    } else if (category === "members") {
+      query = query.like("action", "workspace.member.%");
+    } else if (category === "workspace") {
+      // For workspace, we want workspace actions but not member actions
+      // Supabase's `not` is a bit limited for wildcards in this specific pattern,
+      // but we can use `like` and `not` carefully.
+      query = query.like("action", "workspace.%").not("action", "like", "workspace.member.%");
+    }
 
     // Apply cursor for pagination — rows strictly before the cursor position
     // using both created_at and id as tie-breaker for stability.

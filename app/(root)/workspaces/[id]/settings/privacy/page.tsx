@@ -1,6 +1,7 @@
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/actions/user.actions";
 import { redirect } from "next/navigation";
+import PrivacyTable from "@/components/workspace/PrivacyTable";
 
 interface AiFileRow {
   file_id: string;
@@ -50,7 +51,10 @@ const PrivacyPage = async ({ params }: PrivacyPageProps) => {
     .select(
       "file_id, processing_status, summary, tags, processed_at, file:files!ai_metadata_file_id_fkey(name)",
     )
-    .in("file_id", fileIds.length > 0 ? fileIds : ["00000000-0000-0000-0000-000000000000"]);
+    .in(
+      "file_id",
+      fileIds.length > 0 ? fileIds : ["00000000-0000-0000-0000-000000000000"],
+    );
 
   const aiData = (aiRows || []) as unknown as AiFileRow[];
 
@@ -59,8 +63,7 @@ const PrivacyPage = async ({ params }: PrivacyPageProps) => {
   ).length;
   const pendingCount = aiData.filter(
     (r) =>
-      r.processing_status === "pending" ||
-      r.processing_status === "processing",
+      r.processing_status === "pending" || r.processing_status === "processing",
   ).length;
   const notApplicableCount = aiData.filter(
     (r) => r.processing_status === "not_applicable",
@@ -69,23 +72,22 @@ const PrivacyPage = async ({ params }: PrivacyPageProps) => {
     (r) => r.processing_status === "failed",
   ).length;
 
-  // Recently processed files (completed, limit 20)
+  // Recently processed files (completed)
   const recentProcessed = aiData
     .filter((r) => r.processing_status === "completed")
     .sort(
       (a, b) =>
         new Date(b.processed_at || 0).getTime() -
         new Date(a.processed_at || 0).getTime(),
-    )
-    .slice(0, 20);
+    );
 
   return (
-    <div className="mx-auto max-w-4xl space-y-10 px-4 py-8">
+    <div className="mx-auto max-w-4xl space-y-10 px-4 py-2">
       <div>
-        <h1 className="h3 xl:h2 text-light-100 font-dynapuff tracking-wider">
+        <h1 className="h1 text-light-100 font-dynapuff tracking-wider">
           Privacy
         </h1>
-        <p className="body-2 text-light-200 mt-1">
+        <p className="body-2 text-light-200">
           Understand how Storey uses AI to process your files.
         </p>
       </div>
@@ -104,51 +106,7 @@ const PrivacyPage = async ({ params }: PrivacyPageProps) => {
         </div>
 
         {/* Processed files table */}
-        {recentProcessed.length > 0 && (
-          <div className="overflow-x-auto rounded-xl border border-light-400">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-light-400 bg-light-400/30">
-                  <th className="px-4 py-2.5 text-left font-medium text-dark-100">
-                    File
-                  </th>
-                  <th className="px-4 py-2.5 text-left font-medium text-dark-100">
-                    Tags
-                  </th>
-                  <th className="px-4 py-2.5 text-left font-medium text-dark-100">
-                    Summary
-                  </th>
-                  <th className="px-4 py-2.5 text-left font-medium text-dark-100">
-                    Processed
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentProcessed.map((row) => (
-                  <tr
-                    key={row.file_id}
-                    className="border-b border-light-400 last:border-0"
-                  >
-                    <td className="px-4 py-2.5 text-light-100 max-w-48 truncate">
-                      {row.file?.name || "Unknown"}
-                    </td>
-                    <td className="px-4 py-2.5 text-light-200">
-                      {row.tags?.length || 0} tags
-                    </td>
-                    <td className="px-4 py-2.5 text-light-200">
-                      {row.summary ? "✓ Yes" : "— No"}
-                    </td>
-                    <td className="px-4 py-2.5 text-light-200 whitespace-nowrap">
-                      {row.processed_at
-                        ? new Date(row.processed_at).toLocaleDateString()
-                        : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {recentProcessed.length > 0 && <PrivacyTable data={recentProcessed} />}
       </section>
 
       {/* Section 2: How Storey Uses AI */}
@@ -170,7 +128,9 @@ const PrivacyPage = async ({ params }: PrivacyPageProps) => {
               What data is sent to Gemini:
             </p>
             <ul className="list-disc list-inside space-y-0.5 text-light-200">
-              <li>File content (text extracted from documents, or image bytes)</li>
+              <li>
+                File content (text extracted from documents, or image bytes)
+              </li>
               <li>File name</li>
             </ul>
           </div>
