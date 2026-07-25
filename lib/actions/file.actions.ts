@@ -116,8 +116,7 @@ const fetchWorkspaceFiles = async (
     types,
     searchText,
   )
-    .eq("workspace_id", workspaceId)
-    .eq("is_trashed", false);
+    .eq("workspace_id", workspaceId);
 
   const { data, error } = await filesQuery;
   if (error) throw error;
@@ -154,8 +153,7 @@ const fetchFilesByIds = async (
     .from("files")
     .select(FILE_SELECT)
     .in("id", fileIds)
-    .eq("workspace_id", workspaceId)
-    .eq("is_trashed", false);
+    .eq("workspace_id", workspaceId);
   const filteredQuery = applyFilters(baseQuery, types, searchText);
 
   const { data, error } = await filteredQuery;
@@ -186,7 +184,6 @@ const fetchTagMatchedWorkspaceFiles = async (
     .from("ai_metadata")
     .select("file_id, files!inner(workspace_id, type, is_trashed)")
     .eq("files.workspace_id", workspaceId)
-    .eq("files.is_trashed", false)
     .ilike("tags_search", `%${searchText}%`)
     .limit(100);
 
@@ -724,8 +721,10 @@ const hardDeleteFile = async (
     .remove([fileRecord.storage_key]);
   if (storageDeleteError) throw storageDeleteError;
 
-  if (revalidate) revalidatePath(path);
-  revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });
+  if (revalidate) {
+    revalidatePath(path);
+    revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });
+  }
 };
 
 export const trashFile = async ({ fileId, path }: DeleteFileProps) => {
@@ -896,8 +895,6 @@ const purgeExpiredTrash = async (
     });
     await hardDeleteFile(supabase, fileRecord, "/trash", false);
   }
-
-  if ((data || []).length > 0) revalidatePath("/trash");
 };
 
 export const getTrashedFiles = async () => {
@@ -970,8 +967,7 @@ const computeTotalSpaceUsed = async (workspaceId: string) => {
   const { data: files, error } = await supabase
     .from("files")
     .select("type, size, updated_at")
-    .eq("workspace_id", workspaceId)
-    .eq("is_trashed", false);
+    .eq("workspace_id", workspaceId);
 
   if (error) throw error;
 
