@@ -504,16 +504,8 @@ export const renameFile = async ({
 
     const newName = `${name}.${extension}`;
 
-    const { data: fileRecord, error: fetchError } = await supabase
-      .from("files")
-      .select("owner_id, name, workspace_id")
-      .eq("id", fileId)
-      .single();
-
-    if (fetchError) throw fetchError;
-    if (fileRecord.owner_id !== currentUser.id) {
-      throw new Error("Not authorized to rename this file.");
-    }
+    const fileRecord = await getFileActionRecord(supabase, fileId);
+    await assertCanActOnFile(supabase, currentUser, fileRecord);
 
     const { error: updateError } = await supabase
       .from("files")
@@ -526,11 +518,11 @@ export const renameFile = async ({
 
     await logActivity({
       userId: currentUser.id,
-      workspaceId: (fileRecord as any).workspace_id,
+      workspaceId: fileRecord.workspace_id,
       fileId,
       action: "file.rename",
       metadata: {
-        oldName: (fileRecord as any).name,
+        oldName: fileRecord.name,
         newName,
         actorName: currentUser.fullName,
         actorEmail: currentUser.email,
@@ -554,16 +546,8 @@ export const updateFileUsers = async ({
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const { data: fileRecord, error: fetchError } = await supabase
-      .from("files")
-      .select("owner_id, name, workspace_id")
-      .eq("id", fileId)
-      .single();
-
-    if (fetchError) throw fetchError;
-    if (fileRecord.owner_id !== currentUser.id) {
-      throw new Error("Not authorized to share this file.");
-    }
+    const fileRecord = await getFileActionRecord(supabase, fileId);
+    await assertCanActOnFile(supabase, currentUser, fileRecord);
 
     const normalizedEmails = Array.from(
       new Set(
@@ -624,11 +608,11 @@ export const updateFileUsers = async ({
       for (const email of addedEmails) {
         await logActivity({
           userId: currentUser.id,
-          workspaceId: (fileRecord as any).workspace_id,
+          workspaceId: fileRecord.workspace_id,
           fileId,
           action: "file.share.create",
           metadata: {
-            fileName: (fileRecord as any).name,
+            fileName: fileRecord.name,
             email,
             actorName: currentUser.fullName,
             actorEmail: currentUser.email,
@@ -639,11 +623,11 @@ export const updateFileUsers = async ({
       for (const email of removedEmails) {
         await logActivity({
           userId: currentUser.id,
-          workspaceId: (fileRecord as any).workspace_id,
+          workspaceId: fileRecord.workspace_id,
           fileId,
           action: "file.share.remove",
           metadata: {
-            fileName: (fileRecord as any).name,
+            fileName: fileRecord.name,
             email,
             actorName: currentUser.fullName,
             actorEmail: currentUser.email,
