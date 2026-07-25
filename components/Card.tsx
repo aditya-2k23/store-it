@@ -34,8 +34,8 @@ const Card = ({ file }: { file: FileItem }) => {
     return () => clearTimeout(timer);
   }, [isProcessing, file.createdAt]);
 
-  return (
-    <Link href={fileHref} target="_blank" className="file-card">
+  const cardContent = (
+    <>
       <div className="flex justify-between">
         <Thumbnail
           type={file.type}
@@ -55,6 +55,20 @@ const Card = ({ file }: { file: FileItem }) => {
 
       <div className="file-card-details">
         <p className="subtitle-2 line-clamp-1">{file.name}</p>
+
+        {file.isTrashed && (
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-slate-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+              Trashed
+            </span>
+            {typeof file.daysUntilPurge === "number" && (
+              <span className="text-[10px] text-slate-500">
+                {file.daysUntilPurge} day{file.daysUntilPurge === 1 ? "" : "s"}{" "}
+                left
+              </span>
+            )}
+          </div>
+        )}
 
         {isStaleProcessing && (
           <p className="text-[10px] text-light-200 mt-1 italic">
@@ -89,6 +103,23 @@ const Card = ({ file }: { file: FileItem }) => {
           By: {file.owner.fullName}
         </p>
       </div>
+    </>
+  );
+
+  if (file.isTrashed) {
+    return (
+      <div
+        aria-disabled="true"
+        className="file-card cursor-default grayscale opacity-60"
+      >
+        {cardContent}
+      </div>
+    );
+  }
+
+  return (
+    <Link href={fileHref} target="_blank" className="file-card">
+      {cardContent}
     </Link>
   );
 };

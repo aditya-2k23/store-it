@@ -8,20 +8,21 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import {
-  BrainCircuit,
   Clapperboard,
   Ellipsis,
   FileText,
   ImageIcon,
   LayoutGrid,
   Menu,
+  Trash2,
+  Home,
+  Users,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import FileUploader from "./FileUploader";
-import { Home, Users } from "lucide-react";
 import { APP_VERSION } from "@/constants";
 
 interface Props {
@@ -34,9 +35,9 @@ const mobileLinks = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Images", href: "/images", icon: ImageIcon },
-  { name: "AI Collections", href: "/ai-collections", icon: BrainCircuit },
   { name: "Media", href: "/media", icon: Clapperboard },
   { name: "Others", href: "/others", icon: Ellipsis },
+  { name: "Trash", href: "/trash", icon: Trash2 },
 ];
 
 const MobileNavigation = ({

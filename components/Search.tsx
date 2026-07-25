@@ -262,7 +262,7 @@ const Search = () => {
 
         <Input
           value={query}
-          placeholder="Ask AI anything..."
+          placeholder="Search with AI..."
           className="search-input"
           onChange={(e) => setQuery(e.target.value)}
         />

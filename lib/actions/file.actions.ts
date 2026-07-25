@@ -33,7 +33,7 @@ type FileRowWithOwner = FileRow & {
 };
 
 const FILE_SELECT =
-  "id, name, original_name, extension, mime_type, type, size, storage_key, thumbnail_key, preview_status, owner_id, workspace_id, created_at, updated_at, owner:users!files_owner_id_fkey(id, full_name, email, avatar_url), ai_metadata(tags, processing_status)";
+  "id, name, original_name, extension, mime_type, type, size, storage_key, thumbnail_key, preview_status, owner_id, workspace_id, is_trashed, trashed_at, created_at, updated_at, owner:users!files_owner_id_fkey(id, full_name, email, avatar_url), ai_metadata(tags, processing_status)";
 
 /**
  * Generates a 1-hour signed URL for direct download/preview.
@@ -74,6 +74,8 @@ const mapRowToFileItem = (
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     storageKey: row.storage_key,
+    isTrashed: row.is_trashed,
+    trashedAt: row.trashed_at,
     owner: {
       id: row.owner?.id || row.owner_id || "",
       fullName: row.owner?.full_name || "Unknown",
@@ -87,7 +89,7 @@ const mapRowToFileItem = (
 };
 
 const applyFilters = (query: any, types: FileType[], searchText: string) => {
-  let filteredQuery = query.eq("is_trashed", false);
+  let filteredQuery = query;
 
   if (types.length > 0) {
     filteredQuery = filteredQuery.in("type", types);
@@ -113,7 +115,9 @@ const fetchWorkspaceFiles = async (
     supabase.from("files").select(FILE_SELECT),
     types,
     searchText,
-  ).eq("workspace_id", workspaceId);
+  )
+    .eq("workspace_id", workspaceId)
+    .eq("is_trashed", false);
 
   const { data, error } = await filesQuery;
   if (error) throw error;
@@ -150,7 +154,8 @@ const fetchFilesByIds = async (
     .from("files")
     .select(FILE_SELECT)
     .in("id", fileIds)
-    .eq("workspace_id", workspaceId);
+    .eq("workspace_id", workspaceId)
+    .eq("is_trashed", false);
   const filteredQuery = applyFilters(baseQuery, types, searchText);
 
   const { data, error } = await filteredQuery;
@@ -364,13 +369,12 @@ export const getFiles = async ({
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const { files: workspaceFiles } =
-      await fetchWorkspaceFiles(
-        supabase,
-        currentUser.workspaceId,
-        types,
-        searchText,
-      );
+    const { files: workspaceFiles } = await fetchWorkspaceFiles(
+      supabase,
+      currentUser.workspaceId,
+      types,
+      searchText,
+    );
 
     const sharedFileIds = await fetchSharedFileIds(
       supabase,
@@ -657,69 +661,97 @@ export const updateFileUsers = async ({
   }
 };
 
-export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
+type FileActionRecord = Pick<
+  FileRow,
+  "id" | "owner_id" | "name" | "storage_key" | "workspace_id" | "is_trashed"
+>;
+
+const getFileActionRecord = async (
+  supabase: ReturnType<typeof createSupabaseAdmin>,
+  fileId: string,
+) => {
+  const { data, error } = await supabase
+    .from("files")
+    .select("id, owner_id, name, storage_key, workspace_id, is_trashed")
+    .eq("id", fileId)
+    .single();
+
+  if (error) throw error;
+  return data as FileActionRecord;
+};
+
+const assertCanActOnFile = async (
+  supabase: ReturnType<typeof createSupabaseAdmin>,
+  currentUser: CurrentUser,
+  fileRecord: FileActionRecord,
+) => {
+  if (fileRecord.owner_id === currentUser.id) return;
+
+  const { data: membership, error } = await supabase
+    .from("workspace_members")
+    .select("role")
+    .eq("user_id", currentUser.id)
+    .eq("workspace_id", fileRecord.workspace_id)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!membership?.role || !canDeleteOthers(membership.role as WorkspaceRole)) {
+    throw new Error("Not authorized to act on this file.");
+  }
+};
+
+const hardDeleteFile = async (
+  supabase: ReturnType<typeof createSupabaseAdmin>,
+  fileRecord: FileActionRecord,
+  path: string,
+  revalidate = true,
+) => {
+  // Preserve activity history while removing the foreign-key reference.
+  const { error: unlinkLogsError } = await supabase
+    .from("activity_logs")
+    .update({ file_id: null })
+    .eq("file_id", fileRecord.id);
+  if (unlinkLogsError) throw unlinkLogsError;
+
+  const { error: deleteError } = await supabase
+    .from("files")
+    .delete()
+    .eq("id", fileRecord.id);
+  if (deleteError) throw deleteError;
+
+  const { error: storageDeleteError } = await supabase.storage
+    .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+    .remove([fileRecord.storage_key]);
+  if (storageDeleteError) throw storageDeleteError;
+
+  if (revalidate) revalidatePath(path);
+  revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });
+};
+
+export const trashFile = async ({ fileId, path }: DeleteFileProps) => {
   const supabase = createSupabaseAdmin();
 
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const { data: fileRecord, error: fetchError } = await supabase
+    const fileRecord = await getFileActionRecord(supabase, fileId);
+    await assertCanActOnFile(supabase, currentUser, fileRecord);
+    if (fileRecord.is_trashed) throw new Error("File is already in trash");
+
+    const { error } = await supabase
       .from("files")
-      .select("owner_id, name, storage_key, workspace_id")
-      .eq("id", fileId)
-      .single();
-
-    if (fetchError) throw fetchError;
-
-    // If caller is not the file owner, check if they have admin/owner role
-    if (fileRecord.owner_id !== currentUser.id) {
-      const { data: membership } = await supabase
-        .from("workspace_members")
-        .select("role")
-        .eq("user_id", currentUser.id)
-        .eq("workspace_id", fileRecord.workspace_id)
-        .maybeSingle();
-
-      if (
-        !membership?.role ||
-        !canDeleteOthers(membership.role as WorkspaceRole)
-      ) {
-        throw new Error("Not authorized to delete this file.");
-      }
-    }
-
-    // Unlink existing activity logs from this file to prevent FK violation on delete
-    const { error: unlinkLogsError } = await supabase
-      .from("activity_logs")
-      .update({ file_id: null })
-      .eq("file_id", fileId);
-
-    if (unlinkLogsError) throw unlinkLogsError;
-
-    const { error: deleteError } = await supabase
-      .from("files")
-      .delete()
+      .update({ is_trashed: true, trashed_at: new Date().toISOString() })
       .eq("id", fileId);
-
-    if (deleteError) throw deleteError;
-
-    if (fileRecord.storage_key) {
-      const { error: storageDeleteError } = await supabase.storage
-        .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
-        .remove([fileRecord.storage_key]);
-      if (storageDeleteError) throw storageDeleteError;
-    }
+    if (error) throw error;
 
     revalidatePath(path);
-    revalidateTag(TOTAL_SPACE_CACHE_TAG, { expire: 0 });
-
     await logActivity({
       userId: currentUser.id,
       workspaceId: fileRecord.workspace_id,
-      action: "file.delete",
+      action: "file.trash",
       metadata: {
-        fileName: (fileRecord as any).name,
+        fileName: fileRecord.name,
         actorName: currentUser.fullName,
         actorEmail: currentUser.email,
       },
@@ -727,7 +759,195 @@ export const deleteFileUsers = async ({ fileId, path }: DeleteFileProps) => {
 
     return parseStringify({ status: "success" });
   } catch (error) {
-    handleError(error, "Failed to delete file");
+    handleError(error, "Failed to move file to trash");
+  }
+};
+
+export const restoreFile = async ({ fileId, path }: DeleteFileProps) => {
+  const supabase = createSupabaseAdmin();
+
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
+
+    const fileRecord = await getFileActionRecord(supabase, fileId);
+    await assertCanActOnFile(supabase, currentUser, fileRecord);
+    if (!fileRecord.is_trashed) throw new Error("File is not in trash");
+
+    const { error } = await supabase
+      .from("files")
+      .update({ is_trashed: false, trashed_at: null })
+      .eq("id", fileId);
+    if (error) throw error;
+
+    revalidatePath(path);
+    await logActivity({
+      userId: currentUser.id,
+      workspaceId: fileRecord.workspace_id,
+      action: "file.restore",
+      metadata: {
+        fileName: fileRecord.name,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
+
+    return parseStringify({ status: "success" });
+  } catch (error) {
+    handleError(error, "Failed to restore file");
+  }
+};
+
+export const permanentlyDeleteFile = async ({
+  fileId,
+  path,
+}: DeleteFileProps) => {
+  const supabase = createSupabaseAdmin();
+
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
+
+    const fileRecord = await getFileActionRecord(supabase, fileId);
+    await assertCanActOnFile(supabase, currentUser, fileRecord);
+    if (!fileRecord.is_trashed) {
+      throw new Error("Move to trash before permanently deleting");
+    }
+
+    await hardDeleteFile(supabase, fileRecord, path);
+    await logActivity({
+      userId: currentUser.id,
+      workspaceId: fileRecord.workspace_id,
+      action: "file.delete",
+      metadata: {
+        fileName: fileRecord.name,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
+
+    return parseStringify({ status: "success" });
+  } catch (error) {
+    handleError(error, "Failed to permanently delete file");
+  }
+};
+
+export const emptyTrash = async (workspaceId: string, path: string) => {
+  const supabase = createSupabaseAdmin();
+  const currentUser = await getCurrentUser();
+  if (!currentUser) throw new Error("User not found");
+
+  const { data, error } = await supabase
+    .from("files")
+    .select("id, owner_id, name, storage_key, workspace_id, is_trashed")
+    .eq("workspace_id", workspaceId)
+    .eq("is_trashed", true);
+  if (error) throw error;
+
+  let deletedCount = 0;
+  let skippedCount = 0;
+  for (const fileRecord of (data || []) as FileActionRecord[]) {
+    try {
+      await assertCanActOnFile(supabase, currentUser, fileRecord);
+      await hardDeleteFile(supabase, fileRecord, path, false);
+      await logActivity({
+        userId: currentUser.id,
+        workspaceId: fileRecord.workspace_id,
+        action: "file.delete",
+        metadata: {
+          fileName: fileRecord.name,
+          actorName: currentUser.fullName,
+          actorEmail: currentUser.email,
+        },
+      });
+      deletedCount += 1;
+    } catch {
+      skippedCount += 1;
+    }
+  }
+
+  revalidatePath(path);
+  return parseStringify({ deletedCount, skippedCount });
+};
+
+const purgeExpiredTrash = async (
+  supabase: ReturnType<typeof createSupabaseAdmin>,
+  workspaceId: string,
+) => {
+  const expiration = new Date(
+    Date.now() - 30 * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const { data, error } = await supabase
+    .from("files")
+    .select("id, owner_id, name, storage_key, workspace_id, is_trashed")
+    .eq("workspace_id", workspaceId)
+    .eq("is_trashed", true)
+    .lt("trashed_at", expiration);
+  if (error) throw error;
+
+  for (const fileRecord of (data || []) as FileActionRecord[]) {
+    // Log first so the action is preserved; hardDeleteFile then unlinks its FK.
+    await logActivity({
+      userId: null,
+      workspaceId: fileRecord.workspace_id,
+      fileId: fileRecord.id,
+      action: "file.delete",
+      metadata: { fileName: fileRecord.name, reason: "auto_purge_30_days" },
+    });
+    await hardDeleteFile(supabase, fileRecord, "/trash", false);
+  }
+
+  if ((data || []).length > 0) revalidatePath("/trash");
+};
+
+export const getTrashedFiles = async () => {
+  const supabase = createSupabaseAdmin();
+
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
+
+    await purgeExpiredTrash(supabase, currentUser.workspaceId);
+
+    const { data, error } = await supabase
+      .from("files")
+      .select(FILE_SELECT)
+      .eq("workspace_id", currentUser.workspaceId)
+      .eq("is_trashed", true)
+      .order("trashed_at", { ascending: false });
+    if (error) throw error;
+
+    const files = (data || []) as FileRowWithOwner[];
+    const { data: signedUrls } = files.length
+      ? await supabase.storage
+          .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+          .createSignedUrls(
+            files.map((file) => file.storage_key),
+            3600,
+          )
+      : { data: [] };
+
+    const signedUrlMap = new Map<string, string>();
+    (signedUrls || []).forEach((entry) => {
+      if (entry.path && entry.signedUrl) {
+        signedUrlMap.set(entry.path, entry.signedUrl);
+      }
+    });
+
+    const documents = files.map((file) => {
+      const elapsedDays = Math.floor(
+        (Date.now() - new Date(file.trashed_at || Date.now()).getTime()) /
+          (24 * 60 * 60 * 1000),
+      );
+      return {
+        ...mapRowToFileItem(file, [], signedUrlMap.get(file.storage_key) || ""),
+        daysUntilPurge: Math.max(0, 30 - elapsedDays),
+      };
+    });
+
+    return parseStringify({ documents });
+  } catch (error) {
+    handleError(error, "Failed to get trashed files");
   }
 };
 

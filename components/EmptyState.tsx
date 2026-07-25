@@ -4,14 +4,24 @@ import FileUploader from "./FileUploader";
 
 interface EmptyStateProps {
   type?: string;
+  showUpload?: boolean;
 }
 
-const EmptyState = ({ type }: EmptyStateProps) => {
-  const isTypeSpecific = !!type;
-  const title = isTypeSpecific ? `No ${type} found` : "Your space is empty";
-  const description = isTypeSpecific
-    ? `You haven't uploaded any ${type} yet. Drag and drop them here to get started!`
-    : "Upload your first file to get started. You can upload documents, images, audio, video, or any other files.";
+const EmptyState = ({ type, showUpload }: EmptyStateProps) => {
+  const isTrash = type?.toLowerCase().includes("trash");
+  const shouldShowUpload = showUpload ?? !isTrash;
+
+  const title = isTrash
+    ? "Trash is empty"
+    : type
+      ? `No ${type} found`
+      : "Your space is empty";
+
+  const description = isTrash
+    ? "No deleted files found. Items moved to trash will appear here."
+    : type
+      ? `You haven't uploaded any ${type} yet. Drag and drop them here to get started!`
+      : "Upload your first file to get started. You can upload documents, images, audio, video, or any other files.";
 
   return (
     <div className="flex flex-col items-center justify-center w-full flex-1 text-center p-4 relative overflow-hidden">
@@ -68,12 +78,14 @@ const EmptyState = ({ type }: EmptyStateProps) => {
       <h3 className="h3 font-dynapuff text-light-100 mb-3 tracking-wider bg-clip-text">
         {title}
       </h3>
-      <p className="body-1 text-light-200 max-w-[400px] mb-5">{description}</p>
+      <p className="body-1 text-light-200 max-w-100 mb-5">{description}</p>
 
       {/* Action / Upload Button */}
-      <div className="relative z-30">
-        <FileUploader className="h-12 px-8 rounded-3xl bg-linear-to-r from-[#ff6b6b] to-[#ff8e7e] font-medium text-white shadow-drop-1 transition-all duration-300 hover:scale-105 hover:from-[#ff6464] hover:to-[#ff8674] cursor-pointer font-dynapuff" />
-      </div>
+      {shouldShowUpload && (
+        <div className="relative z-30">
+          <FileUploader className="h-12 px-8 rounded-3xl bg-linear-to-r from-[#ff6b6b] to-[#ff8e7e] font-medium text-white shadow-drop-1 transition-all duration-300 hover:scale-105 hover:from-[#ff6464] hover:to-[#ff8674] cursor-pointer font-dynapuff" />
+        </div>
+      )}
     </div>
   );
 };

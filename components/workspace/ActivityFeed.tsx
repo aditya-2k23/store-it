@@ -30,7 +30,16 @@ function formatAction(item: ActivityLogItem): string {
       return `${actor} renamed "${m.oldName ?? "a file"}" to "${m.newName ?? "unknown"}"`;
 
     case "file.delete":
-      return `${actor} deleted ${m.fileName ?? "a file"}`;
+      if (m.reason === "auto_purge_30_days") {
+        return `${m.fileName ?? "A file"} was automatically deleted after 30 days in trash`;
+      }
+      return `${actor} permanently deleted ${m.fileName ?? "a file"}`;
+
+    case "file.trash":
+      return `${actor} moved ${m.fileName ?? "a file"} to trash`;
+
+    case "file.restore":
+      return `${actor} restored ${m.fileName ?? "a file"} from trash`;
 
     case "file.share.create":
       return `${actor} shared "${m.fileName ?? "a file"}" with ${m.email ?? "someone"}`;
