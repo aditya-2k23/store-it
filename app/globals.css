@@ -468,15 +468,15 @@
   }
 
   .search-input-wrapper {
-    @apply flex h-13 flex-1 items-center gap-3 rounded-full px-4 shadow-drop-3;
+    @apply flex h-13 flex-1 items-center gap-3 rounded-full bg-white px-4.5 border border-slate-200/80 shadow-sm transition-all duration-300 hover:border-brand/40 hover:shadow-md focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/20 focus-within:shadow-[0_0_25px_rgba(250,114,117,0.25)];
   }
 
   .search-input {
-    @apply text-[14px] leading-5 font-normal outline-none ring-offset-transparent focus:ring-transparent focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 placeholder:text-[16px] placeholder:leading-6 placeholder:font-normal w-full border-none p-0 shadow-none placeholder:text-light-200;
+    @apply text-[14px] leading-5 font-medium text-slate-800 outline-none ring-offset-transparent focus:ring-transparent focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 placeholder:text-[15px] placeholder:leading-6 placeholder:font-normal w-full border-none p-0 bg-transparent shadow-none placeholder:text-slate-400;
   }
 
   .search-result {
-    @apply absolute left-0 top-16 z-50 flex w-full flex-col gap-3 rounded-[20px] bg-white p-4;
+    @apply absolute left-0 top-15 z-50 flex w-full flex-col gap-2 rounded-2xl bg-white p-3 border border-slate-100 shadow-[0_12px_40px_rgba(0,0,0,0.12)];
   }
 
   .empty-result {
