@@ -15,6 +15,7 @@
 | 2026-07 | v1.5    | Unique personal workspace — added partial unique index `workspaces_one_personal_per_owner` on `(owner_id) WHERE type = 'personal'` to prevent duplicate personal workspaces from concurrent `getCurrentUser` calls                                                                                                                                     |
 | 2026-07 | v1.6    | Semantic search — added `shared_file_ids` to `match_files_by_embedding` so directly shared files are included in search results                                                                                                                                                                                                                        |
 | 2026-07 | v1.7    | Native tag search — added `tags_search` STORED generated column to `ai_metadata` (via `immutable_array_to_string` wrapper); added `immutable_array_to_string` helper function. Replaces in-memory JS tag filtering with a native `.ilike` database query, closing a silent-truncation bug where the PostgREST row cap applied before JS filtering ran. |
+| 2026-07 | v1.8    | Folder hierarchy — added atomic `move_folder`, `cascade_trash_folder`, and `cascade_restore_folder` RPCs for materialized-path folder moves and subtree trash/restore. |
 
 ---
 
@@ -33,6 +34,7 @@
 - **AI embeddings** — `vector(3072)` column in `ai_metadata` with `embedding_model` text column. Uses `gemini-embedding-2` (3072 dimensions). No vector index (pgvector 0.8.0 IVFFlat/HNSW limit is 2000 dims) — exact scan via `<=>` operator in `match_files_by_embedding` RPC. Semantic search matches the active workspace and files directly shared with the caller. Sufficient for small-to-medium datasets.
 - **Activity log actions** — dot-namespaced plain text (e.g. `file.upload`, `workspace.member.invite`) — not an enum, to allow new event types without migrations.
 - **Workspace Identity** — workspaces optionally store `icon` (emoji or lucide) and `theme_color` to provide customizable avatars, along with `expected_members` to track team size intent.
+- **Folder hierarchy** — folders use an ID-based materialized path with no leading slash (`rootId` or `parentPath/childId`), and `move_folder` updates a whole subtree atomically. Folder trash and restore cascade unconditionally to every descendant folder and file; restoring a folder therefore restores files that were independently trashed before the folder was trashed. Folder rename uses the file-equivalent `canModifyOthersFiles` permission, folder trash/restore use `canDeleteOthers`, and folder create/move are role-gated only with `canUpload`.
 
 ---
 

@@ -52,6 +52,25 @@ declare interface FileItem {
   aiStatus?: AiProcessingStatus;
 }
 
+declare interface FolderItem {
+  id: string;
+  name: string;
+  parentFolderId: string | null;
+  path: string;
+  depth: number;
+  isTrashed: boolean;
+  trashedAt: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  owner?: FileOwner;
+}
+
+declare interface FolderBreadcrumb {
+  id: string;
+  name: string;
+}
+
 declare interface UploadFileProps {
   file: File;
   path: string;
