@@ -869,12 +869,30 @@ export const moveFileToFolder = async ({
 
     const { data: file, error: fileError } = await supabase
       .from("files")
-      .select("workspace_id, name")
+      .select("workspace_id, name, folder_id")
       .eq("id", fileId)
       .maybeSingle();
     if (fileError) throw fileError;
     if (!file || file.workspace_id !== currentUser.workspaceId) {
       throw new Error("File not found in this workspace");
+    }
+
+    if (file.folder_id) {
+      const { data: sourceFolder, error: sourceFolderError } = await supabase
+        .from("folders")
+        .select("workspace_id, is_trashed")
+        .eq("id", file.folder_id)
+        .maybeSingle();
+      if (sourceFolderError) throw sourceFolderError;
+      if (
+        !sourceFolder ||
+        sourceFolder.workspace_id !== currentUser.workspaceId ||
+        sourceFolder.is_trashed
+      ) {
+        throw new Error(
+          "Restore the containing folder before moving files from it.",
+        );
+      }
     }
 
     let toFolderName = "Workspace Root";

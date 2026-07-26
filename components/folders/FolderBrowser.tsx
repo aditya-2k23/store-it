@@ -8,7 +8,7 @@ import CreateFolderDialog from "./CreateFolderDialog";
 import FolderCard from "./FolderCard";
 
 type FolderBrowserProps = {
-  currentFolder: { id: string; name: string } | null;
+  currentFolder: { id: string; name: string; isTrashed: boolean } | null;
   breadcrumbs: FolderBreadcrumb[];
   subfolders: FolderItem[];
   files: FileItem[];
@@ -36,7 +36,9 @@ export default function FolderBrowser({
             </div>
             <h1 className="h1 mt-2">{currentFolder?.name || "Files"}</h1>
           </div>
-          <CreateFolderDialog parentFolderId={currentFolder?.id || null} />
+          {!currentFolder?.isTrashed && (
+            <CreateFolderDialog parentFolderId={currentFolder?.id || null} />
+          )}
         </div>
       </section>
 

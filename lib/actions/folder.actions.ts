@@ -84,7 +84,11 @@ const requireUploadPermission = async (
   }
 };
 
-const mapFolderRow = (row: FolderRowWithOwner): FolderItem => ({
+const mapFolderRow = (
+  row: FolderRowWithOwner,
+  fileCount = 0,
+  itemCount = 0,
+): FolderItem => ({
   id: row.id,
   name: row.name,
   parentFolderId: row.parent_folder_id,
@@ -103,7 +107,58 @@ const mapFolderRow = (row: FolderRowWithOwner): FolderItem => ({
         avatarUrl: row.owner.avatar_url || null,
       }
     : undefined,
+  fileCount,
+  itemCount,
 });
+
+const mapFoldersWithCounts = async (
+  supabase: ReturnType<typeof createSupabaseAdmin>,
+  workspaceId: string,
+  folders: FolderRowWithOwner[],
+) => {
+  const folderIds = folders.map((folder) => folder.id);
+  if (folderIds.length === 0) return [] as FolderItem[];
+
+  const [childFoldersResult, filesResult] = await Promise.all([
+    supabase
+      .from("folders")
+      .select("parent_folder_id")
+      .eq("workspace_id", workspaceId)
+      .in("parent_folder_id", folderIds),
+    supabase
+      .from("files")
+      .select("folder_id")
+      .eq("workspace_id", workspaceId)
+      .in("folder_id", folderIds),
+  ]);
+  if (childFoldersResult.error) throw childFoldersResult.error;
+  if (filesResult.error) throw filesResult.error;
+
+  const childFolderCounts = new Map<string, number>();
+  const fileCounts = new Map<string, number>();
+  (childFoldersResult.data || []).forEach((folder) => {
+    if (folder.parent_folder_id) {
+      childFolderCounts.set(
+        folder.parent_folder_id,
+        (childFolderCounts.get(folder.parent_folder_id) || 0) + 1,
+      );
+    }
+  });
+  (filesResult.data || []).forEach((file) => {
+    if (file.folder_id) {
+      fileCounts.set(file.folder_id, (fileCounts.get(file.folder_id) || 0) + 1);
+    }
+  });
+
+  return folders.map((folder) => {
+    const fileCount = fileCounts.get(folder.id) || 0;
+    return mapFolderRow(
+      folder,
+      fileCount,
+      fileCount + (childFolderCounts.get(folder.id) || 0),
+    );
+  });
+};
 
 const getFolderActionRecord = async (
   supabase: ReturnType<typeof createSupabaseAdmin>,
@@ -440,14 +495,20 @@ export const getFolderContents = async (folderId: string | null) => {
 
     return parseStringify({
       currentFolder: currentFolder
-        ? { id: currentFolder.id, name: currentFolder.name }
+        ? {
+            id: currentFolder.id,
+            name: currentFolder.name,
+            isTrashed: currentFolder.is_trashed,
+          }
         : null,
       breadcrumbs: (breadcrumbRows || []).map((folder) => ({
         id: folder.id,
         name: folder.name,
       })),
-      subfolders: (subfolderRows || []).map((folder) =>
-        mapFolderRow(folder as FolderRowWithOwner),
+      subfolders: await mapFoldersWithCounts(
+        supabase,
+        currentUser.workspaceId,
+        (subfolderRows || []) as FolderRowWithOwner[],
       ),
       files: files.map((file) =>
         mapRowToFileItem(
@@ -488,5 +549,32 @@ export const getFoldersForPicker = async (excludeFolderId?: string) => {
     return parseStringify(folders.map((folder) => mapFolderRow(folder as FolderRowWithOwner)));
   } catch (error) {
     handleError(error, "Failed to get folders for picker");
+  }
+};
+
+export const getTrashedFolders = async () => {
+  const supabase = createSupabaseAdmin();
+
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
+
+    const { data, error } = await supabase
+      .from("folders")
+      .select(FOLDER_SELECT)
+      .eq("workspace_id", currentUser.workspaceId)
+      .eq("is_trashed", true)
+      .order("trashed_at", { ascending: false });
+    if (error) throw error;
+
+    return parseStringify({
+      folders: await mapFoldersWithCounts(
+        supabase,
+        currentUser.workspaceId,
+        (data || []) as FolderRowWithOwner[],
+      ),
+    });
+  } catch (error) {
+    handleError(error, "Failed to get trashed folders");
   }
 };

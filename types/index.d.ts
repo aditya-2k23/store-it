@@ -64,6 +64,8 @@ declare interface FolderItem {
   createdAt: string;
   updatedAt: string;
   owner?: FileOwner;
+  fileCount: number;
+  itemCount: number;
 }
 
 declare interface FolderBreadcrumb {
