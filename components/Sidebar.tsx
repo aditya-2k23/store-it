@@ -138,29 +138,32 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
             />
           </Link>
 
-          {/* Desktop Logo (Visible on lg+ screens when NOT collapsed) */}
-          {!displayCollapsed && (
-            <Link
-              href="/?ref=internal"
-              className="hidden lg:flex relative h-10 w-37 items-center overflow-hidden transition-all duration-300 ease-in-out opacity-100"
-            >
-              <div className="relative">
-                <Image
-                  src="/assets/icons/logo_brand.png"
-                  alt="Storey"
-                  width={148}
-                  height={148}
-                  style={{ height: "auto" }}
-                  loading="eager"
-                  priority
-                  className="shrink-0"
-                />
-                <span className="absolute bottom-3 right-px text-[9.5px] font-bold text-brand">
-                  {APP_VERSION}
-                </span>
-              </div>
-            </Link>
-          )}
+          {/* Desktop Logo (Visible on lg+ screens) */}
+          <Link
+            href="/?ref=internal"
+            className={cn(
+              "hidden lg:flex relative h-10 items-center overflow-hidden transition-all duration-300 ease-in-out",
+              displayCollapsed
+                ? "w-0 opacity-0 pointer-events-none -translate-x-2"
+                : "w-37 opacity-100 translate-x-0",
+            )}
+          >
+            <div className="relative">
+              <Image
+                src="/assets/icons/logo_brand.png"
+                alt="Storey"
+                width={148}
+                height={148}
+                style={{ height: "auto" }}
+                loading="eager"
+                priority
+                className="shrink-0"
+              />
+              <span className="absolute bottom-3 right-px text-[9.5px] font-bold text-brand">
+                {APP_VERSION}
+              </span>
+            </div>
+          </Link>
 
           {/* Desktop Expand/Collapse Button (ONLY visible on lg+ screens) */}
           <button

@@ -864,6 +864,18 @@ export const emptyTrash = async (workspaceId: string, path: string) => {
 
     try {
       await hardDeleteFile(supabase, fileRecord, path, false);
+    } catch (err) {
+      console.error(
+        `Failed to delete trashed file (${fileRecord.id}):`,
+        err,
+      );
+      failedCount += 1;
+      continue;
+    }
+
+    deletedCount += 1;
+
+    try {
       await logActivity({
         userId: currentUser.id,
         workspaceId: fileRecord.workspace_id,
@@ -874,13 +886,11 @@ export const emptyTrash = async (workspaceId: string, path: string) => {
           actorEmail: currentUser.email,
         },
       });
-      deletedCount += 1;
-    } catch (err) {
+    } catch (logErr) {
       console.error(
-        `Failed to delete trashed file (${fileRecord.id}):`,
-        err,
+        `Failed to log activity for deleted file (${fileRecord.id}):`,
+        logErr,
       );
-      failedCount += 1;
     }
   }
 
@@ -1119,26 +1129,26 @@ export async function getPaginatedProcessedFiles({
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    const { data: files, error: filesError } = await supabase
-      .from("files")
+    // Verify caller is a member of the target workspace
+    const { data: membership, error: memberError } = await supabase
+      .from("workspace_members")
       .select("id")
       .eq("workspace_id", workspaceId)
-      .eq("is_trashed", false);
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
 
-    if (filesError) throw filesError;
-    const fileIds = (files || []).map((f) => f.id);
-    if (fileIds.length === 0) {
-      return parseStringify({ items: [], hasMore: false, total: 0 });
-    }
+    if (memberError) throw memberError;
+    if (!membership) throw new Error("Not authorized to access this workspace");
 
     const { data, error, count } = await supabase
       .from("ai_metadata")
       .select(
-        "file_id, processing_status, summary, tags, processed_at, file:files!ai_metadata_file_id_fkey(name)",
+        "file_id, processing_status, summary, tags, processed_at, file:files!inner(name, workspace_id, is_trashed)",
         { count: "exact" },
       )
       .eq("processing_status", "completed")
-      .in("file_id", fileIds)
+      .eq("file.workspace_id", workspaceId)
+      .eq("file.is_trashed", false)
       .order("processed_at", { ascending: false, nullsFirst: false })
       .range(offset, offset + limit - 1);
 
