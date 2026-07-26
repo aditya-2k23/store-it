@@ -5,7 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { Folder } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { renameFolder, restoreFolder, trashFolder } from "@/lib/actions/folder.actions";
+import {
+  renameFolder,
+  restoreFolder,
+  trashFolder,
+} from "@/lib/actions/folder.actions";
 import FormattedDateTime from "@/components/FormattedDateTime";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,7 +46,10 @@ export default function FolderCard({
   const router = useRouter();
 
   const complete = (description: string) => {
-    toast({ description: <p className="body-2">{description}</p>, className: "success-toast" });
+    toast({
+      description: <p className="body-2">{description}</p>,
+      className: "success-toast",
+    });
     router.refresh();
   };
 
@@ -53,7 +60,10 @@ export default function FolderCard({
       setRenameOpen(false);
       complete("Folder renamed successfully.");
     } catch {
-      toast({ description: <p className="body-2">Failed to rename folder.</p>, className: "error-toast" });
+      toast({
+        description: <p className="body-2">Failed to rename folder.</p>,
+        className: "error-toast",
+      });
     } finally {
       setIsPending(false);
     }
@@ -70,7 +80,10 @@ export default function FolderCard({
         complete("Folder moved to trash.");
       }
     } catch {
-      toast({ description: <p className="body-2">Failed to update folder.</p>, className: "error-toast" });
+      toast({
+        description: <p className="body-2">Failed to update folder.</p>,
+        className: "error-toast",
+      });
     } finally {
       setIsPending(false);
     }
@@ -111,38 +124,80 @@ export default function FolderCard({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent onClick={(event) => event.stopPropagation()}>
-              <DropdownMenuLabel className="max-w-50 truncate">{folder.name}</DropdownMenuLabel>
+              <DropdownMenuLabel className="max-w-50 truncate">
+                {folder.name}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {folder.isTrashed ? (
-                <DropdownMenuItem className="shad-dropdown-item" onClick={() => void handleTrashState()}>
+                <DropdownMenuItem
+                  className="shad-dropdown-item"
+                  onClick={() => void handleTrashState()}
+                >
                   <div className="flex items-center gap-2">
-                    <Image src="/assets/icons/restore.svg" alt="Restore" width={30} height={30} />
+                    <Image
+                      src="/assets/icons/restore.svg"
+                      alt="Restore"
+                      width={30}
+                      height={30}
+                    />
                     Restore
                   </div>
                 </DropdownMenuItem>
               ) : (
                 <>
-                  <DropdownMenuItem className="shad-dropdown-item" onClick={() => setRenameOpen(true)}>
+                  <DropdownMenuItem
+                    className="shad-dropdown-item"
+                    onClick={() => setRenameOpen(true)}
+                  >
                     <div className="flex items-center gap-2">
-                      <Image src="/assets/icons/edit.svg" alt="Rename" width={30} height={30} />
+                      <Image
+                        src="/assets/icons/edit.svg"
+                        alt="Rename"
+                        width={30}
+                        height={30}
+                      />
                       Rename
                     </div>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="shad-dropdown-item" onClick={() => setDetailsOpen(true)}>
+                  <DropdownMenuItem
+                    className="shad-dropdown-item"
+                    onClick={() => setDetailsOpen(true)}
+                  >
                     <div className="flex items-center gap-2">
-                      <Image src="/assets/icons/info.svg" alt="Details" width={30} height={30} />
+                      <Image
+                        src="/assets/icons/info.svg"
+                        alt="Details"
+                        width={30}
+                        height={30}
+                      />
                       Details
                     </div>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="shad-dropdown-item" onClick={() => setMoveOpen(true)}>
+                  <DropdownMenuItem
+                    className="shad-dropdown-item"
+                    onClick={() => setMoveOpen(true)}
+                  >
                     <div className="flex items-center gap-2">
-                      <Image src="/assets/icons/move.svg" alt="Move to folder" width={30} height={30} />
+                      <Image
+                        src="/assets/icons/move.svg"
+                        alt="Move to folder"
+                        width={30}
+                        height={30}
+                      />
                       Move to...
                     </div>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="shad-dropdown-item" onClick={() => void handleTrashState()}>
+                  <DropdownMenuItem
+                    className="shad-dropdown-item"
+                    onClick={() => void handleTrashState()}
+                  >
                     <div className="flex items-center gap-2">
-                      <Image src="/assets/icons/delete.svg" alt="Trash" width={30} height={30} />
+                      <Image
+                        src="/assets/icons/delete.svg"
+                        alt="Trash"
+                        width={30}
+                        height={30}
+                      />
                       Trash
                     </div>
                   </DropdownMenuItem>
@@ -153,9 +208,14 @@ export default function FolderCard({
         </div>
         <div className="file-card-details">
           <p className="subtitle-2 line-clamp-1">{folder.name}</p>
-          {folder.isTrashed && <span className="w-fit rounded-full bg-slate-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">Trashed</span>}
+          {folder.isTrashed && (
+            <span className="w-fit rounded-full bg-slate-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+              Trashed
+            </span>
+          )}
           <p className="caption text-light-200">
-            {folder.fileCount} file{folder.fileCount === 1 ? "" : "s"} · {folder.itemCount} item{folder.itemCount === 1 ? "" : "s"}
+            {folder.fileCount} file{folder.fileCount === 1 ? "" : "s"} ·{" "}
+            {folder.itemCount} item{folder.itemCount === 1 ? "" : "s"}
           </p>
           <FormattedDateTime
             date={folder.createdAt}
@@ -169,25 +229,50 @@ export default function FolderCard({
 
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent className="shad-dialog">
-          <DialogHeader><DialogTitle className="text-center text-light-100">Rename Folder</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-center text-light-100">
+              Rename Folder
+            </DialogTitle>
+          </DialogHeader>
           <Input
             value={name}
             onChange={(event) => setName(event.target.value)}
             className="shad-no-focus h-12 rounded-xl border border-light-300 bg-white px-4 text-light-100 placeholder:text-light-200 focus:border-brand"
           />
           <DialogFooter className="flex flex-col gap-3 md:flex-row">
-            <Button onClick={() => setRenameOpen(false)} className="modal-cancel-button">Cancel</Button>
-            <Button onClick={() => void handleRename()} disabled={isPending || !name.trim()} className="modal-submit-button">Rename</Button>
+            <Button
+              onClick={() => setRenameOpen(false)}
+              className="modal-cancel-button"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleRename()}
+              disabled={isPending || !name.trim()}
+              className="modal-submit-button"
+            >
+              Rename
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="shad-dialog">
-          <DialogHeader><DialogTitle className="text-center text-light-100">Folder details</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="text-center text-light-100">
+              Folder details
+            </DialogTitle>
+          </DialogHeader>
           <div className="space-y-2 body-2 text-light-100">
-            <p><span className="text-light-200">Name:</span> {folder.name}</p>
-            <p><span className="text-light-200">Files:</span> {folder.fileCount}</p>
-            <p><span className="text-light-200">Items:</span> {folder.itemCount}</p>
+            <p>
+              <span className="text-light-200">Name:</span> {folder.name}
+            </p>
+            <p>
+              <span className="text-light-200">Files:</span> {folder.fileCount}
+            </p>
+            <p>
+              <span className="text-light-200">Items:</span> {folder.itemCount}
+            </p>
           </div>
         </DialogContent>
       </Dialog>

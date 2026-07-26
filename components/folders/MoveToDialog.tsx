@@ -33,7 +33,9 @@ export default function MoveToDialog({
   currentParentFolderId,
 }: MoveToDialogProps) {
   const [folders, setFolders] = useState<FolderItem[]>([]);
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null | undefined>(undefined);
+  const [selectedFolderId, setSelectedFolderId] = useState<
+    string | null | undefined
+  >(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const pathname = usePathname();
@@ -65,7 +67,11 @@ export default function MoveToDialog({
       if (itemType === "folder") {
         await moveFolder(itemId, selectedFolderId, pathname);
       } else {
-        await moveFileToFolder({ fileId: itemId, folderId: selectedFolderId, path: pathname });
+        await moveFileToFolder({
+          fileId: itemId,
+          folderId: selectedFolderId,
+          path: pathname,
+        });
       }
       toast({
         description: <p className="body-2">Moved successfully.</p>,
@@ -75,7 +81,9 @@ export default function MoveToDialog({
       router.refresh();
     } catch {
       toast({
-        description: <p className="body-2">Failed to move item. Please try again.</p>,
+        description: (
+          <p className="body-2">Failed to move item. Please try again.</p>
+        ),
         className: "error-toast",
       });
     } finally {
@@ -87,7 +95,9 @@ export default function MoveToDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="shad-dialog">
         <DialogHeader>
-          <DialogTitle className="text-center text-light-100">Move to folder</DialogTitle>
+          <DialogTitle className="text-center text-light-100">
+            Move to folder
+          </DialogTitle>
         </DialogHeader>
         <div className="max-h-72 space-y-1 overflow-y-auto rounded-xl border border-light-300 bg-white p-2">
           <button
@@ -107,11 +117,15 @@ export default function MoveToDialog({
               <span className="text-xs font-normal text-light-200">(root)</span>
             </div>
             {isRootCurrent && (
-              <span className="text-xs font-normal text-light-200">(current)</span>
+              <span className="text-xs font-normal text-light-200">
+                (current)
+              </span>
             )}
           </button>
           {isLoading ? (
-            <div className="flex justify-center p-4"><Loader2 className="size-5 animate-spin" /></div>
+            <div className="flex justify-center p-4">
+              <Loader2 className="size-5 animate-spin" />
+            </div>
           ) : (
             folders.map((folder) => {
               const isCurrent = normalizedCurrentParent === folder.id;
@@ -132,7 +146,9 @@ export default function MoveToDialog({
                 >
                   <span className="truncate">{folder.name}</span>
                   {isCurrent && (
-                    <span className="ml-2 text-xs font-normal text-light-200 flex-shrink-0">(current)</span>
+                    <span className="ml-2 text-xs font-normal text-light-200 shrink-0">
+                      (current)
+                    </span>
                   )}
                 </button>
               );
@@ -140,10 +156,20 @@ export default function MoveToDialog({
           )}
         </div>
         <DialogFooter className="flex flex-col gap-3 md:flex-row">
-          <Button onClick={() => onOpenChange(false)} className="modal-cancel-button">Cancel</Button>
+          <Button
+            onClick={() => onOpenChange(false)}
+            className="modal-cancel-button"
+          >
+            Cancel
+          </Button>
           <Button
             onClick={() => void handleMove()}
-            disabled={isLoading || isSubmitting || selectedFolderId === undefined || isSameLocation}
+            disabled={
+              isLoading ||
+              isSubmitting ||
+              selectedFolderId === undefined ||
+              isSameLocation
+            }
             className="modal-submit-button"
           >
             Move
