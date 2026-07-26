@@ -14,7 +14,10 @@ const Sort = () => {
   const path = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const currentSort = searchParams.get("sort") || sortTypes[0].value;
+  const rawSort = searchParams.get("sort");
+  const currentSort = sortTypes.some((t) => t.value === rawSort)
+    ? (rawSort as string)
+    : sortTypes[0].value;
 
   const handleSort = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
