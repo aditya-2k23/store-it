@@ -105,7 +105,7 @@ export default function NewWorkspacePage() {
           ? "You've reached the 5 workspace limit"
           : "Failed to create workspace. Please try again.";
         toast({
-          description: <p className="body-2 text-white">{message}</p>,
+          description: <p className="body-2">{message}</p>,
           className: "error-toast",
         });
         return;
@@ -117,7 +117,7 @@ export default function NewWorkspacePage() {
           await setActiveWorkspace(workspaceResult.id);
           toast({
             description: (
-              <p className="body-2 text-white">
+              <p className="body-2">
                 Workspace <span className="font-semibold">{data.name}</span>{" "}
                 created successfully.
               </p>
@@ -127,7 +127,7 @@ export default function NewWorkspacePage() {
         } catch (error: any) {
           toast({
             description: (
-              <p className="body-2 text-white">
+              <p className="body-2">
                 Workspace created, but failed to set as active. Please try
                 refreshing or selecting it manually.
               </p>
@@ -154,7 +154,7 @@ export default function NewWorkspacePage() {
     } catch {
       toast({
         description: (
-          <p className="body-2 text-white">Failed to generate link.</p>
+          <p className="body-2">Failed to generate link.</p>
         ),
         className: "error-toast",
       });
@@ -171,7 +171,7 @@ export default function NewWorkspacePage() {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast({
-        description: <p className="body-2 text-white">Failed to copy.</p>,
+        description: <p className="body-2">Failed to copy.</p>,
         className: "error-toast",
       });
     }

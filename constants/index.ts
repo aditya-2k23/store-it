@@ -43,9 +43,21 @@ export const actionsDropdownItems = [
     value: "download",
   },
   {
-    label: "Delete",
+    label: "Move to Trash",
     icon: "/assets/icons/delete.svg",
     value: "delete",
+  },
+];
+
+export const trashedActionsDropdownItems = [
+  {
+    label: "Restore",
+    value: "restore",
+  },
+  {
+    label: "Delete Forever",
+    icon: "/assets/icons/delete.svg",
+    value: "delete_forever",
   },
 ];
 

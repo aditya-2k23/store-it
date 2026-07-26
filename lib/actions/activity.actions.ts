@@ -69,10 +69,20 @@ function isValidCursor(
  * Pagination is cursor-based using (createdAt, id) for stable ordering even
  * when multiple rows share the same created_at timestamp.
  */
+export type ActivityCategory = "all" | "files" | "members" | "workspace";
+
+/**
+ * Returns a paginated list of activity log entries for the given workspace.
+ * The caller must be a member of the workspace.
+ *
+ * Pagination is cursor-based using (createdAt, id) for stable ordering even
+ * when multiple rows share the same created_at timestamp.
+ */
 export const getWorkspaceActivity = async (
   workspaceId: string,
   cursor?: { createdAt: string; id: string },
-  limit: number = 30,
+  limit: number = 5,
+  category: ActivityCategory = "all",
 ) => {
   const supabase = createSupabaseAdmin();
 
@@ -101,6 +111,17 @@ export const getWorkspaceActivity = async (
       .order("created_at", { ascending: false })
       .order("id", { ascending: false })
       .limit(limit);
+
+    if (category === "files") {
+      query = query.like("action", "file.%");
+    } else if (category === "members") {
+      query = query.like("action", "workspace.member.%");
+    } else if (category === "workspace") {
+      // For workspace, we want workspace actions but not member actions
+      // Supabase's `not` is a bit limited for wildcards in this specific pattern,
+      // but we can use `like` and `not` carefully.
+      query = query.like("action", "workspace.%").not("action", "like", "workspace.member.%");
+    }
 
     // Apply cursor for pagination — rows strictly before the cursor position
     // using both created_at and id as tie-breaker for stability.

@@ -2,7 +2,6 @@
 
 import { cn } from "@/lib/utils";
 import {
-  BrainCircuit,
   ChevronLeft,
   ChevronRight,
   Clapperboard,
@@ -11,6 +10,7 @@ import {
   ImageIcon,
   LayoutGrid,
   Settings,
+  Trash2,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -45,10 +45,19 @@ const sidebarLinks = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Images", href: "/images", icon: ImageIcon },
-  { name: "AI Collections", href: "/ai-collections", icon: BrainCircuit },
   { name: "Media", href: "/media", icon: Clapperboard },
   { name: "Others", href: "/others", icon: Ellipsis },
+  { name: "Trash", href: "/trash", icon: Trash2 },
 ];
+
+const navItemClass = (isActive: boolean, displayCollapsed: boolean) =>
+  cn(
+    "group flex items-center font-semibold text-slate-600 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35",
+    isActive && "bg-[#ff6b6b]/15 font-dynapuff font-medium text-[#ff6b6b]",
+    displayCollapsed
+      ? "size-11 mx-auto flex-center rounded-lg"
+      : "gap-3 rounded-xl px-4 py-3",
+  );
 
 const STORAGE_EVENT = "sidebar-collapsed-change";
 
@@ -104,24 +113,39 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
         "sidebar transition-all duration-300 ease-in-out flex h-screen shrink-0 flex-col justify-between",
         displayCollapsed
           ? "w-20 px-3 py-7 sm:w-20 lg:w-20 xl:w-20"
-          : "w-22.5 px-5 py-7 sm:w-22.5 lg:w-70 xl:w-81.25",
+          : "w-20 px-3 py-7 lg:w-70 lg:px-5 xl:w-81.25",
       )}
     >
       <div>
         <div
           className={cn(
-            "mb-8 flex items-center justify-between",
+            "mb-6 flex items-center justify-between",
             displayCollapsed ? "flex-col gap-4" : "flex-row",
           )}
         >
-          {/* Logo / Home Link (Visible when expanded) */}
+          {/* Mobile / Small Device Logo (ALWAYS visible on < lg screens) */}
+          <Link
+            href="/?ref=internal"
+            className="lg:hidden mx-auto my-1 flex items-center justify-center"
+          >
+            <Image
+              src="/assets/icons/logo-brand.svg"
+              alt="Storey"
+              width={36}
+              height={36}
+              className="size-9 object-contain"
+              priority
+            />
+          </Link>
+
+          {/* Desktop Logo (Visible on lg+ screens) */}
           <Link
             href="/?ref=internal"
             className={cn(
-              "relative flex h-10 items-center overflow-hidden transition-all duration-300 ease-in-out",
+              "hidden lg:flex relative h-10 items-center overflow-hidden transition-all duration-300 ease-in-out",
               displayCollapsed
-                ? "w-0 opacity-0 pointer-events-none absolute"
-                : "w-[148px] opacity-100",
+                ? "w-0 opacity-0 pointer-events-none -translate-x-2"
+                : "w-37 opacity-100 translate-x-0",
             )}
           >
             <div className="relative">
@@ -130,6 +154,7 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
                 alt="Storey"
                 width={148}
                 height={148}
+                style={{ height: "auto" }}
                 loading="eager"
                 priority
                 className="shrink-0"
@@ -140,13 +165,13 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
             </div>
           </Link>
 
-          {/* Expand/Collapse Button */}
+          {/* Desktop Expand/Collapse Button (ONLY visible on lg+ screens) */}
           <button
             onClick={toggleCollapse}
             className={cn(
-              "group relative flex shrink-0 items-center justify-center transition-all focus:outline-none",
+              "hidden lg:flex group relative shrink-0 items-center justify-center transition-all focus:outline-none",
               displayCollapsed
-                ? "h-10 w-10 cursor-pointer rounded-lg bg-white hover:bg-slate-50"
+                ? "h-11 w-11 mx-auto cursor-pointer rounded-xl bg-white border border-slate-200/80 shadow-sm hover:bg-slate-50"
                 : "h-8 w-8 cursor-pointer rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm hover:bg-slate-50 hover:text-slate-800",
             )}
             aria-label={
@@ -157,10 +182,10 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
             <Image
               src="/assets/icons/logo-brand.svg"
               alt="Storey"
-              width={40}
-              height={40}
+              width={32}
+              height={32}
               className={cn(
-                "absolute h-10 w-10 object-contain transition-all duration-300",
+                "absolute h-7 w-7 object-contain transition-all duration-300",
                 displayCollapsed
                   ? "opacity-100 group-hover:opacity-0 scale-100"
                   : "opacity-0 pointer-events-none scale-50",
@@ -194,7 +219,7 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
           isCollapsed={displayCollapsed}
         />
 
-        <div className="my-3 border-t border-light-300" />
+        <div className="my-3 border-t border-slate-200" />
 
         <nav aria-label="Primary navigation">
           <ul className="flex flex-col gap-2">
@@ -208,18 +233,11 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
                 <li key={name}>
                   <Link
                     href={href}
-                    className={cn(
-                      "group flex items-center py-3 font-semibold text-slate-600 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35",
-                      isActive &&
-                        "bg-[#ff6b6b]/15 font-dynapuff font-medium text-[#ff6b6b]",
-                      displayCollapsed
-                        ? "justify-center rounded-xl px-2"
-                        : "gap-3 rounded-full px-4",
-                    )}
+                    className={navItemClass(isActive, displayCollapsed)}
                   >
                     <Icon
                       className={cn(
-                        "size-4.5 shrink-0 transition-colors",
+                        "size-5 shrink-0 transition-colors",
                         isActive ? "text-brand" : "text-slate-500",
                       )}
                     />
@@ -242,13 +260,9 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
               <li>
                 <Link
                   href={`/workspaces/${activeWorkspaceId}/settings`}
-                  className={cn(
-                    "group flex items-center py-3 font-semibold text-slate-600 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35",
-                    pathname.includes("/settings") &&
-                      "bg-[#ff6b6b]/15 font-dynapuff font-medium text-[#ff6b6b]",
-                    displayCollapsed
-                      ? "justify-center rounded-xl px-2"
-                      : "gap-3 rounded-full px-4",
+                  className={navItemClass(
+                    pathname.includes("/settings"),
+                    displayCollapsed,
                   )}
                 >
                   <Settings
@@ -277,7 +291,7 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
         </nav>
       </div>
 
-      <div className="mt-auto flex flex-col gap-4">
+      <div className="mt-auto hidden flex-col gap-4 lg:flex">
         <div
           className={cn(
             "origin-bottom overflow-hidden transition-all duration-300 ease-in-out",

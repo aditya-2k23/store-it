@@ -31,7 +31,6 @@ export async function GET(
       .from("files")
       .select("storage_key, owner_id, type, workspace_id")
       .eq("id", fileId)
-      .eq("is_trashed", false)
       .single();
 
     if (fileError || !file) {

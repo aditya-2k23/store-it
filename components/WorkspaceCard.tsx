@@ -33,7 +33,7 @@ const WorkspaceCard = ({ workspace }: { workspace: WorkspaceWithRole }) => {
       } catch {
         toast({
           description: (
-            <p className="body-2 text-white">
+            <p className="body-2">
               Failed to open workspace. Please try again.
             </p>
           ),

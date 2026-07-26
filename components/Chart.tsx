@@ -41,35 +41,35 @@ const Chart = ({
       <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-white/40 blur-[80px]" />
       <div className="pointer-events-none absolute -bottom-14 left-18 h-52 w-52 rounded-full bg-white/40 blur-[60px]" />
 
-      <div className="relative w-full grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)] lg:items-center">
-        <div className="space-y-4">
-          <p className="font-medium font-dynapuff uppercase tracking-[0.2em] text-white/70">
+      <div className="relative w-full grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-6 sm:gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.2fr)] items-center">
+        {/* Circle Chart (Hidden on small & medium devices < lg) */}
+        <div className="hidden lg:flex flex-col items-center lg:items-start space-y-3 lg:space-y-4 shrink-0">
+          <p className="font-medium font-dynapuff uppercase tracking-[0.2em] text-white/70 text-xs sm:text-sm">
             Storage usage
           </p>
 
-          {/* <div className=""> */}
-          <div className="relative size-40 shrink-0">
+          <div className="relative size-32 sm:size-40 shrink-0">
             <div
               className="absolute inset-0 rounded-full"
               style={circleStyle}
               aria-hidden="true"
             />
             <div className="absolute inset-2 flex items-center justify-center rounded-full bg-brand">
-              <p className="text-3xl font-semibold text-white">
+              <p className="text-2xl sm:text-3xl font-semibold text-white">
                 {clampedPercentage.toFixed(1)}%
               </p>
-              {/* </div> */}
             </div>
           </div>
         </div>
 
-        <div className="flex h-full flex-col justify-center gap-4">
+        {/* AI Insights Section (Centered on small & medium devices < lg) */}
+        <div className="flex h-full flex-col justify-center items-center text-center lg:items-start lg:text-left gap-4">
           <div className="inline-flex w-fit items-center gap-2 rounded-4xl bg-white/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-white">
             <Sparkles className="size-4" />
             AI Insights
           </div>
 
-          <div className="grid gap-3 rounded-2xl bg-white/10 p-4 shadow-inner">
+          <div className="w-full grid gap-3 rounded-2xl bg-white/10 p-4 shadow-inner text-left">
             <div className="flex items-center justify-between text-sm text-white/85">
               <span>Usage status</span>
               <span
@@ -96,7 +96,7 @@ const Chart = ({
             </p>
           )}
 
-          <Link href={`/workspaces/${workspaceId}/settings/privacy`}>
+          <Link href={`/workspaces/${workspaceId}/privacy`}>
             <Button
               type="button"
               className="h-10 w-fit rounded-xl bg-white/95 px-4 text-sm font-semibold text-slate-700 shadow-lg transition-transform duration-300 hover:-translate-y-0.5 hover:bg-white cursor-pointer"

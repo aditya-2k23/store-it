@@ -17,20 +17,27 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import Image from "next/image";
-import { actionsDropdownItems } from "@/constants";
+import { actionsDropdownItems, trashedActionsDropdownItems } from "@/constants";
 import Link from "next/link";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import {
-  deleteFileUsers,
+  permanentlyDeleteFile,
   renameFile,
+  restoreFile,
+  trashFile,
   updateFileUsers,
 } from "@/lib/actions/file.actions";
 import { usePathname } from "next/navigation";
 import { FileDetails, ShareInput } from "./ActionsModalContent";
 import { toast } from "@/hooks/use-toast";
 
-type ToastAction = "rename" | "share" | "delete";
+type ToastAction =
+  | "rename"
+  | "share"
+  | "delete"
+  | "restore"
+  | "delete_forever";
 
 const ActionsDropdown = ({ file }: { file: FileItem }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -41,6 +48,9 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
   const [emails, setEmails] = useState<string[]>([]);
 
   const path = usePathname();
+  const dropdownItems = file.isTrashed
+    ? trashedActionsDropdownItems
+    : actionsDropdownItems;
 
   const closeAllModals = () => {
     setIsModalOpen(false);
@@ -54,7 +64,7 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
     if (!action) return;
     setIsLoading(true);
 
-    const actions = {
+    const actions: Record<string, () => Promise<unknown>> = {
       rename: () =>
         renameFile({
           fileId: file.id,
@@ -64,10 +74,12 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
         }),
       share: () => updateFileUsers({ fileId: file.id, emails, path }),
       delete: () =>
-        deleteFileUsers({
+        trashFile({
           fileId: file.id,
           path,
         }),
+      restore: () => restoreFile({ fileId: file.id, path }),
+      delete_forever: () => permanentlyDeleteFile({ fileId: file.id, path }),
     };
 
     try {
@@ -77,21 +89,33 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
         // Toast messages for successful actions
         const toastDescription: { [key in ToastAction]: React.ReactNode } = {
           rename: (
-            <p className="body-2 text-white">
+            <p className="body-2">
               File <span className="font-semibold">{file.name}</span> renamed
               successfully.
             </p>
           ),
           share: (
-            <p className="body-2 text-white">
+            <p className="body-2">
               File <span className="font-semibold">{file.name}</span> shared
               successfully with {emails.join(", ")}.
             </p>
           ),
           delete: (
-            <p className="body-2 text-white">
-              File <span className="font-semibold">{file.name}</span> deleted
+            <p className="body-2">
+              File <span className="font-semibold">{file.name}</span> moved to
+              trash.
+            </p>
+          ),
+          restore: (
+            <p className="body-2">
+              File <span className="font-semibold">{file.name}</span> restored
               successfully.
+            </p>
+          ),
+          delete_forever: (
+            <p className="body-2">
+              File <span className="font-semibold">{file.name}</span> deleted
+              permanently.
             </p>
           ),
         };
@@ -111,7 +135,7 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
       // Error toast
       toast({
         description: (
-          <p className="body-2 text-white">
+          <p className="body-2">
             Failed to {action.value}{" "}
             <span className="font-semibold">{file.name}</span>. Please try
             again.
@@ -166,12 +190,19 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
           )}
           {value === "delete" && (
             <p className="delete-confirmation">
-              Are you sure you want to delete{` `}
-              <span className="delete-file-name">{file.name}</span>?
+              Move{` `}
+              <span className="delete-file-name">{file.name}</span> to trash?
+            </p>
+          )}
+          {value === "delete_forever" && (
+            <p className="delete-confirmation">
+              Permanently delete{` `}
+              <span className="delete-file-name">{file.name}</span>? This
+              cannot be undone.
             </p>
           )}
         </DialogHeader>
-        {["rename", "delete", "share"].includes(value) && (
+        {["rename", "delete", "share", "delete_forever"].includes(value) && (
           <DialogFooter className="flex flex-col gap-3 md:flex-row">
             <Button onClick={closeAllModals} className="modal-cancel-button">
               Cancel
@@ -180,7 +211,9 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
               onClick={() => handleAction(action)}
               className="modal-submit-button"
             >
-              <p className="capitalize">{value}</p>
+              <p className="capitalize">
+                {value === "delete_forever" ? "Delete forever" : value}
+              </p>
               {isLoading && (
                 <Image
                   src="/assets/icons/loader.svg"
@@ -215,17 +248,28 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
 
           <DropdownMenuSeparator />
 
-          {actionsDropdownItems.map((actionItem) => (
+          {dropdownItems.map((actionItem) => (
             <DropdownMenuItem
               key={actionItem.value}
               className="shad-dropdown-item"
+              disabled={isLoading}
               onClick={() => {
+                if (isLoading) return;
                 setAction(actionItem);
 
+                if (actionItem.value === "restore") {
+                  void handleAction(actionItem);
+                  return;
+                }
+
                 if (
-                  ["rename", "share", "delete", "details"].includes(
-                    actionItem.value
-                  )
+                  [
+                    "rename",
+                    "share",
+                    "delete",
+                    "delete_forever",
+                    "details",
+                  ].includes(actionItem.value)
                 ) {
                   setIsModalOpen(true);
                 }
@@ -237,22 +281,35 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
                   download={file.name}
                   className="flex items-center gap-2"
                 >
-                  <Image
-                    src={actionItem.icon}
-                    alt={actionItem.label}
-                    width={30}
-                    height={30}
-                  />
+                  {actionItem.icon && (
+                    <Image
+                      src={actionItem.icon}
+                      alt={actionItem.label}
+                      width={30}
+                      height={30}
+                    />
+                  )}
                   {actionItem.label}
                 </Link>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Image
-                    src={actionItem.icon}
-                    alt={actionItem.label}
-                    width={30}
-                    height={30}
-                  />
+                  {actionItem.icon && (
+                    <Image
+                      src={
+                        actionItem.value === "restore" && isLoading
+                          ? "/assets/icons/loader.svg"
+                          : actionItem.icon
+                      }
+                      alt={actionItem.label}
+                      width={30}
+                      height={30}
+                      className={
+                        actionItem.value === "restore" && isLoading
+                          ? "animate-spin"
+                          : ""
+                      }
+                    />
+                  )}
                   {actionItem.label}
                 </div>
               )}

@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { getWorkspaceActivity } from "@/lib/actions/activity.actions";
+import {
+  getWorkspaceActivity,
+  type ActivityCategory,
+} from "@/lib/actions/activity.actions";
 import FormattedDateTime from "@/components/FormattedDateTime";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +23,8 @@ interface ActivityFeedProps {
  */
 function formatAction(item: ActivityLogItem): string {
   const m = item.metadata ?? {};
-  const actor = (m.actorName as string | null) || (m.actorEmail as string) || "Someone";
+  const actor =
+    (m.actorName as string | null) || (m.actorEmail as string) || "Someone";
 
   switch (item.action) {
     case "file.upload":
@@ -30,7 +34,16 @@ function formatAction(item: ActivityLogItem): string {
       return `${actor} renamed "${m.oldName ?? "a file"}" to "${m.newName ?? "unknown"}"`;
 
     case "file.delete":
-      return `${actor} deleted ${m.fileName ?? "a file"}`;
+      if (m.reason === "auto_purge_30_days") {
+        return `${m.fileName ?? "A file"} was automatically deleted after 30 days in trash`;
+      }
+      return `${actor} permanently deleted ${m.fileName ?? "a file"}`;
+
+    case "file.trash":
+      return `${actor} moved ${m.fileName ?? "a file"} to trash`;
+
+    case "file.restore":
+      return `${actor} restored ${m.fileName ?? "a file"} from trash`;
 
     case "file.share.create":
       return `${actor} shared "${m.fileName ?? "a file"}" with ${m.email ?? "someone"}`;
@@ -73,27 +86,104 @@ function formatAction(item: ActivityLogItem): string {
   }
 }
 
+function getActionColorClass(action: string): string {
+  if (
+    action === "file.delete" ||
+    action === "file.trash" ||
+    action === "file.share.remove" ||
+    action === "workspace.delete" ||
+    action === "workspace.member.remove" ||
+    action === "workspace.member.leave"
+  ) {
+    return "bg-red/80";
+  }
+
+  if (
+    action === "file.upload" ||
+    action === "file.restore" ||
+    action === "workspace.create" ||
+    action === "workspace.member.join" ||
+    action === "workspace.member.invite" ||
+    action === "file.share.create"
+  ) {
+    return "bg-green/80";
+  }
+
+  if (
+    action === "file.rename" ||
+    action === "workspace.rename" ||
+    action === "workspace.appearance.update" ||
+    action === "workspace.member.role_change" ||
+    action === "workspace.member.ownership_transfer"
+  ) {
+    return "bg-orange/80";
+  }
+
+  return "bg-brand/80";
+}
+
 export default function ActivityFeed({
   workspaceId,
   initialItems,
   initialCursor,
 }: ActivityFeedProps) {
   const [items, setItems] = useState<ActivityLogItem[]>(initialItems);
-  const [cursor, setCursor] = useState<{ createdAt: string; id: string } | null>(
-    initialCursor,
-  );
+  const [cursor, setCursor] = useState<{
+    createdAt: string;
+    id: string;
+  } | null>(initialCursor);
+  const [category, setCategory] = useState<ActivityCategory>("all");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  const CATEGORIES: ActivityCategory[] = [
+    "all",
+    "files",
+    "members",
+    "workspace",
+  ];
+
+  const handleCategoryChange = (newCategory: ActivityCategory) => {
+    if (newCategory === category) return;
+    setCategory(newCategory);
+    setError(null);
+    startTransition(async () => {
+      try {
+        const result = await getWorkspaceActivity(
+          workspaceId,
+          undefined,
+          5,
+          newCategory,
+        );
+        if (result) {
+          setItems(result.items as ActivityLogItem[]);
+          setCursor(
+            result.nextCursor as { createdAt: string; id: string } | null,
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load activity:", err);
+        setError("Failed to load activity. Please try again.");
+      }
+    });
+  };
 
   const handleLoadMore = () => {
     if (!cursor) return;
     setError(null);
     startTransition(async () => {
       try {
-        const result = await getWorkspaceActivity(workspaceId, cursor);
+        const result = await getWorkspaceActivity(
+          workspaceId,
+          cursor,
+          5,
+          category,
+        );
         if (result) {
           setItems((prev) => [...prev, ...(result.items as ActivityLogItem[])]);
-          setCursor(result.nextCursor as { createdAt: string; id: string } | null);
+          setCursor(
+            result.nextCursor as { createdAt: string; id: string } | null,
+          );
         }
       } catch (err) {
         console.error("Failed to load more activity:", err);
@@ -102,34 +192,57 @@ export default function ActivityFeed({
     });
   };
 
-  if (items.length === 0) {
-    return (
-      <p className="caption text-light-200">No activity yet</p>
-    );
-  }
-
   return (
-    <div className="space-y-2">
-      {items.map((item) => (
-        <div
-          key={item.id}
-          className="flex items-start gap-3 rounded-xl border border-light-300 bg-white p-3 transition-colors hover:bg-light-400/30"
-        >
-          {/* Dot indicator */}
-          <div className="mt-1.5 size-2 shrink-0 rounded-full bg-brand/40" />
+    <div className="space-y-4">
+      {/* Category Filters */}
+      <div className="flex flex-wrap gap-2">
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            aria-pressed={category === cat}
+            onClick={() => handleCategoryChange(cat)}
+            disabled={isPending}
+            className={`px-3 py-1.5 text-xs font-semibold capitalize rounded-full transition-colors cursor-pointer disabled:opacity-50 ${
+              category === cat
+                ? "bg-brand text-white"
+                : "bg-light-300/50 text-light-100 hover:bg-light-300"
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
 
-          {/* Content */}
-          <div className="min-w-0 flex-1">
-            <p className="body-2 truncate text-dark-100">
-              {formatAction(item)}
-            </p>
-            <FormattedDateTime
-              date={item.createdAt}
-              className="caption mt-0.5 text-light-200"
-            />
-          </div>
-        </div>
-      ))}
+      <div className="space-y-2">
+        {items.length === 0 && !isPending ? (
+          <p className="caption text-light-200 py-2">
+            No activity found for this category
+          </p>
+        ) : (
+          items.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-start gap-3 rounded-xl border border-light-300 bg-white p-3"
+            >
+              {/* Dot indicator */}
+              <div
+                className={`mt-1.5 size-2 shrink-0 rounded-full ${getActionColorClass(item.action)}`}
+              />
+
+              {/* Content */}
+              <div className="min-w-0 flex-1">
+                <p className="body-2 truncate text-dark-100">
+                  {formatAction(item)}
+                </p>
+                <FormattedDateTime
+                  date={item.createdAt}
+                  className="caption mt-0.5 text-light-200"
+                />
+              </div>
+            </div>
+          ))
+        )}
+      </div>
 
       {cursor && (
         <div className="pt-2 space-y-2">

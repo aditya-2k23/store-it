@@ -3,7 +3,7 @@ declare type AiProcessingStatus = "pending" | "processing" | "completed" | "fail
 
 declare interface ActionType {
   label: string;
-  icon: string;
+  icon?: string;
   value: string;
 }
 
@@ -43,6 +43,9 @@ declare interface FileItem {
   createdAt: string;
   updatedAt: string;
   storageKey: string;
+  isTrashed: boolean;
+  trashedAt: string | null;
+  daysUntilPurge?: number;
   owner: FileOwner;
   sharedWith: string[];
   tags?: string[] | null;

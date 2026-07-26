@@ -22,7 +22,7 @@ const AcceptInviteButtons = ({ token }: AcceptInviteButtonsProps) => {
         if (result?.workspaceId) {
           toast({
             description: (
-              <p className="body-2 text-white">
+              <p className="body-2">
                 Successfully joined the workspace!
               </p>
             ),
@@ -32,7 +32,7 @@ const AcceptInviteButtons = ({ token }: AcceptInviteButtonsProps) => {
         } else {
           toast({
             description: (
-              <p className="body-2 text-white">
+              <p className="body-2">
                 {result?.reason || "Failed to join workspace. Please try again."}
               </p>
             ),
@@ -43,7 +43,7 @@ const AcceptInviteButtons = ({ token }: AcceptInviteButtonsProps) => {
         if (error?.code === "ALREADY_MEMBER") {
           toast({
             description: (
-              <p className="body-2 text-white">
+              <p className="body-2">
                 You are already a member of this workspace.
               </p>
             ),
@@ -53,7 +53,7 @@ const AcceptInviteButtons = ({ token }: AcceptInviteButtonsProps) => {
         } else {
           toast({
             description: (
-              <p className="body-2 text-white">
+              <p className="body-2">
                 Failed to join workspace. Please try again.
               </p>
             ),

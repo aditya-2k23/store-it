@@ -50,7 +50,7 @@ const WorkspaceSwitcher = ({
       } catch {
         toast({
           description: (
-            <p className="body-2 text-white">
+            <p className="body-2">
               Failed to switch workspace. Please try again.
             </p>
           ),
@@ -66,32 +66,43 @@ const WorkspaceSwitcher = ({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
+          aria-label={isCollapsed ? (activeWorkspace?.name || "Workspace") : undefined}
           className={cn(
-            "shad-no-focus w-full rounded-xl border border-light-300 bg-white transition-all hover:shadow-drop-3 cursor-pointer",
+            "cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50",
             isCollapsed
-              ? "flex-center size-11"
-              : "flex items-center justify-between px-3 py-2.5",
+              ? "mx-auto flex items-center justify-center size-11 rounded-lg bg-brand text-white shadow-drop-2 hover:scale-105"
+              : "w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-light-300 bg-white hover:shadow-drop-3",
           )}
           disabled={isPending}
         >
-          <div className="flex items-center gap-2 min-w-0">
-            {activeWorkspace && (
+          {isCollapsed ? (
+            activeWorkspace && (
               <WorkspaceAvatar
                 name={activeWorkspace.name}
                 icon={activeWorkspace.icon}
                 themeColor={activeWorkspace.themeColor}
-                className="size-6 text-[10px]"
-                iconClassName="size-3.5"
+                className="size-11 rounded-lg text-white shadow-none"
+                iconClassName="size-5 text-white"
               />
-            )}
-            {!isCollapsed && (
-              <span className="truncate text-sm font-semibold text-light-100">
-                {activeWorkspace?.name || "Workspace"}
-              </span>
-            )}
-          </div>
-          {!isCollapsed && (
-            <ChevronDown className="size-4 shrink-0 text-light-200" />
+            )
+          ) : (
+            <div className="flex items-center justify-between w-full min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                {activeWorkspace && (
+                  <WorkspaceAvatar
+                    name={activeWorkspace.name}
+                    icon={activeWorkspace.icon}
+                    themeColor={activeWorkspace.themeColor}
+                    className="size-7 rounded-md text-[10px]"
+                    iconClassName="size-4"
+                  />
+                )}
+                <span className="truncate text-sm font-semibold text-light-100">
+                  {activeWorkspace?.name || "Workspace"}
+                </span>
+              </div>
+              <ChevronDown className="hidden lg:block size-4 shrink-0 text-light-200" />
+            </div>
           )}
         </button>
       </DropdownMenuTrigger>
@@ -101,7 +112,7 @@ const WorkspaceSwitcher = ({
         sideOffset={8}
         className="w-64 rounded-xl border border-light-300 bg-white p-1.5 shadow-drop-1"
       >
-        <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+        <div className="max-h-75 overflow-y-auto custom-scrollbar">
           {workspaces.map((workspace) => {
             const isActive = workspace.id === activeWorkspaceId;
             const isSwitching = switchingId === workspace.id;

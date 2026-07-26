@@ -2,22 +2,28 @@ import { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
-import ActionsDropdown from "@/components/ActionsDropdown";
 import Chart from "@/components/Chart";
 import FormattedDateTime from "@/components/FormattedDateTime";
-import Thumbnail from "@/components/Thumbnail";
 import { Separator } from "@/components/ui/separator";
-import { getFiles, getTotalSpaceUsed, getStorageSnapshot } from "@/lib/actions/file.actions";
-import { getActiveWorkspaceId, getUserWorkspaces } from "@/lib/actions/workspace.actions";
+import {
+  getFiles,
+  getTotalSpaceUsed,
+  getStorageSnapshot,
+  getTrashedFiles,
+} from "@/lib/actions/file.actions";
+import {
+  getActiveWorkspaceId,
+  getUserWorkspaces,
+} from "@/lib/actions/workspace.actions";
 import { convertFileSize, getUsageSummary } from "@/lib/utils";
-import EmptyState from "@/components/EmptyState";
+import DashboardAccordion from "@/components/DashboardAccordion";
 
 export async function generateMetadata(): Promise<Metadata> {
   const activeWorkspaceId = await getActiveWorkspaceId();
   if (activeWorkspaceId) {
     const workspaces = await getUserWorkspaces();
     const activeWorkspace = (workspaces || []).find(
-      (w: any) => w.id === activeWorkspaceId
+      (w: any) => w.id === activeWorkspaceId,
     );
     if (activeWorkspace) {
       return {
@@ -32,18 +38,25 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const Dashboard = async () => {
   // Parallel requests
-  const [files, totalSpace, snapshot, activeWorkspaceId] = await Promise.all([
-    getFiles({ types: [], limit: 10 }),
-    getTotalSpaceUsed(),
-    getStorageSnapshot().catch((err) => {
-      console.error("Failed to load storage snapshot:", err);
-      return null;
-    }),
-    getActiveWorkspaceId().catch((err) => {
-      console.error("Failed to load active workspace ID:", err);
-      return "";
-    }),
-  ]);
+  const [files, trashedFilesRes, totalSpace, snapshot, activeWorkspaceId] =
+    await Promise.all([
+      getFiles({ types: [], limit: 10 }),
+      getTrashedFiles().catch((err) => {
+        console.error("Failed to load trashed files:", err);
+        return null;
+      }),
+      getTotalSpaceUsed(),
+      getStorageSnapshot().catch((err) => {
+        console.error("Failed to load storage snapshot:", err);
+        return null;
+      }),
+      getActiveWorkspaceId().catch((err) => {
+        console.error("Failed to load active workspace ID:", err);
+        return "";
+      }),
+    ]);
+
+  const trashedFiles = trashedFilesRes?.documents?.slice(0, 10) || [];
 
   // Get usage summary
   const usageSummary = getUsageSummary(totalSpace);
@@ -98,43 +111,10 @@ const Dashboard = async () => {
         </ul>
       </section>
 
-      {/* Recent files uploaded */}
-      <section className="dashboard-recent-files">
-        <h2 className="h3 xl:h2 text-light-100 font-dynapuff tracking-wider">
-          Recently uploaded files
-        </h2>
-        {files.documents.length > 0 ? (
-          <ul className="mt-5 flex flex-col gap-5">
-            {files.documents.map((file: FileItem) => (
-              <Link
-                href={file.downloadUrl || file.url || "#"}
-                target="_blank"
-                className="flex items-center gap-3"
-                key={file.id}
-              >
-                <Thumbnail
-                  type={file.type}
-                  extension={file.extension}
-                  url={file.url}
-                />
-
-                <div className="recent-file-details">
-                  <div className="flex flex-col gap-1">
-                    <p className="recent-file-name">{file.name}</p>
-                    <FormattedDateTime
-                      date={file.createdAt}
-                      className="caption"
-                    />
-                  </div>
-                  <ActionsDropdown file={file} />
-                </div>
-              </Link>
-            ))}
-          </ul>
-        ) : (
-          <EmptyState />
-        )}
-      </section>
+      <DashboardAccordion
+        uploadedFiles={files.documents}
+        trashedFiles={trashedFiles}
+      />
     </div>
   );
 };

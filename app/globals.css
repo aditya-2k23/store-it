@@ -228,7 +228,7 @@
   }
 
   .main-content {
-    @apply flex-1 min-h-0 overflow-y-auto bg-light-400 px-5 py-7 sm:rounded-[30px] md:mb-7 md:px-9 md:py-10;
+    @apply flex-1 min-h-0 overflow-y-auto bg-light-400 px-5 py-7 border-t border-brand/10;
   }
 
   /* Dashboard */
@@ -237,15 +237,15 @@
   }
 
   .dashboard-summary-list {
-    @apply mt-6 grid grid-cols-1 gap-4 xl:mt-10 xl:grid-cols-2 xl:gap-9;
+    @apply mt-6 grid grid-cols-2 gap-4 xl:mt-10 xl:grid-cols-2 xl:gap-9;
   }
 
   .dashboard-summary-card {
-    @apply relative mt-6 rounded-[20px] bg-white p-5 transition-all hover:scale-105;
+    @apply relative mt-6 rounded-[20px] bg-white p-4 sm:p-5 transition-all hover:scale-105;
   }
 
   .summary-type-icon {
-    @apply absolute -left-3 -top-6.25 z-10 w-47.5 object-contain;
+    @apply absolute -left-3 -top-6.25 z-10 w-28 sm:w-36 md:w-47.5 object-contain;
   }
 
   .summary-type-size {
@@ -257,7 +257,10 @@
   }
 
   .dashboard-recent-files {
-    @apply h-full flex flex-col rounded-[20px] xl:h-163.5 overflow-auto bg-white p-5 xl:p-7;
+    @apply flex flex-col rounded-[20px] bg-white p-5 xl:p-7 transition-all duration-300;
+    height: fit-content;
+    max-height: 654px;
+    overflow-y: auto;
   }
 
   .recent-file-details {
@@ -408,11 +411,13 @@
   .success-toast {
     @apply bg-white border-l-4 border-l-green rounded-xl shadow-drop-3 text-dark-100;
   }
+
   .success-toast [data-title] {
     @apply text-dark-200 font-bold;
   }
+
   .header {
-    @apply hidden items-center justify-between gap-5 bg-light-400/95 p-5 backdrop-blur z-50 sm:flex lg:py-7 xl:gap-10;
+    @apply hidden items-center justify-between gap-5 bg-light-400/90 px-5 py-4 backdrop-blur z-50 sm:flex xl:gap-10;
   }
 
   .header-wrapper {
@@ -459,19 +464,19 @@
 
   /* Search */
   .search {
-    @apply relative w-full md:max-w-[560px];
+    @apply relative w-full md:max-w-140;
   }
 
   .search-input-wrapper {
-    @apply flex h-13 flex-1 items-center gap-3 rounded-full px-4 shadow-drop-3;
+    @apply flex h-13 flex-1 items-center gap-3 rounded-full bg-white px-4.5 border border-slate-200/80 shadow-sm transition-all duration-300 hover:border-brand/40 hover:shadow-md focus-within:border-brand focus-within:ring-4 focus-within:ring-brand/20 focus-within:shadow-[0_0_25px_rgba(250,114,117,0.25)];
   }
 
   .search-input {
-    @apply text-[14px] leading-5 font-normal outline-none ring-offset-transparent focus:ring-transparent focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 placeholder:text-[16px] placeholder:leading-6 placeholder:font-normal w-full border-none p-0 shadow-none placeholder:text-light-200;
+    @apply text-[14px] leading-5 font-medium text-slate-800 outline-none ring-offset-transparent focus:ring-transparent focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 placeholder:text-[15px] placeholder:leading-6 placeholder:font-normal w-full border-none p-0 bg-transparent shadow-none placeholder:text-slate-400;
   }
 
   .search-result {
-    @apply absolute left-0 top-16 z-50 flex w-full flex-col gap-3 rounded-[20px] bg-white p-4;
+    @apply absolute left-0 top-15 z-50 flex w-full flex-col gap-2 rounded-2xl bg-white p-3 border border-slate-100 shadow-[0_12px_40px_rgba(0,0,0,0.12)];
   }
 
   .empty-result {
@@ -555,8 +560,8 @@
 
 .cl-userProfile-navbar,
 .cl-navbar {
-  background-color: #F2F4F8 !important; /* light-400 equivalent */
-  border-right: 1px solid #F2F5F9 !important; /* light-300 equivalent */
+  background-color: #f2f4f8 !important; /* light-400 equivalent */
+  border-right: 1px solid #f2f5f9 !important; /* light-300 equivalent */
 }
 
 .cl-userProfile-pageScrollBox,

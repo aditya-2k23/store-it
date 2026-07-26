@@ -257,12 +257,12 @@ const Search = () => {
 
   return (
     <div className="search" ref={searchRef}>
-      <div className="search-input-wrapper">
-        <SearchIcon className="size-5 text-slate-400 transition-colors focus-within:text-[#ff6b6b]" />
+      <div className="search-input-wrapper group">
+        <SearchIcon className="size-5 shrink-0 text-slate-400 transition-colors duration-300 group-focus-within:text-brand" />
 
         <Input
           value={query}
-          placeholder="Ask AI anything..."
+          placeholder="Search with AI..."
           className="search-input"
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -270,10 +270,10 @@ const Search = () => {
           type="button"
           aria-label={isListening ? "Stop voice input" : "Use voice input"}
           onClick={toggleListening}
-          className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 ${
+          className={`inline-flex size-9 shrink-0 items-center justify-center rounded-full border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
             isListening
-              ? "border-brand bg-red-50 text-brand shadow-[0_0_15px_rgba(250,114,117,0.7)] animate-pulse"
-              : "border-white/80 bg-white/90 text-slate-500 hover:text-brand"
+              ? "border-brand bg-brand/10 text-brand shadow-[0_0_15px_rgba(250,114,117,0.5)] animate-pulse"
+              : "border-slate-200/80 bg-slate-50 text-slate-500 hover:border-brand/40 hover:bg-brand/10 hover:text-brand hover:scale-105"
           }`}
         >
           {isListening ? (
