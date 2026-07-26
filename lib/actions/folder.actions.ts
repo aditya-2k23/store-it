@@ -423,7 +423,40 @@ export const restoreFolder = async (folderId: string, path: string) => {
   }
 };
 
-export const getFolderContents = async (folderId: string | null) => {
+const sortItems = <
+  T extends { name: string; size?: number; createdAt?: string; created_at?: string },
+>(
+  items: T[],
+  sort: string,
+): T[] => {
+  const [rawSortBy, rawOrderBy] = (sort || "created_at-desc").split("-");
+  const sortBy = rawSortBy === "$createdAt" ? "created_at" : rawSortBy;
+  const multiplier = rawOrderBy === "asc" ? 1 : -1;
+
+  return [...items].sort((a, b) => {
+    switch (sortBy) {
+      case "name":
+        return a.name.localeCompare(b.name) * multiplier;
+      case "size":
+        return ((a.size || 0) - (b.size || 0)) * multiplier;
+      case "created_at": {
+        const dateA = new Date(a.createdAt || a.created_at || 0).getTime();
+        const dateB = new Date(b.createdAt || b.created_at || 0).getTime();
+        return (dateA - dateB) * multiplier;
+      }
+      default: {
+        const dateA = new Date(a.createdAt || a.created_at || 0).getTime();
+        const dateB = new Date(b.createdAt || b.created_at || 0).getTime();
+        return (dateA - dateB) * multiplier;
+      }
+    }
+  });
+};
+
+export const getFolderContents = async (
+  folderId: string | null,
+  sort: string = "created_at-desc",
+) => {
   const supabase = createSupabaseAdmin();
 
   try {
@@ -464,8 +497,7 @@ export const getFolderContents = async (folderId: string | null) => {
     let foldersQuery = supabase
       .from("folders")
       .select(FOLDER_SELECT)
-      .eq("workspace_id", currentUser.workspaceId)
-      .order("name", { ascending: true });
+      .eq("workspace_id", currentUser.workspaceId);
     foldersQuery = folderId
       ? foldersQuery.eq("parent_folder_id", folderId)
       : foldersQuery.is("parent_folder_id", null);
@@ -493,6 +525,31 @@ export const getFolderContents = async (folderId: string | null) => {
       if (entry.path && entry.signedUrl) signedUrlMap.set(entry.path, entry.signedUrl);
     });
 
+    const { data: membership } = await supabase
+      .from("workspace_members")
+      .select("role")
+      .eq("user_id", currentUser.id)
+      .eq("workspace_id", currentUser.workspaceId)
+      .maybeSingle();
+
+    const userCanUpload = membership?.role
+      ? canUpload(membership.role as WorkspaceRole)
+      : false;
+
+    const mappedSubfolders = await mapFoldersWithCounts(
+      supabase,
+      currentUser.workspaceId,
+      (subfolderRows || []) as FolderRowWithOwner[],
+    );
+
+    const mappedFiles = files.map((file) =>
+      mapRowToFileItem(
+        file as Parameters<typeof mapRowToFileItem>[0],
+        [],
+        signedUrlMap.get(file.storage_key) || "",
+      ),
+    );
+
     return parseStringify({
       currentFolder: currentFolder
         ? {
@@ -505,18 +562,9 @@ export const getFolderContents = async (folderId: string | null) => {
         id: folder.id,
         name: folder.name,
       })),
-      subfolders: await mapFoldersWithCounts(
-        supabase,
-        currentUser.workspaceId,
-        (subfolderRows || []) as FolderRowWithOwner[],
-      ),
-      files: files.map((file) =>
-        mapRowToFileItem(
-          file as Parameters<typeof mapRowToFileItem>[0],
-          [],
-          signedUrlMap.get(file.storage_key) || "",
-        ),
-      ),
+      subfolders: sortItems(mappedSubfolders, sort),
+      files: sortItems(mappedFiles, sort),
+      canUpload: userCanUpload,
     });
   } catch (error) {
     handleError(error, "Failed to get folder contents");
