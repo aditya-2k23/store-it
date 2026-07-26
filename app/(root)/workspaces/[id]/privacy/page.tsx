@@ -1,5 +1,6 @@
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/actions/user.actions";
+import { getPaginatedProcessedFiles } from "@/lib/actions/file.actions";
 import { redirect } from "next/navigation";
 import PrivacyTable from "@/components/workspace/PrivacyTable";
 
@@ -72,14 +73,12 @@ const PrivacyPage = async ({ params }: PrivacyPageProps) => {
     (r) => r.processing_status === "failed",
   ).length;
 
-  // Recently processed files (completed)
-  const recentProcessed = aiData
-    .filter((r) => r.processing_status === "completed")
-    .sort(
-      (a, b) =>
-        new Date(b.processed_at || 0).getTime() -
-        new Date(a.processed_at || 0).getTime(),
-    );
+  // Fetch initial server-side page of completed records (5 items)
+  const initialProcessedRes = await getPaginatedProcessedFiles({
+    workspaceId,
+    offset: 0,
+    limit: 5,
+  });
 
   return (
     <div className="mx-auto max-w-4xl space-y-10 px-4 py-2">
@@ -106,7 +105,13 @@ const PrivacyPage = async ({ params }: PrivacyPageProps) => {
         </div>
 
         {/* Processed files table */}
-        {recentProcessed.length > 0 && <PrivacyTable data={recentProcessed} />}
+        {initialProcessedRes?.items?.length > 0 && (
+          <PrivacyTable
+            initialData={initialProcessedRes.items}
+            initialHasMore={initialProcessedRes.hasMore}
+            workspaceId={workspaceId}
+          />
+        )}
       </section>
 
       {/* Section 2: How Storey Uses AI */}

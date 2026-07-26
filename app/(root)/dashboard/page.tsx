@@ -41,7 +41,10 @@ const Dashboard = async () => {
   const [files, trashedFilesRes, totalSpace, snapshot, activeWorkspaceId] =
     await Promise.all([
       getFiles({ types: [], limit: 10 }),
-      getTrashedFiles(),
+      getTrashedFiles().catch((err) => {
+        console.error("Failed to load trashed files:", err);
+        return null;
+      }),
       getTotalSpaceUsed(),
       getStorageSnapshot().catch((err) => {
         console.error("Failed to load storage snapshot:", err);

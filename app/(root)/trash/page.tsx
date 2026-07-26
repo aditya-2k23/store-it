@@ -14,7 +14,7 @@ const TrashPage = async () => {
         </p>
       </section>
 
-      {files.documents.length > 0 ? (
+      {files?.documents && files.documents.length > 0 ? (
         <section className="file-list">
           {files.documents.map((file: FileItem) => (
             <Card key={file.id} file={file} />

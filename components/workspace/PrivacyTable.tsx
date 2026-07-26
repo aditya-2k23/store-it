@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { getPaginatedProcessedFiles } from "@/lib/actions/file.actions";
+import { Loader2 } from "lucide-react";
 
-interface AiFileRow {
+export interface AiFileRow {
   file_id: string;
   processing_status: string;
   summary: string | null;
@@ -13,11 +15,39 @@ interface AiFileRow {
   } | null;
 }
 
-export default function PrivacyTable({ data }: { data: AiFileRow[] }) {
-  const [visibleCount, setVisibleCount] = useState(5);
+interface PrivacyTableProps {
+  initialData: AiFileRow[];
+  initialHasMore: boolean;
+  workspaceId: string;
+}
 
-  const visibleData = data.slice(0, visibleCount);
-  const hasMore = visibleCount < data.length;
+export default function PrivacyTable({
+  initialData,
+  initialHasMore,
+  workspaceId,
+}: PrivacyTableProps) {
+  const [data, setData] = useState<AiFileRow[]>(initialData);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [isPending, startTransition] = useTransition();
+
+  const handleLoadMore = () => {
+    startTransition(async () => {
+      try {
+        const res = await getPaginatedProcessedFiles({
+          workspaceId,
+          offset: data.length,
+          limit: 5,
+        });
+
+        if (res?.items) {
+          setData((prev) => [...prev, ...res.items]);
+          setHasMore(res.hasMore);
+        }
+      } catch (err) {
+        console.error("Failed to load more processed files:", err);
+      }
+    });
+  };
 
   if (data.length === 0) return null;
 
@@ -42,7 +72,7 @@ export default function PrivacyTable({ data }: { data: AiFileRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {visibleData.map((row) => (
+            {data.map((row) => (
               <tr
                 key={row.file_id}
                 className="border-b border-light-400 last:border-0"
@@ -70,9 +100,11 @@ export default function PrivacyTable({ data }: { data: AiFileRow[] }) {
       {hasMore && (
         <div className="flex justify-center pt-1">
           <button
-            onClick={() => setVisibleCount((prev) => prev + 5)}
-            className="body-2 font-medium text-brand transition-colors hover:text-brand/80 cursor-pointer underline underline-offset-4"
+            onClick={handleLoadMore}
+            disabled={isPending}
+            className="body-2 font-medium text-brand transition-colors hover:text-brand/80 cursor-pointer underline underline-offset-4 disabled:opacity-50 flex items-center gap-2"
           >
+            {isPending && <Loader2 className="size-4 animate-spin" />}
             Load more
           </button>
         </div>

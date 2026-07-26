@@ -6,6 +6,7 @@ import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { getCurrentUser } from "./user.actions";
 import {
   canUpload,
+  canModifyOthersFiles,
   canDeleteOthers,
   type WorkspaceRole,
 } from "@/lib/permissions";
@@ -89,7 +90,7 @@ const mapRowToFileItem = (
 };
 
 const applyFilters = (query: any, types: FileType[], searchText: string) => {
-  let filteredQuery = query;
+  let filteredQuery = query.eq("is_trashed", false);
 
   if (types.length > 0) {
     filteredQuery = filteredQuery.in("type", types);
@@ -184,6 +185,7 @@ const fetchTagMatchedWorkspaceFiles = async (
     .from("ai_metadata")
     .select("file_id, files!inner(workspace_id, type, is_trashed)")
     .eq("files.workspace_id", workspaceId)
+    .eq("files.is_trashed", false)
     .ilike("tags_search", `%${searchText}%`)
     .limit(100);
 
@@ -505,7 +507,10 @@ export const renameFile = async ({
     const newName = `${name}.${extension}`;
 
     const fileRecord = await getFileActionRecord(supabase, fileId);
-    await assertCanActOnFile(supabase, currentUser, fileRecord);
+    if (fileRecord.is_trashed) {
+      throw new Error("Cannot rename a trashed file.");
+    }
+    await assertCanActOnFile(supabase, currentUser, fileRecord, "modify");
 
     const { error: updateError } = await supabase
       .from("files")
@@ -547,7 +552,10 @@ export const updateFileUsers = async ({
     if (!currentUser) throw new Error("User not found");
 
     const fileRecord = await getFileActionRecord(supabase, fileId);
-    await assertCanActOnFile(supabase, currentUser, fileRecord);
+    if (fileRecord.is_trashed) {
+      throw new Error("Cannot update shares for a trashed file.");
+    }
+    await assertCanActOnFile(supabase, currentUser, fileRecord, "modify");
 
     const normalizedEmails = Array.from(
       new Set(
@@ -661,10 +669,13 @@ const getFileActionRecord = async (
   return data as FileActionRecord;
 };
 
+type FileCapability = "modify" | "delete";
+
 const assertCanActOnFile = async (
   supabase: ReturnType<typeof createSupabaseAdmin>,
   currentUser: CurrentUser,
   fileRecord: FileActionRecord,
+  capability: FileCapability = "delete",
 ) => {
   if (fileRecord.owner_id === currentUser.id) return;
 
@@ -676,7 +687,17 @@ const assertCanActOnFile = async (
     .maybeSingle();
 
   if (error) throw error;
-  if (!membership?.role || !canDeleteOthers(membership.role as WorkspaceRole)) {
+  const role = membership?.role as WorkspaceRole | undefined;
+  if (!role) {
+    throw new Error("Not authorized to act on this file.");
+  }
+
+  const isAllowed =
+    capability === "modify"
+      ? canModifyOthersFiles(role)
+      : canDeleteOthers(role);
+
+  if (!isAllowed) {
     throw new Error("Not authorized to act on this file.");
   }
 };
@@ -687,6 +708,12 @@ const hardDeleteFile = async (
   path: string,
   revalidate = true,
 ) => {
+  // Remove storage object first; if this fails, the DB row remains available for retry.
+  const { error: storageDeleteError } = await supabase.storage
+    .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+    .remove([fileRecord.storage_key]);
+  if (storageDeleteError) throw storageDeleteError;
+
   // Preserve activity history while removing the foreign-key reference.
   const { error: unlinkLogsError } = await supabase
     .from("activity_logs")
@@ -699,11 +726,6 @@ const hardDeleteFile = async (
     .delete()
     .eq("id", fileRecord.id);
   if (deleteError) throw deleteError;
-
-  const { error: storageDeleteError } = await supabase.storage
-    .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
-    .remove([fileRecord.storage_key]);
-  if (storageDeleteError) throw storageDeleteError;
 
   if (revalidate) {
     revalidatePath(path);
@@ -732,6 +754,7 @@ export const trashFile = async ({ fileId, path }: DeleteFileProps) => {
     await logActivity({
       userId: currentUser.id,
       workspaceId: fileRecord.workspace_id,
+      fileId,
       action: "file.trash",
       metadata: {
         fileName: fileRecord.name,
@@ -767,6 +790,7 @@ export const restoreFile = async ({ fileId, path }: DeleteFileProps) => {
     await logActivity({
       userId: currentUser.id,
       workspaceId: fileRecord.workspace_id,
+      fileId,
       action: "file.restore",
       metadata: {
         fileName: fileRecord.name,
@@ -829,9 +853,16 @@ export const emptyTrash = async (workspaceId: string, path: string) => {
 
   let deletedCount = 0;
   let skippedCount = 0;
+  let failedCount = 0;
   for (const fileRecord of (data || []) as FileActionRecord[]) {
     try {
       await assertCanActOnFile(supabase, currentUser, fileRecord);
+    } catch {
+      skippedCount += 1;
+      continue;
+    }
+
+    try {
       await hardDeleteFile(supabase, fileRecord, path, false);
       await logActivity({
         userId: currentUser.id,
@@ -844,40 +875,57 @@ export const emptyTrash = async (workspaceId: string, path: string) => {
         },
       });
       deletedCount += 1;
-    } catch {
-      skippedCount += 1;
+    } catch (err) {
+      console.error(
+        `Failed to delete trashed file (${fileRecord.id}):`,
+        err,
+      );
+      failedCount += 1;
     }
   }
 
   revalidatePath(path);
-  return parseStringify({ deletedCount, skippedCount });
+  return parseStringify({ deletedCount, skippedCount, failedCount });
 };
 
 const purgeExpiredTrash = async (
   supabase: ReturnType<typeof createSupabaseAdmin>,
   workspaceId: string,
 ) => {
-  const expiration = new Date(
-    Date.now() - 30 * 24 * 60 * 60 * 1000,
-  ).toISOString();
-  const { data, error } = await supabase
-    .from("files")
-    .select("id, owner_id, name, storage_key, workspace_id, is_trashed")
-    .eq("workspace_id", workspaceId)
-    .eq("is_trashed", true)
-    .lt("trashed_at", expiration);
-  if (error) throw error;
+  try {
+    const expiration = new Date(
+      Date.now() - 30 * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    const { data, error } = await supabase
+      .from("files")
+      .select("id, owner_id, name, storage_key, workspace_id, is_trashed")
+      .eq("workspace_id", workspaceId)
+      .eq("is_trashed", true)
+      .lt("trashed_at", expiration)
+      .limit(10);
 
-  for (const fileRecord of (data || []) as FileActionRecord[]) {
-    // Log first so the action is preserved; hardDeleteFile then unlinks its FK.
-    await logActivity({
-      userId: null,
-      workspaceId: fileRecord.workspace_id,
-      fileId: fileRecord.id,
-      action: "file.delete",
-      metadata: { fileName: fileRecord.name, reason: "auto_purge_30_days" },
-    });
-    await hardDeleteFile(supabase, fileRecord, "/trash", false);
+    if (error || !data || data.length === 0) return;
+
+    for (const fileRecord of data as FileActionRecord[]) {
+      try {
+        // Log first so the action is preserved; hardDeleteFile then unlinks its FK.
+        await logActivity({
+          userId: null,
+          workspaceId: fileRecord.workspace_id,
+          fileId: fileRecord.id,
+          action: "file.delete",
+          metadata: { fileName: fileRecord.name, reason: "auto_purge_30_days" },
+        });
+        await hardDeleteFile(supabase, fileRecord, "/trash", false);
+      } catch (itemError) {
+        console.error(
+          `Failed to auto-purge expired file (${fileRecord.id}):`,
+          itemError,
+        );
+      }
+    }
+  } catch (purgeError) {
+    console.error("Error during expired trash purge:", purgeError);
   }
 };
 
@@ -888,7 +936,11 @@ export const getTrashedFiles = async () => {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    await purgeExpiredTrash(supabase, currentUser.workspaceId);
+    try {
+      await purgeExpiredTrash(supabase, currentUser.workspaceId);
+    } catch (purgeErr) {
+      console.error("Expired trash purge failed:", purgeErr);
+    }
 
     const { data, error } = await supabase
       .from("files")
@@ -951,7 +1003,8 @@ const computeTotalSpaceUsed = async (workspaceId: string) => {
   const { data: files, error } = await supabase
     .from("files")
     .select("type, size, updated_at")
-    .eq("workspace_id", workspaceId);
+    .eq("workspace_id", workspaceId)
+    .eq("is_trashed", false);
 
   if (error) throw error;
 
@@ -1048,5 +1101,56 @@ export async function getStorageSnapshot() {
     });
   } catch (error) {
     handleError(error, "Failed to get storage snapshot");
+  }
+}
+
+export async function getPaginatedProcessedFiles({
+  workspaceId,
+  offset = 0,
+  limit = 5,
+}: {
+  workspaceId: string;
+  offset?: number;
+  limit?: number;
+}) {
+  const supabase = createSupabaseAdmin();
+
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
+
+    const { data: files, error: filesError } = await supabase
+      .from("files")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .eq("is_trashed", false);
+
+    if (filesError) throw filesError;
+    const fileIds = (files || []).map((f) => f.id);
+    if (fileIds.length === 0) {
+      return parseStringify({ items: [], hasMore: false, total: 0 });
+    }
+
+    const { data, error, count } = await supabase
+      .from("ai_metadata")
+      .select(
+        "file_id, processing_status, summary, tags, processed_at, file:files!ai_metadata_file_id_fkey(name)",
+        { count: "exact" },
+      )
+      .eq("processing_status", "completed")
+      .in("file_id", fileIds)
+      .order("processed_at", { ascending: false, nullsFirst: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) throw error;
+
+    const items = data || [];
+    const total = count || 0;
+    const hasMore = offset + items.length < total;
+
+    return parseStringify({ items, hasMore, total });
+  } catch (error) {
+    handleError(error, "Failed to get paginated processed files");
+    return parseStringify({ items: [], hasMore: false, total: 0 });
   }
 }

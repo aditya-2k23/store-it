@@ -66,8 +66,9 @@ const WorkspaceSwitcher = ({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
+          aria-label={isCollapsed ? (activeWorkspace?.name || "Workspace") : undefined}
           className={cn(
-            "shad-no-focus cursor-pointer transition-all focus-visible:outline-none",
+            "cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50",
             isCollapsed
               ? "mx-auto flex items-center justify-center size-11 rounded-lg bg-brand text-white shadow-drop-2 hover:scale-105"
               : "w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-light-300 bg-white hover:shadow-drop-3",

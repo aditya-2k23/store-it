@@ -50,6 +50,15 @@ const sidebarLinks = [
   { name: "Trash", href: "/trash", icon: Trash2 },
 ];
 
+const navItemClass = (isActive: boolean, displayCollapsed: boolean) =>
+  cn(
+    "group flex items-center font-semibold text-slate-600 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35",
+    isActive && "bg-[#ff6b6b]/15 font-dynapuff font-medium text-[#ff6b6b]",
+    displayCollapsed
+      ? "size-11 mx-auto flex-center rounded-lg"
+      : "gap-3 rounded-xl px-4 py-3",
+  );
+
 const STORAGE_EVENT = "sidebar-collapsed-change";
 
 interface SidebarProps {
@@ -221,14 +230,7 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
                 <li key={name}>
                   <Link
                     href={href}
-                    className={cn(
-                      "group flex items-center font-semibold text-slate-600 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35",
-                      isActive &&
-                        "bg-[#ff6b6b]/15 font-dynapuff font-medium text-[#ff6b6b]",
-                      displayCollapsed
-                        ? "size-11 mx-auto flex-center rounded-lg"
-                        : "gap-3 rounded-xl px-4 py-3",
-                    )}
+                    className={navItemClass(isActive, displayCollapsed)}
                   >
                     <Icon
                       className={cn(
@@ -255,13 +257,9 @@ const Sidebar = ({ workspaces, activeWorkspaceId }: SidebarProps) => {
               <li>
                 <Link
                   href={`/workspaces/${activeWorkspaceId}/settings`}
-                  className={cn(
-                    "group flex items-center font-semibold text-slate-600 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff6b6b]/35",
-                    pathname.includes("/settings") &&
-                      "bg-[#ff6b6b]/15 font-dynapuff font-medium text-[#ff6b6b]",
-                    displayCollapsed
-                      ? "size-11 mx-auto flex-center rounded-lg"
-                      : "gap-3 rounded-xl px-4 py-3",
+                  className={navItemClass(
+                    pathname.includes("/settings"),
+                    displayCollapsed,
                   )}
                 >
                   <Settings

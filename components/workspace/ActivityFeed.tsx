@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { getWorkspaceActivity } from "@/lib/actions/activity.actions";
+import {
+  getWorkspaceActivity,
+  type ActivityCategory,
+} from "@/lib/actions/activity.actions";
 import FormattedDateTime from "@/components/FormattedDateTime";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,42 +44,6 @@ function formatAction(item: ActivityLogItem): string {
 
     case "file.restore":
       return `${actor} restored ${m.fileName ?? "a file"} from trash`;
-
-    case "file.share.create":
-      return `${actor} shared "${m.fileName ?? "a file"}" with ${m.email ?? "someone"}`;
-
-    case "file.share.remove":
-      return `${actor} removed ${m.email ?? "someone"} from "${m.fileName ?? "a file"}"`;
-
-    case "workspace.create":
-      return `${actor} created the workspace "${m.name ?? "this workspace"}"`;
-
-    case "workspace.rename":
-      return `${actor} renamed workspace from "${m.oldName ?? "?"}" to "${m.newName ?? "?"}"`;
-
-    case "workspace.appearance.update":
-      return `${actor} updated workspace appearance`;
-
-    case "workspace.delete":
-      return `${actor} deleted workspace "${m.name ?? "this workspace"}"`;
-
-    case "workspace.member.invite":
-      return `${actor} created a${m.role ? ` ${m.role}` : ""} invite link`;
-
-    case "workspace.member.join":
-      return `${actor} joined the workspace as ${m.role ?? "a member"}`;
-
-    case "workspace.member.remove":
-      return `${actor} removed ${(m.removedUserName as string | null) || (m.removedUserEmail as string) || "a member"} from the workspace`;
-
-    case "workspace.member.leave":
-      return `${actor} left the workspace`;
-
-    case "workspace.member.role_change":
-      return `${actor} changed ${(m.targetUserName as string | null) || (m.targetUserEmail as string) || "a member"}'s role from ${m.oldRole ?? "?"} to ${m.newRole ?? "?"}`;
-
-    case "workspace.member.ownership_transfer":
-      return `${actor} transferred ownership to ${(m.newOwnerName as string | null) || (m.newOwnerEmail as string) || "a member"}`;
 
     case "file.share.create":
       return `${actor} shared "${m.fileName ?? "a file"}" with ${m.email ?? "someone"}`;
@@ -165,11 +132,18 @@ export default function ActivityFeed({
     createdAt: string;
     id: string;
   } | null>(initialCursor);
-  const [category, setCategory] = useState("all");
+  const [category, setCategory] = useState<ActivityCategory>("all");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const handleCategoryChange = (newCategory: string) => {
+  const CATEGORIES: ActivityCategory[] = [
+    "all",
+    "files",
+    "members",
+    "workspace",
+  ];
+
+  const handleCategoryChange = (newCategory: ActivityCategory) => {
     if (newCategory === category) return;
     setCategory(newCategory);
     setError(null);
@@ -222,9 +196,10 @@ export default function ActivityFeed({
     <div className="space-y-4">
       {/* Category Filters */}
       <div className="flex flex-wrap gap-2">
-        {["all", "files", "members", "workspace"].map((cat) => (
+        {CATEGORIES.map((cat) => (
           <button
             key={cat}
+            aria-pressed={category === cat}
             onClick={() => handleCategoryChange(cat)}
             disabled={isPending}
             className={`px-3 py-1.5 text-xs font-semibold capitalize rounded-full transition-colors cursor-pointer disabled:opacity-50 ${

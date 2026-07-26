@@ -12,6 +12,11 @@ export function canUpload(role: WorkspaceRole): boolean {
   return ROLE_LEVELS[role] >= ROLE_LEVELS.editor;
 }
 
+/** owner, admin, editor */
+export function canModifyOthersFiles(role: WorkspaceRole): boolean {
+  return ROLE_LEVELS[role] >= ROLE_LEVELS.editor;
+}
+
 /** owner, admin */
 export function canDeleteOthers(role: WorkspaceRole): boolean {
   return ROLE_LEVELS[role] >= ROLE_LEVELS.admin;

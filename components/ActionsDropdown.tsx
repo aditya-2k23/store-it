@@ -191,7 +191,7 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
           {value === "delete" && (
             <p className="delete-confirmation">
               Move{` `}
-              <span className="delete-file-name">{file.name}</span>?
+              <span className="delete-file-name">{file.name}</span> to trash?
             </p>
           )}
           {value === "delete_forever" && (
@@ -252,7 +252,9 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
             <DropdownMenuItem
               key={actionItem.value}
               className="shad-dropdown-item"
+              disabled={isLoading}
               onClick={() => {
+                if (isLoading) return;
                 setAction(actionItem);
 
                 if (actionItem.value === "restore") {
@@ -267,9 +269,7 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
                     "delete",
                     "delete_forever",
                     "details",
-                  ].includes(
-                    actionItem.value
-                  )
+                  ].includes(actionItem.value)
                 ) {
                   setIsModalOpen(true);
                 }
@@ -295,10 +295,19 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
                 <div className="flex items-center gap-2">
                   {actionItem.icon && (
                     <Image
-                      src={actionItem.icon}
+                      src={
+                        actionItem.value === "restore" && isLoading
+                          ? "/assets/icons/loader.svg"
+                          : actionItem.icon
+                      }
                       alt={actionItem.label}
                       width={30}
                       height={30}
+                      className={
+                        actionItem.value === "restore" && isLoading
+                          ? "animate-spin"
+                          : ""
+                      }
                     />
                   )}
                   {actionItem.label}

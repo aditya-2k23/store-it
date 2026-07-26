@@ -69,11 +69,20 @@ function isValidCursor(
  * Pagination is cursor-based using (createdAt, id) for stable ordering even
  * when multiple rows share the same created_at timestamp.
  */
+export type ActivityCategory = "all" | "files" | "members" | "workspace";
+
+/**
+ * Returns a paginated list of activity log entries for the given workspace.
+ * The caller must be a member of the workspace.
+ *
+ * Pagination is cursor-based using (createdAt, id) for stable ordering even
+ * when multiple rows share the same created_at timestamp.
+ */
 export const getWorkspaceActivity = async (
   workspaceId: string,
   cursor?: { createdAt: string; id: string },
   limit: number = 5,
-  category: string = "all"
+  category: ActivityCategory = "all",
 ) => {
   const supabase = createSupabaseAdmin();
 
