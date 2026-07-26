@@ -31,6 +31,7 @@ import {
 import { usePathname } from "next/navigation";
 import { FileDetails, ShareInput } from "./ActionsModalContent";
 import { toast } from "@/hooks/use-toast";
+import MoveToDialog from "./folders/MoveToDialog";
 
 type ToastAction =
   | "rename"
@@ -46,6 +47,7 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
   const [name, setName] = useState(file.name);
   const [isLoading, setIsLoading] = useState(false);
   const [emails, setEmails] = useState<string[]>([]);
+  const [isMoveDialogOpen, setIsMoveDialogOpen] = useState(false);
 
   const path = usePathname();
   const dropdownItems = file.isTrashed
@@ -233,7 +235,7 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
   return (
     <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
       <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
-        <DropdownMenuTrigger className="shad-no-focus">
+        <DropdownMenuTrigger className="shad-no-focus cursor-pointer rounded-full p-1 transition-all duration-200 hover:bg-light-300 active:scale-95">
           <Image
             src="/assets/icons/dots.svg"
             alt="dots"
@@ -259,6 +261,11 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
 
                 if (actionItem.value === "restore") {
                   void handleAction(actionItem);
+                  return;
+                }
+
+                if (actionItem.value === "move") {
+                  setIsMoveDialogOpen(true);
                   return;
                 }
 
@@ -319,6 +326,12 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
       </DropdownMenu>
 
       {renderDialogContent()}
+      <MoveToDialog
+        open={isMoveDialogOpen}
+        onOpenChange={setIsMoveDialogOpen}
+        itemId={file.id}
+        itemType="file"
+      />
     </Dialog>
   );
 };

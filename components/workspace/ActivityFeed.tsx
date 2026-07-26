@@ -45,6 +45,24 @@ function formatAction(item: ActivityLogItem): string {
     case "file.restore":
       return `${actor} restored ${m.fileName ?? "a file"} from trash`;
 
+    case "file.move":
+      return `${actor} moved "${m.fileName ?? "a file"}" to ${m.toFolderName ?? "Workspace Root"}`;
+
+    case "folder.create":
+      return `${actor} created folder "${m.folderName ?? "a folder"}"`;
+
+    case "folder.rename":
+      return `${actor} renamed folder "${m.oldName ?? "a folder"}" to "${m.newName ?? "unknown"}"`;
+
+    case "folder.move":
+      return `${actor} moved folder "${m.folderName ?? "a folder"}" to ${m.toFolderName ?? "Workspace Root"}`;
+
+    case "folder.trash":
+      return `${actor} moved folder "${m.folderName ?? "a folder"}" to trash`;
+
+    case "folder.restore":
+      return `${actor} restored folder "${m.folderName ?? "a folder"}" from trash`;
+
     case "file.share.create":
       return `${actor} shared "${m.fileName ?? "a file"}" with ${m.email ?? "someone"}`;
 
