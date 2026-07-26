@@ -191,7 +191,14 @@ export default function FolderCard({
           </div>
         </DialogContent>
       </Dialog>
-      <MoveToDialog open={moveOpen} onOpenChange={setMoveOpen} itemId={folder.id} itemType="folder" excludeFolderId={folder.id} />
+      <MoveToDialog
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+        itemId={folder.id}
+        itemType="folder"
+        excludeFolderId={folder.id}
+        currentParentFolderId={folder.parentFolderId}
+      />
     </>
   );
 }

@@ -332,6 +332,7 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
         onOpenChange={setIsMoveDialogOpen}
         itemId={file.id}
         itemType="file"
+        currentParentFolderId={file.folderId || null}
       />
     </Dialog>
   );

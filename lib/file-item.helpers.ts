@@ -15,7 +15,7 @@ export type FileRowWithOwner = FileRow & {
 };
 
 export const FILE_SELECT =
-  "id, name, original_name, extension, mime_type, type, size, storage_key, thumbnail_key, preview_status, owner_id, workspace_id, is_trashed, trashed_at, created_at, updated_at, owner:users!files_owner_id_fkey(id, full_name, email, avatar_url), ai_metadata(tags, processing_status)";
+  "id, name, original_name, extension, mime_type, type, size, storage_key, thumbnail_key, preview_status, owner_id, workspace_id, folder_id, is_trashed, trashed_at, created_at, updated_at, owner:users!files_owner_id_fkey(id, full_name, email, avatar_url), ai_metadata(tags, processing_status)";
 
 export const createSignedDownloadUrl = async (
   supabase: ReturnType<typeof createSupabaseAdmin>,
@@ -49,6 +49,7 @@ export const mapRowToFileItem = (
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     storageKey: row.storage_key,
+    folderId: (row as unknown as { folder_id?: string | null }).folder_id || null,
     isTrashed: row.is_trashed,
     trashedAt: row.trashed_at,
     owner: {

@@ -43,6 +43,7 @@ declare interface FileItem {
   createdAt: string;
   updatedAt: string;
   storageKey: string;
+  folderId?: string | null;
   isTrashed: boolean;
   trashedAt: string | null;
   daysUntilPurge?: number;
