@@ -43,17 +43,32 @@ export default function MoveToDialog({
 
   useEffect(() => {
     if (!open) return;
-    setSelectedFolderId(undefined);
-    setIsLoading(true);
+    let isCurrent = true;
+
+    if (isCurrent) {
+      setSelectedFolderId(undefined);
+      setIsLoading(true);
+    }
+
     void getFoldersForPicker(excludeFolderId)
-      .then((items) => setFolders((items || []) as FolderItem[]))
-      .catch(() => {
-        toast({
-          description: <p className="body-2">Failed to load folders.</p>,
-          className: "error-toast",
-        });
+      .then((items) => {
+        if (isCurrent) setFolders((items || []) as FolderItem[]);
       })
-      .finally(() => setIsLoading(false));
+      .catch(() => {
+        if (isCurrent) {
+          toast({
+            description: <p className="body-2">Failed to load folders.</p>,
+            className: "error-toast",
+          });
+        }
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
   }, [excludeFolderId, open]);
 
   const normalizedCurrentParent = currentParentFolderId ?? null;
@@ -103,6 +118,7 @@ export default function MoveToDialog({
           <button
             type="button"
             disabled={isRootCurrent}
+            aria-pressed={selectedFolderId === null}
             onClick={() => setSelectedFolderId(null)}
             className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors ${
               isRootCurrent
@@ -134,6 +150,7 @@ export default function MoveToDialog({
                   key={folder.id}
                   type="button"
                   disabled={isCurrent}
+                  aria-pressed={selectedFolderId === folder.id}
                   onClick={() => setSelectedFolderId(folder.id)}
                   style={{ paddingLeft: `${12 + folder.depth * 20}px` }}
                   className={`flex w-full items-center justify-between rounded-lg py-2 pr-3 text-left text-sm transition-colors ${

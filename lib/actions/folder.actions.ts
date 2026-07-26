@@ -439,11 +439,7 @@ const sortItems = <
         return a.name.localeCompare(b.name) * multiplier;
       case "size":
         return ((a.size || 0) - (b.size || 0)) * multiplier;
-      case "created_at": {
-        const dateA = new Date(a.createdAt || a.created_at || 0).getTime();
-        const dateB = new Date(b.createdAt || b.created_at || 0).getTime();
-        return (dateA - dateB) * multiplier;
-      }
+      case "created_at":
       default: {
         const dateA = new Date(a.createdAt || a.created_at || 0).getTime();
         const dateB = new Date(b.createdAt || b.created_at || 0).getTime();

@@ -24,7 +24,10 @@ export const createSignedDownloadUrl = async (
   const { data, error } = await supabase.storage
     .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
     .createSignedUrl(storageKey, 3600);
-  if (error || !data?.signedUrl) return "";
+  if (error || !data?.signedUrl) {
+    console.error("Failed to create signed download URL:", error || "No signed URL returned");
+    return "";
+  }
   return data.signedUrl;
 };
 
@@ -49,7 +52,7 @@ export const mapRowToFileItem = (
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     storageKey: row.storage_key,
-    folderId: (row as unknown as { folder_id?: string | null }).folder_id || null,
+    folderId: row.folder_id || null,
     isTrashed: row.is_trashed,
     trashedAt: row.trashed_at,
     owner: {
