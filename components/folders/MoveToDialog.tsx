@@ -86,7 +86,7 @@ export default function MoveToDialog({
           <button
             type="button"
             onClick={() => setSelectedFolderId(null)}
-            className={`flex w-full rounded-lg px-3 py-2 text-left text-sm ${selectedFolderId === null ? "bg-brand/10 text-brand" : "hover:bg-light-300/50"}`}
+            className={`flex w-full cursor-pointer rounded-lg px-3 py-2 text-left text-sm ${selectedFolderId === null ? "bg-brand/10 text-brand" : "hover:bg-light-300/50"}`}
           >
             Workspace Root
           </button>
@@ -99,7 +99,7 @@ export default function MoveToDialog({
                 type="button"
                 onClick={() => setSelectedFolderId(folder.id)}
                 style={{ paddingLeft: `${12 + folder.depth * 20}px` }}
-                className={`flex w-full rounded-lg py-2 pr-3 text-left text-sm ${selectedFolderId === folder.id ? "bg-brand/10 text-brand" : "hover:bg-light-300/50"}`}
+                className={`flex w-full cursor-pointer rounded-lg py-2 pr-3 text-left text-sm ${selectedFolderId === folder.id ? "bg-brand/10 text-brand" : "hover:bg-light-300/50"}`}
               >
                 {folder.name}
               </button>

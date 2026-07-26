@@ -180,6 +180,7 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              className="shad-no-focus h-12 rounded-xl border border-light-300 bg-white px-4 text-light-100 placeholder:text-light-200 focus:border-brand"
             />
           )}
           {value === "details" && <FileDetails file={file} />}

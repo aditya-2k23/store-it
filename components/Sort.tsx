@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import {
   Select,
   SelectContent,
@@ -8,19 +7,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { sortTypes } from "@/constants";
 
 const Sort = () => {
   const path = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentSort = searchParams.get("sort") || sortTypes[0].value;
 
   const handleSort = (value: string) => {
-    router.push(`${path}?sort=${value}`);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sort", value);
+    router.push(`${path}?${params.toString()}`);
   };
 
   return (
-    <Select onValueChange={handleSort} defaultValue={sortTypes[0].value}>
+    <Select onValueChange={handleSort} value={currentSort}>
       <SelectTrigger className="sort-select">
         <SelectValue placeholder={sortTypes[0].value} />
       </SelectTrigger>

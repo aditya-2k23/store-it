@@ -41,7 +41,9 @@ export default function CreateFolderDialog({
       router.refresh();
     } catch {
       toast({
-        description: <p className="body-2">Failed to create folder. Please try again.</p>,
+        description: (
+          <p className="body-2">Failed to create folder. Please try again.</p>
+        ),
         className: "error-toast",
       });
     } finally {
@@ -52,14 +54,16 @@ export default function CreateFolderDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="rounded-xl bg-brand text-white hover:bg-brand/90">
+        <Button className="rounded-xl bg-brand text-white hover:bg-brand/90 cursor-pointer">
           <Plus className="mr-2 size-4" />
           New Folder
         </Button>
       </DialogTrigger>
       <DialogContent className="shad-dialog">
         <DialogHeader>
-          <DialogTitle className="text-center text-light-100">New Folder</DialogTitle>
+          <DialogTitle className="text-center text-light-100">
+            New Folder
+          </DialogTitle>
         </DialogHeader>
         <Input
           autoFocus
@@ -69,15 +73,19 @@ export default function CreateFolderDialog({
             if (event.key === "Enter") void handleCreate();
           }}
           placeholder="Folder name"
+          className="shad-no-focus h-12 rounded-xl border border-light-300 bg-white px-4 text-light-100 placeholder:text-light-200 focus:border-brand"
         />
         <DialogFooter className="flex flex-col gap-3 md:flex-row">
-          <Button onClick={() => setOpen(false)} className="modal-cancel-button">
+          <Button
+            onClick={() => setOpen(false)}
+            className="modal-cancel-button cursor-pointer"
+          >
             Cancel
           </Button>
           <Button
             onClick={() => void handleCreate()}
             disabled={isPending || !name.trim()}
-            className="modal-submit-button"
+            className="modal-submit-button cursor-pointer"
           >
             Create
             {isPending && <Loader2 className="ml-2 size-4 animate-spin" />}

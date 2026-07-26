@@ -170,7 +170,11 @@ export default function FolderCard({
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent className="shad-dialog">
           <DialogHeader><DialogTitle className="text-center text-light-100">Rename Folder</DialogTitle></DialogHeader>
-          <Input value={name} onChange={(event) => setName(event.target.value)} />
+          <Input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="shad-no-focus h-12 rounded-xl border border-light-300 bg-white px-4 text-light-100 placeholder:text-light-200 focus:border-brand"
+          />
           <DialogFooter className="flex flex-col gap-3 md:flex-row">
             <Button onClick={() => setRenameOpen(false)} className="modal-cancel-button">Cancel</Button>
             <Button onClick={() => void handleRename()} disabled={isPending || !name.trim()} className="modal-submit-button">Rename</Button>

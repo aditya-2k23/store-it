@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronRight, Folder } from "lucide-react";
 import Card from "@/components/Card";
 import EmptyState from "@/components/EmptyState";
+import Sort from "@/components/Sort";
 import CreateFolderDialog from "./CreateFolderDialog";
 import FolderCard from "./FolderCard";
 
@@ -47,9 +48,16 @@ export default function FolderBrowser({
             </div>
             <h1 className="h1 mt-2">{currentFolder?.name || "All Files"}</h1>
           </div>
-          {!currentFolder?.isTrashed && (
-            <CreateFolderDialog parentFolderId={currentFolder?.id || null} />
-          )}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="sort-container">
+              <p className="body-1 hidden sm:block text-light-200">Sort by:</p>
+              <Sort />
+            </div>
+            {!currentFolder?.isTrashed && (
+              <CreateFolderDialog parentFolderId={currentFolder?.id || null} />
+            )}
+          </div>
         </div>
       </section>
 
