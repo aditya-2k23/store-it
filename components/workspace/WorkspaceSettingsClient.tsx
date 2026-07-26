@@ -85,7 +85,7 @@ const GeneralSection = ({ workspace }: { workspace: WorkspaceWithRole }) => {
         await renameWorkspace(workspace.id, name.trim());
         toast({
           description: (
-            <p className="body-2 text-white">Workspace renamed successfully.</p>
+            <p className="body-2">Workspace renamed successfully.</p>
           ),
           className: "success-toast",
         });
@@ -93,7 +93,7 @@ const GeneralSection = ({ workspace }: { workspace: WorkspaceWithRole }) => {
       } catch {
         toast({
           description: (
-            <p className="body-2 text-white">Failed to rename workspace.</p>
+            <p className="body-2">Failed to rename workspace.</p>
           ),
           className: "error-toast",
         });
@@ -135,21 +135,26 @@ const AppearanceSection = ({ workspace }: { workspace: WorkspaceWithRole }) => {
     workspace.themeColor || "#FA7275",
   );
   const [isPending, startTransition] = useTransition();
+  const [showPicker, setShowPicker] = useState(false);
 
   const handleSave = () => {
-    if (icon === workspace.icon && themeColor === workspace.themeColor) return;
+    if (icon === workspace.icon && themeColor === workspace.themeColor) {
+      setShowPicker(false);
+      return;
+    }
     startTransition(async () => {
       try {
         await updateWorkspaceAppearance(workspace.id, icon, themeColor);
         toast({
-          description: <p className="body-2 text-white">Appearance updated.</p>,
+          description: <p className="body-2">Appearance updated.</p>,
           className: "success-toast",
         });
+        setShowPicker(false);
         router.refresh();
       } catch {
         toast({
           description: (
-            <p className="body-2 text-white">Failed to update appearance.</p>
+            <p className="body-2">Failed to update appearance.</p>
           ),
           className: "error-toast",
         });
@@ -163,22 +168,52 @@ const AppearanceSection = ({ workspace }: { workspace: WorkspaceWithRole }) => {
         <Palette className="size-5" /> Appearance
       </h3>
       <div className="mt-4 flex flex-col gap-4 max-w-sm">
-        <WorkspaceAppearancePicker
-          iconValue={icon}
-          themeColorValue={themeColor}
-          onIconChange={setIcon}
-          onThemeColorChange={setThemeColor}
-        />
-        <Button
-          onClick={handleSave}
-          disabled={
-            isPending ||
-            (icon === workspace.icon && themeColor === workspace.themeColor)
-          }
-          className="primary-btn h-11 px-6 text-white cursor-pointer w-32"
-        >
-          {isPending ? <Loader2 className="size-4 animate-spin" /> : "Save"}
-        </Button>
+        {!showPicker ? (
+          <Button
+            onClick={() => setShowPicker(true)}
+            variant="outline"
+            className="h-10 px-4 border-light-300 text-light-100 cursor-pointer hover:bg-light-400/50"
+          >
+            Edit Appearance
+          </Button>
+        ) : (
+          <>
+            <WorkspaceAppearancePicker
+              iconValue={icon}
+              themeColorValue={themeColor}
+              onIconChange={setIcon}
+              onThemeColorChange={setThemeColor}
+            />
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  setShowPicker(false);
+                  setIcon(workspace.icon || "lucide:building2");
+                  setThemeColor(workspace.themeColor || "#FA7275");
+                }}
+                variant="outline"
+                className="h-11 px-6 border-light-300 text-light-100 cursor-pointer hover:bg-light-400/50 flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={
+                  isPending ||
+                  (icon === workspace.icon &&
+                    themeColor === workspace.themeColor)
+                }
+                className="primary-btn h-11 px-6 text-white cursor-pointer flex-1"
+              >
+                {isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  "Save"
+                )}
+              </Button>
+            </div>
+          </>
+        )}
       </div>
     </motion.section>
   );
@@ -245,7 +280,7 @@ const MembersSection = ({
         await updateMemberRole(workspace.id, targetUserId, newRole);
         toast({
           description: (
-            <p className="body-2 text-white">Member role updated.</p>
+            <p className="body-2">Member role updated.</p>
           ),
           className: "success-toast",
         });
@@ -253,7 +288,7 @@ const MembersSection = ({
       } catch {
         toast({
           description: (
-            <p className="body-2 text-white">Failed to update role.</p>
+            <p className="body-2">Failed to update role.</p>
           ),
           className: "error-toast",
         });
@@ -269,7 +304,7 @@ const MembersSection = ({
         await removeMember(workspace.id, confirmRemove.userId);
         toast({
           description: (
-            <p className="body-2 text-white">
+            <p className="body-2">
               <span className="font-semibold">
                 {confirmRemove.user.fullName || confirmRemove.user.email}
               </span>{" "}
@@ -283,7 +318,7 @@ const MembersSection = ({
       } catch {
         toast({
           description: (
-            <p className="body-2 text-white">Failed to remove member.</p>
+            <p className="body-2">Failed to remove member.</p>
           ),
           className: "error-toast",
         });
@@ -512,7 +547,7 @@ const InviteLinkSection = ({
           });
           toast({
             description: (
-              <p className="body-2 text-white">Invite link generated.</p>
+              <p className="body-2">Invite link generated.</p>
             ),
             className: "success-toast",
           });
@@ -521,7 +556,7 @@ const InviteLinkSection = ({
       } catch {
         toast({
           description: (
-            <p className="body-2 text-white">Failed to generate invite link.</p>
+            <p className="body-2">Failed to generate invite link.</p>
           ),
           className: "error-toast",
         });
@@ -538,7 +573,7 @@ const InviteLinkSection = ({
       setCopied(false);
       toast({
         description: (
-          <p className="body-2 text-white">Failed to copy to clipboard.</p>
+          <p className="body-2">Failed to copy to clipboard.</p>
         ),
         className: "error-toast",
       });
@@ -556,7 +591,7 @@ const InviteLinkSection = ({
         );
         toast({
           description: (
-            <p className="body-2 text-white">Invite link revoked.</p>
+            <p className="body-2">Invite link revoked.</p>
           ),
           className: "success-toast",
         });
@@ -565,7 +600,7 @@ const InviteLinkSection = ({
       } catch {
         toast({
           description: (
-            <p className="body-2 text-white">Failed to revoke invite link.</p>
+            <p className="body-2">Failed to revoke invite link.</p>
           ),
           className: "error-toast",
         });
@@ -757,7 +792,7 @@ const DangerZoneSection = ({
         await transferOwnership(workspace.id, transferTarget);
         toast({
           description: (
-            <p className="body-2 text-white">
+            <p className="body-2">
               Ownership transferred successfully.
             </p>
           ),
@@ -769,7 +804,7 @@ const DangerZoneSection = ({
       } catch {
         toast({
           description: (
-            <p className="body-2 text-white">Failed to transfer ownership.</p>
+            <p className="body-2">Failed to transfer ownership.</p>
           ),
           className: "error-toast",
         });
@@ -782,7 +817,7 @@ const DangerZoneSection = ({
       try {
         await deleteWorkspace(workspace.id);
         toast({
-          description: <p className="body-2 text-white">Workspace deleted.</p>,
+          description: <p className="body-2">Workspace deleted.</p>,
           className: "success-toast",
         });
         setConfirmDelete(false);
@@ -790,7 +825,7 @@ const DangerZoneSection = ({
       } catch {
         toast({
           description: (
-            <p className="body-2 text-white">Failed to delete workspace.</p>
+            <p className="body-2">Failed to delete workspace.</p>
           ),
           className: "error-toast",
         });

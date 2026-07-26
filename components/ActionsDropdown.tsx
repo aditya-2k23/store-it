@@ -89,31 +89,31 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
         // Toast messages for successful actions
         const toastDescription: { [key in ToastAction]: React.ReactNode } = {
           rename: (
-            <p className="body-2 text-white">
+            <p className="body-2">
               File <span className="font-semibold">{file.name}</span> renamed
               successfully.
             </p>
           ),
           share: (
-            <p className="body-2 text-white">
+            <p className="body-2">
               File <span className="font-semibold">{file.name}</span> shared
               successfully with {emails.join(", ")}.
             </p>
           ),
           delete: (
-            <p className="body-2 text-white">
+            <p className="body-2">
               File <span className="font-semibold">{file.name}</span> moved to
               trash.
             </p>
           ),
           restore: (
-            <p className="body-2 text-white">
+            <p className="body-2">
               File <span className="font-semibold">{file.name}</span> restored
               successfully.
             </p>
           ),
           delete_forever: (
-            <p className="body-2 text-white">
+            <p className="body-2">
               File <span className="font-semibold">{file.name}</span> deleted
               permanently.
             </p>
@@ -135,7 +135,7 @@ const ActionsDropdown = ({ file }: { file: FileItem }) => {
       // Error toast
       toast({
         description: (
-          <p className="body-2 text-white">
+          <p className="body-2">
             Failed to {action.value}{" "}
             <span className="font-semibold">{file.name}</span>. Please try
             again.

@@ -50,7 +50,7 @@ const WorkspaceSwitcher = ({
       } catch {
         toast({
           description: (
-            <p className="body-2 text-white">
+            <p className="body-2">
               Failed to switch workspace. Please try again.
             </p>
           ),
