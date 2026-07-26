@@ -869,12 +869,12 @@ export const moveFileToFolder = async ({
 
     const { data: file, error: fileError } = await supabase
       .from("files")
-      .select("workspace_id, name, folder_id")
+      .select("workspace_id, name, folder_id, is_trashed")
       .eq("id", fileId)
       .maybeSingle();
     if (fileError) throw fileError;
-    if (!file || file.workspace_id !== currentUser.workspaceId) {
-      throw new Error("File not found in this workspace");
+    if (!file || file.workspace_id !== currentUser.workspaceId || file.is_trashed) {
+      throw new Error("File not found in this workspace or is trashed");
     }
 
     if (file.folder_id) {

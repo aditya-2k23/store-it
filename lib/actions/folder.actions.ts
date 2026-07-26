@@ -205,7 +205,7 @@ export const createFolder = async (
       ) {
         throw new Error("Parent folder is unavailable");
       }
-      parentPath = parent.path;
+      parentPath = parent.path ?? parentFolderId;
       parentDepth = parent.depth;
     }
 
@@ -303,12 +303,12 @@ export const moveFolder = async (
 
     const { data: folder, error: folderError } = await supabase
       .from("folders")
-      .select("name, parent_folder_id, workspace_id")
+      .select("name, parent_folder_id, workspace_id, is_trashed")
       .eq("id", folderId)
       .maybeSingle();
     if (folderError) throw folderError;
-    if (!folder || folder.workspace_id !== currentUser.workspaceId) {
-      throw new Error("Folder not found in this workspace");
+    if (!folder || folder.workspace_id !== currentUser.workspaceId || folder.is_trashed) {
+      throw new Error("Folder not found in this workspace or is trashed");
     }
 
     const [oldParentResult, newParentResult] = await Promise.all([
@@ -582,15 +582,15 @@ export const getFoldersForPicker = async (excludeFolderId?: string) => {
     if (error) throw error;
 
     const excluded = excludeFolderId
-      ? (data || []).find((folder) => folder.id === excludeFolderId)
+      ? (data || []).find((folder: any) => folder.id === excludeFolderId)
       : undefined;
     const folders = (data || []).filter(
-      (folder) =>
+      (folder: any) =>
         !excluded ||
         (folder.id !== excluded.id &&
-          !folder.path?.startsWith(`${excluded.path}/`)),
+          !(excluded.path && folder.path?.startsWith(`${excluded.path}/`))),
     );
-    return parseStringify(folders.map((folder) => mapFolderRow(folder as FolderRowWithOwner)));
+    return parseStringify(folders.map((folder: any) => mapFolderRow(folder as FolderRowWithOwner)));
   } catch (error) {
     handleError(error, "Failed to get folders for picker");
   }

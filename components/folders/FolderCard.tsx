@@ -54,6 +54,7 @@ export default function FolderCard({
   };
 
   const handleRename = async () => {
+    if (isPending) return;
     setIsPending(true);
     try {
       await renameFolder(folder.id, name, pathname);
@@ -70,6 +71,7 @@ export default function FolderCard({
   };
 
   const handleTrashState = async () => {
+    if (isPending) return;
     setIsPending(true);
     try {
       if (folder.isTrashed) {

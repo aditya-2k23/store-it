@@ -28,7 +28,7 @@ export default function CreateFolderDialog({
   const router = useRouter();
 
   const handleCreate = async () => {
-    if (!name.trim()) return;
+    if (isPending || !name.trim()) return;
     setIsPending(true);
     try {
       await createFolder(name, parentFolderId, pathname);

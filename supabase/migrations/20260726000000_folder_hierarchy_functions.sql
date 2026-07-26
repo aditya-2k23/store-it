@@ -18,7 +18,12 @@ declare
   v_new_path text;
   v_new_depth integer;
 begin
-  select id, path, depth, workspace_id
+  perform id from public.folders
+  where id in (p_folder_id, p_new_parent_folder_id)
+  order by id
+  for update;
+
+  select id, coalesce(path, id::text), depth, workspace_id
     into v_folder_id, v_old_path, v_old_depth, v_folder_workspace_id
   from public.folders
   where id = p_folder_id;
@@ -28,7 +33,7 @@ begin
   end if;
 
   if p_new_parent_folder_id is not null then
-    select path, depth, workspace_id, is_trashed
+    select coalesce(path, id::text), depth, workspace_id, is_trashed
       into v_parent_path, v_parent_depth, v_parent_workspace_id, v_parent_is_trashed
     from public.folders
     where id = p_new_parent_folder_id;
@@ -122,7 +127,7 @@ declare
   v_folder_path text;
   v_folder_workspace_id uuid;
 begin
-  select path, workspace_id
+  select coalesce(path, id::text), workspace_id
     into v_folder_path, v_folder_workspace_id
   from public.folders
   where id = p_folder_id;
@@ -135,7 +140,11 @@ begin
   set is_trashed = false,
       trashed_at = null
   where workspace_id = p_workspace_id
-    and (id = p_folder_id or path like v_folder_path || '/%');
+    and (
+      id = p_folder_id 
+      or coalesce(path, id::text) like v_folder_path || '/%'
+      or v_folder_path like coalesce(path, id::text) || '/%'
+    );
 
   update public.files
   set is_trashed = false,
@@ -145,7 +154,7 @@ begin
       select id
       from public.folders
       where workspace_id = p_workspace_id
-        and (id = p_folder_id or path like v_folder_path || '/%')
+        and (id = p_folder_id or coalesce(path, id::text) like v_folder_path || '/%')
     );
 end;
 $$;
