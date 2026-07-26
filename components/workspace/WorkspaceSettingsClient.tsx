@@ -219,33 +219,6 @@ const AppearanceSection = ({ workspace }: { workspace: WorkspaceWithRole }) => {
   );
 };
 
-// ——— Section 1.7: Privacy ———
-const PrivacySection = ({ workspaceId }: { workspaceId: string }) => {
-  const router = useRouter();
-
-  return (
-    <motion.section variants={fadeIn}>
-      <h3 className="h3 text-dark-100 flex items-center gap-2">
-        <Shield className="size-5" /> Privacy & Data
-      </h3>
-      <p className="caption mt-1 text-light-200">
-        Review how AI processes your files in this workspace.
-      </p>
-      <div className="mt-4">
-        <Button
-          onClick={() =>
-            router.push(`/workspaces/${workspaceId}/settings/privacy`)
-          }
-          variant="outline"
-          className="h-11 px-6 border-light-300 text-light-100 cursor-pointer hover:bg-light-400/50"
-        >
-          View Privacy Dashboard
-        </Button>
-      </div>
-    </motion.section>
-  );
-};
-
 // ——— Section 2: Members ———
 const MembersSection = ({
   workspace,
@@ -1027,9 +1000,6 @@ const WorkspaceSettingsClient = ({
         </>
       )}
 
-      {/* Privacy Section (all members) */}
-      <PrivacySection workspaceId={workspace.id} />
-      <Separator className="bg-light-300" />
 
       {/* Section 2: Members */}
       <MembersSection

@@ -96,7 +96,7 @@ const Chart = ({
             </p>
           )}
 
-          <Link href={`/workspaces/${workspaceId}/settings/privacy`}>
+          <Link href={`/workspaces/${workspaceId}/privacy`}>
             <Button
               type="button"
               className="h-10 w-fit rounded-xl bg-white/95 px-4 text-sm font-semibold text-slate-700 shadow-lg transition-transform duration-300 hover:-translate-y-0.5 hover:bg-white cursor-pointer"
