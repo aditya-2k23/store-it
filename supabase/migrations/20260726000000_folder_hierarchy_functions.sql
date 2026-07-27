@@ -143,12 +143,11 @@ begin
   set is_trashed = false,
       trashed_at = null
   where workspace_id = p_workspace_id
+    and trashed_at = v_trashed_at
     and (
       v_folder_path like coalesce(path, id::text) || '/%'
-      or (
-        (id = p_folder_id or coalesce(path, id::text) like v_folder_path || '/%')
-        and trashed_at = v_trashed_at
-      )
+      or id = p_folder_id 
+      or coalesce(path, id::text) like v_folder_path || '/%'
     );
 
   update public.files
