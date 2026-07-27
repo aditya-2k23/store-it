@@ -653,6 +653,20 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      cascade_restore_folder: {
+        Args: {
+          p_folder_id: string;
+          p_workspace_id: string;
+        };
+        Returns: undefined;
+      };
+      cascade_trash_folder: {
+        Args: {
+          p_folder_id: string;
+          p_workspace_id: string;
+        };
+        Returns: undefined;
+      };
       match_files_by_embedding: {
         Args: {
           query_embedding: string;
@@ -670,6 +684,14 @@ export type Database = {
           storage_key: string;
           similarity: number;
         }[];
+      };
+      move_folder: {
+        Args: {
+          p_folder_id: string;
+          p_new_parent_folder_id: string | null;
+          p_workspace_id: string;
+        };
+        Returns: undefined;
       };
       requesting_clerk_user_id: { Args: never; Returns: string };
       transfer_workspace_ownership: {

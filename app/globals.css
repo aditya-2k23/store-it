@@ -188,7 +188,7 @@
 
   .shad-sheet button,
   .shad-dialog button {
-    @apply focus:ring-0 focus:ring-offset-0 focus-visible:border-none outline-none focus-visible:outline-none focus-visible:ring-transparent focus-visible:ring-offset-0;
+    @apply focus:ring-0 focus:ring-offset-0 focus-visible:border-none outline-none focus-visible:outline-none focus-visible:ring-transparent focus-visible:ring-offset-0 cursor-pointer;
   }
 
   .shad-dropdown-item {
@@ -298,7 +298,7 @@
 
   /* ActionsDropdown */
   .rename-input-field {
-    @apply text-[14px] leading-5 font-normal outline-none ring-offset-transparent focus:ring-transparent focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 h-13 w-full rounded-full border px-4 shadow-drop-1;
+    @apply text-[14px] leading-5 font-normal outline-none ring-offset-transparent focus:ring-transparent focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 h-13 w-full rounded-full border border-light-300 px-4 shadow-drop-1 focus:border-brand;
   }
 
   .delete-confirmation {
@@ -310,11 +310,11 @@
   }
 
   .modal-cancel-button {
-    @apply h-13 flex-1 rounded-full bg-white text-light-100 hover:bg-transparent;
+    @apply h-13 flex-1 rounded-full bg-white text-light-100 hover:bg-transparent cursor-pointer;
   }
 
   .modal-submit-button {
-    @apply bg-brand hover:bg-brand-100 transition-all rounded-full text-[14px] leading-5 font-medium mx-0 h-13 w-full flex-1;
+    @apply bg-brand hover:bg-brand-100 transition-all rounded-full text-[14px] leading-5 font-medium mx-0 h-13 w-full flex-1 cursor-pointer;
   }
 
   /* ActionsModalContent */
@@ -335,11 +335,11 @@
   }
 
   .share-input-field {
-    @apply text-[14px] leading-5 font-normal outline-none ring-offset-transparent focus:ring-transparent focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 h-13 w-full rounded-full border px-4 shadow-drop-1;
+    @apply text-[14px] leading-5 font-normal outline-none ring-offset-transparent focus:ring-transparent focus:ring-offset-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 h-13 w-full rounded-full border border-light-300 px-4 shadow-drop-1 focus:border-brand;
   }
 
   .share-remove-user {
-    @apply rounded-full bg-transparent text-light-100 shadow-none hover:bg-transparent;
+    @apply rounded-full bg-transparent text-light-100 shadow-none hover:bg-transparent cursor-pointer;
   }
 
   .remove-icon {

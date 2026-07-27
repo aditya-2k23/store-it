@@ -43,6 +43,11 @@ export const actionsDropdownItems = [
     value: "download",
   },
   {
+    label: "Move to folder",
+    icon: "/assets/icons/move.svg",
+    value: "move",
+  },
+  {
     label: "Move to Trash",
     icon: "/assets/icons/delete.svg",
     value: "delete",
@@ -52,6 +57,7 @@ export const actionsDropdownItems = [
 export const trashedActionsDropdownItems = [
   {
     label: "Restore",
+    icon: "/assets/icons/restore.svg",
     value: "restore",
   },
   {

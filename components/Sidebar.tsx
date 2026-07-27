@@ -7,6 +7,7 @@ import {
   Clapperboard,
   Ellipsis,
   FileText,
+  Folder,
   ImageIcon,
   LayoutGrid,
   Settings,
@@ -43,6 +44,7 @@ const safeLocalStorage = {
 
 const sidebarLinks = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutGrid },
+  { name: "Files", href: "/files", icon: Folder },
   { name: "Documents", href: "/documents", icon: FileText },
   { name: "Images", href: "/images", icon: ImageIcon },
   { name: "Media", href: "/media", icon: Clapperboard },

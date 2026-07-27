@@ -12,6 +12,12 @@ import {
 } from "@/lib/permissions";
 import { MAX_FILE_SIZE } from "@/constants";
 import { logActivity } from "./activity.actions";
+import {
+  FILE_SELECT,
+  createSignedDownloadUrl,
+  mapRowToFileItem,
+  type FileRowWithOwner,
+} from "@/lib/file-item.helpers";
 
 import type { Database } from "@/types/database.types";
 
@@ -23,71 +29,6 @@ const handleError = (error: unknown, message: string) => {
 const TOTAL_SPACE_CACHE_TAG = "total-space-used";
 
 type FileRow = Database["public"]["Tables"]["files"]["Row"];
-type UserRow = Database["public"]["Tables"]["users"]["Row"];
-type AiMetaJoin = {
-  tags: string[] | null;
-  processing_status: AiProcessingStatus;
-} | null;
-type FileRowWithOwner = FileRow & {
-  owner: Pick<UserRow, "id" | "full_name" | "email" | "avatar_url"> | null;
-  ai_metadata: AiMetaJoin;
-};
-
-const FILE_SELECT =
-  "id, name, original_name, extension, mime_type, type, size, storage_key, thumbnail_key, preview_status, owner_id, workspace_id, is_trashed, trashed_at, created_at, updated_at, owner:users!files_owner_id_fkey(id, full_name, email, avatar_url), ai_metadata(tags, processing_status)";
-
-/**
- * Generates a 1-hour signed URL for direct download/preview.
- * The URL is generated server-side and handed to the client — it is NOT cached
- * across requests because short TTL is intentional for security.
- */
-const createSignedDownloadUrl = async (
-  supabase: ReturnType<typeof createSupabaseAdmin>,
-  storageKey: string,
-): Promise<string> => {
-  const { data, error } = await supabase.storage
-    .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
-    .createSignedUrl(storageKey, 3600); // 1 hour
-  if (error || !data?.signedUrl) return "";
-  return data.signedUrl;
-};
-
-const mapRowToFileItem = (
-  row: FileRowWithOwner,
-  sharedWith: string[],
-  signedUrl: string = "",
-): FileItem => {
-  const extension = row.extension || getFileType(row.name).extension;
-  const isImage = row.type === "image";
-
-  return {
-    id: row.id,
-    name: row.name,
-    originalName: row.original_name,
-    extension,
-    type: row.type as FileType,
-    size: row.size,
-    url: signedUrl,
-    // Stable, auth-protected route → sharp resizes to 200×200 WebP 60%q
-    // browser caches for 24 h; works without any Supabase premium features
-    thumbnailUrl: isImage ? `/api/thumbnail/${row.id}` : "",
-    downloadUrl: signedUrl,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    storageKey: row.storage_key,
-    isTrashed: row.is_trashed,
-    trashedAt: row.trashed_at,
-    owner: {
-      id: row.owner?.id || row.owner_id || "",
-      fullName: row.owner?.full_name || "Unknown",
-      email: row.owner?.email || "",
-      avatarUrl: row.owner?.avatar_url || null,
-    },
-    sharedWith,
-    tags: (row.ai_metadata as AiMetaJoin)?.tags ?? null,
-    aiStatus: (row.ai_metadata as AiMetaJoin)?.processing_status ?? undefined,
-  };
-};
 
 const applyFilters = (query: any, types: FileType[], searchText: string) => {
   let filteredQuery = query.eq("is_trashed", false);
@@ -896,6 +837,106 @@ export const emptyTrash = async (workspaceId: string, path: string) => {
 
   revalidatePath(path);
   return parseStringify({ deletedCount, skippedCount, failedCount });
+};
+
+export const moveFileToFolder = async ({
+  fileId,
+  folderId,
+  path,
+}: {
+  fileId: string;
+  folderId: string | null;
+  path: string;
+}) => {
+  const supabase = createSupabaseAdmin();
+
+  try {
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
+
+    const { data: membership, error: membershipError } = await supabase
+      .from("workspace_members")
+      .select("role")
+      .eq("user_id", currentUser.id)
+      .eq("workspace_id", currentUser.workspaceId)
+      .maybeSingle();
+    if (membershipError) throw membershipError;
+    if (!membership?.role || !canUpload(membership.role as WorkspaceRole)) {
+      throw new Error(
+        "You do not have permission to move files in this workspace",
+      );
+    }
+
+    const { data: file, error: fileError } = await supabase
+      .from("files")
+      .select("workspace_id, name, folder_id, is_trashed")
+      .eq("id", fileId)
+      .maybeSingle();
+    if (fileError) throw fileError;
+    if (!file || file.workspace_id !== currentUser.workspaceId || file.is_trashed) {
+      throw new Error("File not found in this workspace or is trashed");
+    }
+
+    if (file.folder_id) {
+      const { data: sourceFolder, error: sourceFolderError } = await supabase
+        .from("folders")
+        .select("workspace_id, is_trashed")
+        .eq("id", file.folder_id)
+        .maybeSingle();
+      if (sourceFolderError) throw sourceFolderError;
+      if (
+        !sourceFolder ||
+        sourceFolder.workspace_id !== currentUser.workspaceId ||
+        sourceFolder.is_trashed
+      ) {
+        throw new Error(
+          "Restore the containing folder before moving files from it.",
+        );
+      }
+    }
+
+    let toFolderName = "Workspace Root";
+    if (folderId) {
+      const { data: folder, error: folderError } = await supabase
+        .from("folders")
+        .select("workspace_id, is_trashed, name")
+        .eq("id", folderId)
+        .maybeSingle();
+      if (folderError) throw folderError;
+      if (
+        !folder ||
+        folder.workspace_id !== currentUser.workspaceId ||
+        folder.is_trashed
+      ) {
+        throw new Error("Target folder is unavailable");
+      }
+      toFolderName = folder.name;
+    }
+
+    const { error: updateError } = await supabase
+      .from("files")
+      .update({ folder_id: folderId, updated_at: new Date().toISOString() })
+      .eq("id", fileId);
+    if (updateError) throw updateError;
+
+    revalidatePath(path);
+    await logActivity({
+      userId: currentUser.id,
+      workspaceId: currentUser.workspaceId,
+      fileId,
+      action: "file.move",
+      metadata: {
+        fileName: file.name,
+        toFolderName,
+        actorName: currentUser.fullName,
+        actorEmail: currentUser.email,
+      },
+    });
+
+    return parseStringify({ status: "success" });
+  } catch (error) {
+    handleError(error, "Failed to move file to folder");
+  }
 };
 
 const purgeExpiredTrash = async (

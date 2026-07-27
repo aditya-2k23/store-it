@@ -1,9 +1,16 @@
 import Card from "@/components/Card";
 import EmptyState from "@/components/EmptyState";
 import { getTrashedFiles } from "@/lib/actions/file.actions";
+import FolderCard from "@/components/folders/FolderCard";
+import { getTrashedFolders } from "@/lib/actions/folder.actions";
 
 const TrashPage = async () => {
-  const files = await getTrashedFiles();
+  const [files, folders] = await Promise.all([
+    getTrashedFiles(),
+    getTrashedFolders(),
+  ]);
+  const hasTrashedItems =
+    (files?.documents.length || 0) > 0 || (folders?.folders.length || 0) > 0;
 
   return (
     <div className="page-container">
@@ -14,8 +21,11 @@ const TrashPage = async () => {
         </p>
       </section>
 
-      {files?.documents && files.documents.length > 0 ? (
+      {hasTrashedItems ? (
         <section className="file-list">
+          {(folders?.folders || []).map((folder: FolderItem) => (
+            <FolderCard key={folder.id} folder={folder} allowTrashedNavigation />
+          ))}
           {files.documents.map((file: FileItem) => (
             <Card key={file.id} file={file} />
           ))}

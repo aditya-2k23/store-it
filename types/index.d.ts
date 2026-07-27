@@ -43,6 +43,7 @@ declare interface FileItem {
   createdAt: string;
   updatedAt: string;
   storageKey: string;
+  folderId?: string | null;
   isTrashed: boolean;
   trashedAt: string | null;
   daysUntilPurge?: number;
@@ -50,6 +51,27 @@ declare interface FileItem {
   sharedWith: string[];
   tags?: string[] | null;
   aiStatus?: AiProcessingStatus;
+}
+
+declare interface FolderItem {
+  id: string;
+  name: string;
+  parentFolderId: string | null;
+  path: string;
+  depth: number;
+  isTrashed: boolean;
+  trashedAt: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  owner?: FileOwner;
+  fileCount: number;
+  itemCount: number;
+}
+
+declare interface FolderBreadcrumb {
+  id: string;
+  name: string;
 }
 
 declare interface UploadFileProps {

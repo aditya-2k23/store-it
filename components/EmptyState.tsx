@@ -9,16 +9,21 @@ interface EmptyStateProps {
 
 const EmptyState = ({ type, showUpload }: EmptyStateProps) => {
   const isTrash = type?.toLowerCase().includes("trash");
+  const isFolders = type?.toLowerCase().includes("folder");
   const shouldShowUpload = showUpload ?? !isTrash;
 
   const title = isTrash
     ? "Trash is empty"
+    : isFolders
+      ? "This folder is empty"
     : type
       ? `No ${type} found`
       : "Your space is empty";
 
   const description = isTrash
     ? "No deleted files found. Items moved to trash will appear here."
+    : isFolders
+      ? "Create a folder or move files here to get organized."
     : type
       ? `You haven't uploaded any ${type} yet. Drag and drop them here to get started!`
       : "Upload your first file to get started. You can upload documents, images, audio, video, or any other files.";
