@@ -88,7 +88,7 @@ declare
   v_folder_path text;
   v_folder_workspace_id uuid;
 begin
-  select path, workspace_id
+  select coalesce(path, id::text), workspace_id
     into v_folder_path, v_folder_workspace_id
   from public.folders
   where id = p_folder_id;
@@ -101,17 +101,19 @@ begin
   set is_trashed = true,
       trashed_at = now()
   where workspace_id = p_workspace_id
-    and (id = p_folder_id or path like v_folder_path || '/%');
+    and is_trashed = false
+    and (id = p_folder_id or coalesce(path, id::text) like v_folder_path || '/%');
 
   update public.files
   set is_trashed = true,
       trashed_at = now()
   where workspace_id = p_workspace_id
+    and is_trashed = false
     and folder_id in (
       select id
       from public.folders
       where workspace_id = p_workspace_id
-        and (id = p_folder_id or path like v_folder_path || '/%')
+        and (id = p_folder_id or coalesce(path, id::text) like v_folder_path || '/%')
     );
 end;
 $$;
@@ -126,9 +128,10 @@ as $$
 declare
   v_folder_path text;
   v_folder_workspace_id uuid;
+  v_trashed_at timestamptz;
 begin
-  select coalesce(path, id::text), workspace_id
-    into v_folder_path, v_folder_workspace_id
+  select coalesce(path, id::text), workspace_id, trashed_at
+    into v_folder_path, v_folder_workspace_id, v_trashed_at
   from public.folders
   where id = p_folder_id;
 
@@ -141,15 +144,18 @@ begin
       trashed_at = null
   where workspace_id = p_workspace_id
     and (
-      id = p_folder_id 
-      or coalesce(path, id::text) like v_folder_path || '/%'
-      or v_folder_path like coalesce(path, id::text) || '/%'
+      v_folder_path like coalesce(path, id::text) || '/%'
+      or (
+        (id = p_folder_id or coalesce(path, id::text) like v_folder_path || '/%')
+        and trashed_at = v_trashed_at
+      )
     );
 
   update public.files
   set is_trashed = false,
       trashed_at = null
   where workspace_id = p_workspace_id
+    and trashed_at = v_trashed_at
     and folder_id in (
       select id
       from public.folders

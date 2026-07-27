@@ -210,9 +210,7 @@ export const createFolder = async (
     }
 
     const folderId = crypto.randomUUID();
-    const folderPath = parentPath
-      ? `${parentPath}/${folderId}`
-      : folderId;
+    const folderPath = parentPath ? `${parentPath}/${folderId}` : folderId;
     const { error: insertError } = await supabase.from("folders").insert({
       id: folderId,
       name: folderName,
@@ -307,16 +305,28 @@ export const moveFolder = async (
       .eq("id", folderId)
       .maybeSingle();
     if (folderError) throw folderError;
-    if (!folder || folder.workspace_id !== currentUser.workspaceId || folder.is_trashed) {
+    if (
+      !folder ||
+      folder.workspace_id !== currentUser.workspaceId ||
+      folder.is_trashed
+    ) {
       throw new Error("Folder not found in this workspace or is trashed");
     }
 
     const [oldParentResult, newParentResult] = await Promise.all([
       folder.parent_folder_id
-        ? supabase.from("folders").select("name").eq("id", folder.parent_folder_id).maybeSingle()
+        ? supabase
+            .from("folders")
+            .select("name")
+            .eq("id", folder.parent_folder_id)
+            .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
       newParentFolderId
-        ? supabase.from("folders").select("name").eq("id", newParentFolderId).maybeSingle()
+        ? supabase
+            .from("folders")
+            .select("name")
+            .eq("id", newParentFolderId)
+            .maybeSingle()
         : Promise.resolve({ data: null, error: null }),
     ]);
     if (oldParentResult.error) throw oldParentResult.error;
@@ -424,7 +434,12 @@ export const restoreFolder = async (folderId: string, path: string) => {
 };
 
 const sortItems = <
-  T extends { name: string; size?: number; createdAt?: string; created_at?: string },
+  T extends {
+    name: string;
+    size?: number;
+    createdAt?: string;
+    created_at?: string;
+  },
 >(
   items: T[],
   sort: string,
@@ -459,7 +474,13 @@ export const getFolderContents = async (
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User not found");
 
-    let currentFolder: { id: string; name: string; path: string; depth: number; is_trashed: boolean } | null = null;
+    let currentFolder: {
+      id: string;
+      name: string;
+      path: string;
+      depth: number;
+      is_trashed: boolean;
+    } | null = null;
     if (folderId) {
       const { data, error } = await supabase
         .from("folders")
@@ -480,14 +501,15 @@ export const getFolderContents = async (
     }
 
     const breadcrumbIds = currentFolder?.path?.split("/") || [];
-    const { data: breadcrumbRows, error: breadcrumbError } = breadcrumbIds.length
-      ? await supabase
-          .from("folders")
-          .select("id, name, depth")
-          .eq("workspace_id", currentUser.workspaceId)
-          .in("id", breadcrumbIds)
-          .order("depth", { ascending: true })
-      : { data: [], error: null };
+    const { data: breadcrumbRows, error: breadcrumbError } =
+      breadcrumbIds.length
+        ? await supabase
+            .from("folders")
+            .select("id, name, depth")
+            .eq("workspace_id", currentUser.workspaceId)
+            .in("id", breadcrumbIds)
+            .order("depth", { ascending: true })
+        : { data: [], error: null };
     if (breadcrumbError) throw breadcrumbError;
 
     let foldersQuery = supabase
@@ -512,13 +534,17 @@ export const getFolderContents = async (
 
     const files = fileRows || [];
     const { data: signedUrls } = files.length
-      ? await supabase
-          .storage.from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
-          .createSignedUrls(files.map((file) => file.storage_key), 3600)
+      ? await supabase.storage
+          .from(process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET!)
+          .createSignedUrls(
+            files.map((file) => file.storage_key),
+            3600,
+          )
       : { data: [] };
     const signedUrlMap = new Map<string, string>();
     (signedUrls || []).forEach((entry) => {
-      if (entry.path && entry.signedUrl) signedUrlMap.set(entry.path, entry.signedUrl);
+      if (entry.path && entry.signedUrl)
+        signedUrlMap.set(entry.path, entry.signedUrl);
     });
 
     const { data: membership } = await supabase
@@ -590,7 +616,9 @@ export const getFoldersForPicker = async (excludeFolderId?: string) => {
         (folder.id !== excluded.id &&
           !(excluded.path && folder.path?.startsWith(`${excluded.path}/`))),
     );
-    return parseStringify(folders.map((folder: any) => mapFolderRow(folder as FolderRowWithOwner)));
+    return parseStringify(
+      folders.map((folder: any) => mapFolderRow(folder as FolderRowWithOwner)),
+    );
   } catch (error) {
     handleError(error, "Failed to get folders for picker");
   }

@@ -54,7 +54,7 @@ export default function FolderBrowser({
               <p className="body-1 hidden sm:block text-light-200">Sort by:</p>
               <Sort />
             </div>
-            {!currentFolder?.isTrashed && (
+            {!currentFolder?.isTrashed && (canUpload ?? true) && (
               <CreateFolderDialog parentFolderId={currentFolder?.id || null} />
             )}
           </div>
