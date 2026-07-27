@@ -38,17 +38,21 @@ export default function MoveToDialog({
   >(undefined);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [prevOpen, setPrevOpen] = useState(open);
   const pathname = usePathname();
   const router = useRouter();
+
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setSelectedFolderId(undefined);
+      setIsLoading(true);
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
     let isCurrent = true;
-
-    if (isCurrent) {
-      setSelectedFolderId(undefined);
-      setIsLoading(true);
-    }
 
     void getFoldersForPicker(excludeFolderId)
       .then((items) => {
