@@ -56,8 +56,17 @@ export async function POST(req: Request) {
           username?: string | null;
         };
 
+        const rawEmail = data.email_addresses?.[0]?.email_address;
+        if (!rawEmail) {
+          console.error("user.created: missing email address for user", data.id);
+          return NextResponse.json(
+            { error: "Missing email address" },
+            { status: 400 },
+          );
+        }
+
         // Normalize email to lowercase to prevent case-mismatch unique constraint violations
-        const email = (data.email_addresses?.[0]?.email_address ?? "").toLowerCase();
+        const email = rawEmail.toLowerCase();
         const fullName =
           `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim();
         const avatarUrl = data.image_url ?? null;
@@ -230,21 +239,28 @@ export async function POST(req: Request) {
           username?: string | null;
         };
 
-        // Normalize email to lowercase
-        const email = (data.email_addresses?.[0]?.email_address ?? "").toLowerCase();
+        const rawEmail = data.email_addresses?.[0]?.email_address;
+        const email = rawEmail ? rawEmail.toLowerCase() : undefined;
         const fullName =
           `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim();
         const avatarUrl = data.image_url ?? null;
         const username = data.username ?? null;
 
+        const updatePayload: {
+          full_name: string;
+          avatar_url: string | null;
+          username: string | null;
+          email?: string;
+        } = {
+          full_name: fullName,
+          avatar_url: avatarUrl,
+          username,
+          ...(email ? { email } : {}),
+        };
+
         const { error } = await supabase
           .from("users")
-          .update({
-            email,
-            full_name: fullName,
-            avatar_url: avatarUrl,
-            username,
-          })
+          .update(updatePayload)
           .eq("clerk_id", data.id);
 
         if (error) {
