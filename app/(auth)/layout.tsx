@@ -4,12 +4,16 @@ import React from "react";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { APP_VERSION } from "@/constants";
+import { getCurrentUser } from "@/lib/actions/user.actions";
 
 const Layout = async ({ children }: { children: React.ReactNode }) => {
   const { userId } = await auth();
 
   if (userId) {
-    redirect("/dashboard");
+    const user = await getCurrentUser();
+    if (user) {
+      redirect("/dashboard");
+    }
   }
 
   return (

@@ -55,7 +55,17 @@ export async function POST(req: Request) {
           username?: string | null;
         };
 
-        const email = data.email_addresses?.[0]?.email_address;
+        const rawEmail = data.email_addresses?.[0]?.email_address;
+        if (!rawEmail) {
+          console.error("user.created: missing email address for user", data.id);
+          return NextResponse.json(
+            { error: "Missing email address" },
+            { status: 400 },
+          );
+        }
+
+        // Normalize email to lowercase to prevent case-mismatch unique constraint violations
+        const email = rawEmail.toLowerCase();
         const fullName =
           `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim();
         const avatarUrl = data.image_url ?? null;
@@ -78,10 +88,44 @@ export async function POST(req: Request) {
           .single();
 
         if (userError?.code === "23505") {
+          // Conflict on clerk_id or email. Try to find the conflicting row.
+          const { data: byClerkId, error: clerkLookupErr } = await supabase
+            .from("users")
+            .select("id, full_name")
+            .eq("clerk_id", data.id)
+            .maybeSingle();
+
+          if (clerkLookupErr) {
+            console.error("user.created: clerk_id lookup failed", clerkLookupErr);
+            return NextResponse.json({ error: "Database error" }, { status: 500 });
+          }
+
+          let resolvedId: string | undefined = byClerkId?.id;
+
+          if (!resolvedId) {
+            // Conflict on email — exact match on normalized email
+            const { data: byEmail, error: emailLookupErr } = await supabase
+              .from("users")
+              .select("id, full_name")
+              .eq("email", email)
+              .maybeSingle();
+
+            if (emailLookupErr) {
+              console.error("user.created: email lookup failed", emailLookupErr);
+              return NextResponse.json({ error: "Database error" }, { status: 500 });
+            }
+            resolvedId = byEmail?.id;
+          }
+
+          if (!resolvedId) {
+            console.error("user.created: 23505 conflict but could not resolve existing user record");
+            return NextResponse.json({ error: "Database error" }, { status: 500 });
+          }
+
           const { data: mergedUser, error: mergeError } = await supabase
             .from("users")
             .update(upsertPayload)
-            .eq("email", email)
+            .eq("id", resolvedId)
             .select("id, full_name")
             .single();
 
@@ -137,7 +181,9 @@ export async function POST(req: Request) {
           const { data: workspace, error: workspaceError } = await supabase
             .from("workspaces")
             .insert({
-              name: `${userRecord.full_name ?? "My"}'s Workspace`,
+              name: userRecord.full_name
+                ? `${userRecord.full_name}'s Workspace`
+                : "My Workspace",
               type: "personal",
               owner_id: userRecord.id,
             })
@@ -192,20 +238,28 @@ export async function POST(req: Request) {
           username?: string | null;
         };
 
-        const email = data.email_addresses?.[0]?.email_address;
+        const rawEmail = data.email_addresses?.[0]?.email_address;
+        const email = rawEmail ? rawEmail.toLowerCase() : undefined;
         const fullName =
           `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim();
         const avatarUrl = data.image_url ?? null;
         const username = data.username ?? null;
 
+        const updatePayload: {
+          full_name: string;
+          avatar_url: string | null;
+          username: string | null;
+          email?: string;
+        } = {
+          full_name: fullName,
+          avatar_url: avatarUrl,
+          username,
+          ...(email ? { email } : {}),
+        };
+
         const { error } = await supabase
           .from("users")
-          .update({
-            email,
-            full_name: fullName,
-            avatar_url: avatarUrl,
-            username,
-          })
+          .update(updatePayload)
           .eq("clerk_id", data.id);
 
         if (error) {

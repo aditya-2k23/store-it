@@ -69,7 +69,15 @@ export default function RootLayout({
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <body className={`${poppins.variable} ${dynaPuff.variable} antialiased`}>
-        <ClerkProvider appearance={clerkAppearance} afterSignOutUrl="/sign-in" ui={ui}>
+        <ClerkProvider
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+          signInFallbackRedirectUrl="/dashboard"
+          signUpFallbackRedirectUrl="/dashboard"
+          appearance={clerkAppearance}
+          afterSignOutUrl="/sign-in"
+          ui={ui}
+        >
           {children}
         </ClerkProvider>
         <Analytics />

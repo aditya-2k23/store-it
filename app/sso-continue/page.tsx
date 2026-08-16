@@ -47,6 +47,7 @@ export default function SSOContinuePage() {
   const [verificationCode, setVerificationCode] = useState("");
   const hasShownRequirementToastRef = useRef(false);
   const hasSentEmailCodeRef = useRef(false);
+  const otpInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<UsernameValues>({
     resolver: zodResolver(usernameSchema),
@@ -70,6 +71,15 @@ export default function SSOContinuePage() {
       (signUp.unverifiedFields ?? []).includes("email_address")
     );
   }, [signUp]);
+
+  useEffect(() => {
+    if (needsEmailVerification && !needsUsername && !isLoading) {
+      const timer = setTimeout(() => {
+        otpInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [needsEmailVerification, needsUsername, isLoading]);
 
   const getRequirementDetails = (resource: RequirementResource) => {
     const missingFields = resource.missingFields ?? [];
@@ -184,7 +194,10 @@ export default function SSOContinuePage() {
       const { error: verifyError } =
         await signUp.verifications.verifyEmailCode({ code: verificationCode });
 
-      if (verifyError) {
+      if (
+        verifyError &&
+        verifyError.code !== "verification_already_verified"
+      ) {
         throw verifyError;
       }
 
@@ -204,6 +217,7 @@ export default function SSOContinuePage() {
       const errorMessage =
         err?.longMessage ||
         err?.message ||
+        err?.errors?.[0]?.longMessage ||
         err?.errors?.[0]?.message ||
         "Failed to verify code.";
       toast({
@@ -235,16 +249,21 @@ export default function SSOContinuePage() {
     }
 
     if (
+      !isLoading &&
       signUp?.status === "missing_requirements" &&
-      !hasShownRequirementToastRef.current
+      !hasShownRequirementToastRef.current &&
+      !needsUsername &&
+      !needsEmailVerification
     ) {
       const details = getRequirementDetails(signUp);
-      toast({
-        title: "Additional details required",
-        description: details || "Please complete the required details.",
-        variant: "destructive",
-      });
-      hasShownRequirementToastRef.current = true;
+      if (details) {
+        toast({
+          title: "Additional details required",
+          description: details,
+          variant: "destructive",
+        });
+        hasShownRequirementToastRef.current = true;
+      }
       return;
     }
 
@@ -385,6 +404,8 @@ export default function SSOContinuePage() {
           <form onSubmit={handleVerifyEmail} className="space-y-6">
             <div className="flex justify-center">
               <InputOTP
+                ref={otpInputRef}
+                autoFocus
                 maxLength={6}
                 value={verificationCode}
                 onChange={(val) => setVerificationCode(val)}

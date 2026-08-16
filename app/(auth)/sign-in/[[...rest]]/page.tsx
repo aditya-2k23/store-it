@@ -108,14 +108,14 @@ export default function SignInPage() {
     setSsoLoading(strategy);
 
     try {
-      const { error: ssoError } = await signIn.sso({
+      const { error } = await signIn.sso({
         strategy,
-        redirectUrl: "/sso-continue",
         redirectCallbackUrl: "/sso-callback",
+        redirectUrl: "/dashboard",
       });
 
-      if (ssoError) {
-        throw ssoError;
+      if (error) {
+        throw error;
       }
     } catch (err: any) {
       console.error(`${strategy} sign in error:`, err);
@@ -158,7 +158,7 @@ export default function SignInPage() {
             variant="outline"
             className="flex-1 h-12 rounded-xl border border-light-300 bg-white hover:bg-light-400 flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all"
             onClick={() => handleSSO("oauth_google")}
-            disabled={isLoading || ssoLoading !== null}
+            disabled={!signIn || isLoading || ssoLoading !== null}
           >
             {ssoLoading === "oauth_google" ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -178,7 +178,7 @@ export default function SignInPage() {
             variant="outline"
             className="flex-1 h-12 rounded-xl border border-light-300 bg-white hover:bg-light-400 flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all"
             onClick={() => handleSSO("oauth_microsoft")}
-            disabled={isLoading || ssoLoading !== null}
+            disabled={!signIn || isLoading || ssoLoading !== null}
           >
             {ssoLoading === "oauth_microsoft" ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -257,7 +257,7 @@ export default function SignInPage() {
             <Button
               type="submit"
               className="bg-brand hover:bg-brand-100 text-white w-full h-12 rounded-xl font-semibold mt-8 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all duration-300"
-              disabled={isLoading || ssoLoading !== null}
+              disabled={!signIn || isLoading || ssoLoading !== null}
             >
               {isLoading ? (
                 <>

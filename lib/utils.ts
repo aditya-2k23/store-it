@@ -38,6 +38,9 @@ export function cn(...inputs: ClassValue[]) {
 export const parseStringify = (value: unknown) =>
   JSON.parse(JSON.stringify(value));
 
+export const escapeLikePattern = (str: string): string =>
+  str.replace(/[%_\\]/g, "\\$&");
+
 export const getAuthRedirectPath = () => {
   let redirectPath = "/workspaces";
   try {
