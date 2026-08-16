@@ -2,7 +2,7 @@
 
 import { useSignUp } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,6 +50,16 @@ export default function SignUpPage() {
   const [pendingVerification, setPendingVerification] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [userEmail, setUserEmail] = useState("");
+  const otpInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (pendingVerification) {
+      const timer = setTimeout(() => {
+        otpInputRef.current?.focus();
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [pendingVerification]);
 
   const form = useForm<SignUpValues>({
     resolver: zodResolver(signUpSchema),
@@ -179,9 +189,10 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
-      const { error: verifyError } = await signUp.verifications.verifyEmailCode(
-        { code: verificationCode },
-      );
+      const { error: verifyError } =
+        await signUp.verifications.verifyEmailCode({
+          code: verificationCode,
+        });
 
       if (verifyError) {
         throw verifyError;
@@ -216,39 +227,10 @@ export default function SignUpPage() {
       }
     } catch (err: any) {
       console.error("OTP verification error:", err);
-      const firstError = err?.errors?.[0];
-
-      if (firstError?.code === "verification_already_verified") {
-        try {
-          await (signUp as any).reload();
-          if (signUp.status === "complete") {
-            toast({
-              title: "Account Created!",
-              description: "Welcome to Storey! Your account has been verified.",
-              variant: "default",
-            });
-            await signUp.finalize({
-              navigate: ({ session, decorateUrl }) => {
-                if (session?.currentTask) {
-                  console.warn("Pending session task:", session.currentTask);
-                  return;
-                }
-
-                navigateToAuthSuccess(decorateUrl, router);
-              },
-            });
-            return;
-          }
-        } catch (reloadErr) {
-          console.error("Error reloading signup:", reloadErr);
-        }
-      }
-
       const errorMessage =
-        firstError?.longMessage ||
-        firstError?.message ||
         err?.longMessage ||
         err?.message ||
+        err?.errors?.[0]?.message ||
         "Failed to verify code. Please try again.";
       toast({
         title: "Verification Failed",
@@ -263,7 +245,8 @@ export default function SignUpPage() {
   const handleResendCode = async () => {
     if (!signUp) return;
     try {
-      const { error: resendError } = await signUp.verifications.sendEmailCode();
+      const { error: resendError } =
+        await signUp.verifications.sendEmailCode();
 
       if (resendError) {
         throw resendError;
@@ -288,14 +271,14 @@ export default function SignUpPage() {
     setSsoLoading(strategy);
 
     try {
-      const { error: ssoError } = await signUp.sso({
+      const { error } = await signUp.sso({
         strategy,
-        redirectUrl: "/sso-continue",
         redirectCallbackUrl: "/sso-callback",
+        redirectUrl: "/dashboard",
       });
 
-      if (ssoError) {
-        throw ssoError;
+      if (error) {
+        throw error;
       }
     } catch (err: any) {
       console.error(`${strategy} sign up error:`, err);
@@ -344,7 +327,7 @@ export default function SignUpPage() {
                 variant="outline"
                 className="flex-1 h-12 rounded-xl border border-light-300 bg-white hover:bg-light-400 flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all"
                 onClick={() => handleSSO("oauth_google")}
-                disabled={isLoading || ssoLoading !== null}
+                disabled={!signUp || isLoading || ssoLoading !== null}
               >
                 {ssoLoading === "oauth_google" ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -366,7 +349,7 @@ export default function SignUpPage() {
                 variant="outline"
                 className="flex-1 h-12 rounded-xl border border-light-300 bg-white hover:bg-light-400 flex items-center justify-center gap-2 cursor-pointer shadow-sm transition-all"
                 onClick={() => handleSSO("oauth_microsoft")}
-                disabled={isLoading || ssoLoading !== null}
+                disabled={!signUp || isLoading || ssoLoading !== null}
               >
                 {ssoLoading === "oauth_microsoft" ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -488,7 +471,7 @@ export default function SignUpPage() {
                 <Button
                   type="submit"
                   className="bg-brand hover:bg-brand-100 text-white w-full h-12 rounded-xl font-semibold mt-8 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer transition-all duration-300"
-                  disabled={isLoading || ssoLoading !== null}
+                  disabled={!signUp || isLoading || ssoLoading !== null}
                 >
                   {isLoading ? (
                     <>
@@ -542,6 +525,8 @@ export default function SignUpPage() {
             <form onSubmit={handleVerify} className="space-y-6 mt-8">
               <div className="flex justify-center">
                 <InputOTP
+                  ref={otpInputRef}
+                  autoFocus
                   maxLength={6}
                   value={verificationCode}
                   onChange={(val) => setVerificationCode(val)}

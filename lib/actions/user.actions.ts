@@ -6,15 +6,113 @@ import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { parseStringify } from "../utils";
 import type { Database } from "@/types/database.types";
 import { cookies } from "next/headers";
-
 import { cache } from "react";
 
 const ACTIVE_WORKSPACE_COOKIE = "storey-active-workspace";
 
-const handleError = (error: unknown, message: string) => {
-  console.error(message, error);
-  throw error;
-};
+async function ensurePersonalWorkspace(
+  supabase: ReturnType<typeof createSupabaseAdmin>,
+  userId: string,
+  userName: string | null,
+): Promise<string> {
+  // 1. Check if personal workspace already exists by owner_id
+  const { data: personalWs } = await supabase
+    .from("workspaces")
+    .select("id")
+    .eq("owner_id", userId)
+    .eq("type", "personal")
+    .maybeSingle();
+
+  if (personalWs?.id) {
+    // Ensure membership exists
+    await supabase.from("workspace_members").upsert(
+      {
+        workspace_id: personalWs.id,
+        user_id: userId,
+        role: "owner",
+      },
+      { onConflict: "workspace_id,user_id" },
+    );
+    return personalWs.id;
+  }
+
+  // 2. Check if user already has any workspace membership (e.g. provisioned concurrently by webhook)
+  const { data: existingMember } = await supabase
+    .from("workspace_members")
+    .select("workspace_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (existingMember?.workspace_id) {
+    return existingMember.workspace_id;
+  }
+
+  // 3. Attempt to insert personal workspace
+  const { data: newWorkspace, error: createError } = await supabase
+    .from("workspaces")
+    .insert({
+      name: `${userName || "My"}'s Workspace`,
+      type: "personal",
+      owner_id: userId,
+    })
+    .select("id")
+    .maybeSingle();
+
+  let workspaceId = newWorkspace?.id;
+
+  if (!workspaceId) {
+    // Retry finding personal workspace or membership with small backoff in case webhook created it concurrently
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
+
+      const { data: retryWs } = await supabase
+        .from("workspaces")
+        .select("id")
+        .eq("owner_id", userId)
+        .eq("type", "personal")
+        .maybeSingle();
+
+      if (retryWs?.id) {
+        workspaceId = retryWs.id;
+        break;
+      }
+
+      const { data: retryMember } = await supabase
+        .from("workspace_members")
+        .select("workspace_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (retryMember?.workspace_id) {
+        workspaceId = retryMember.workspace_id;
+        break;
+      }
+    }
+  }
+
+  if (!workspaceId) {
+    console.error(
+      "ensurePersonalWorkspace: could not create or find workspace",
+      {
+        userId,
+        createError,
+      },
+    );
+    throw new Error("Failed to create or find personal workspace");
+  }
+
+  // 4. Ensure membership
+  await supabase.from("workspace_members").upsert(
+    {
+      workspace_id: workspaceId,
+      user_id: userId,
+      role: "owner",
+    },
+    { onConflict: "workspace_id,user_id" },
+  );
+
+  return workspaceId;
+}
 
 export const getCurrentUser = cache(async () => {
   try {
@@ -34,16 +132,14 @@ export const getCurrentUser = cache(async () => {
     if (findError) throw findError;
 
     if (existingUser) {
-      // Resolve active workspace: cookie first, then personal workspace fallback
+      // Resolve active workspace: cookie first if member, then ensure personal workspace
       let workspaceId: string | undefined;
 
-      // Try the active workspace cookie
       try {
         const cookieStore = await cookies();
         const activeWsCookie = cookieStore.get(ACTIVE_WORKSPACE_COOKIE)?.value;
 
         if (activeWsCookie) {
-          // Verify the user is actually a member of this workspace
           const { data: cookieMembership } = await supabase
             .from("workspace_members")
             .select("workspace_id")
@@ -56,57 +152,41 @@ export const getCurrentUser = cache(async () => {
           }
         }
       } catch {
-        // cookies() can throw in some contexts (e.g. generateStaticParams)
+        // cookies() can throw in some static contexts
       }
 
-      // Fallback: find their personal workspace
       if (!workspaceId) {
-        const { data: personalWs } = await supabase
-          .from("workspaces")
-          .select("id")
-          .eq("owner_id", existingUser.id)
-          .eq("type", "personal")
-          .maybeSingle();
-
-        workspaceId = personalWs?.id;
+        workspaceId = await ensurePersonalWorkspace(
+          supabase,
+          existingUser.id,
+          existingUser.full_name,
+        );
       }
 
-      // Final fallback: any workspace they own
-      if (!workspaceId) {
-        const { data: membership } = await supabase
-          .from("workspace_members")
-          .select("workspace_id")
-          .eq("user_id", existingUser.id)
-          .eq("role", "owner")
-          .maybeSingle();
-
-        workspaceId = membership?.workspace_id;
-      }
-
-      if (workspaceId) {
-        return parseStringify({
-          id: existingUser.id,
-          clerkId: existingUser.clerk_id,
-          email: existingUser.email,
-          fullName: existingUser.full_name,
-          avatarUrl: existingUser.avatar_url,
-          username: existingUser.username,
-          plan: existingUser.plan,
-          workspaceId,
-        });
-      }
+      return parseStringify({
+        id: existingUser.id,
+        clerkId: existingUser.clerk_id,
+        email: existingUser.email,
+        fullName: existingUser.full_name,
+        avatarUrl: existingUser.avatar_url,
+        username: existingUser.username,
+        plan: existingUser.plan,
+        workspaceId,
+      });
     }
 
-    // If user does not exist in Supabase yet, proceed with Clerk fetch & database setup
+    // 2. If user does not exist in Supabase yet, fetch Clerk user & set up database records
     const client = await clerkClient();
     const clerkUser =
       (await currentUser()) ?? (await client.users.getUser(userId));
 
-    const email =
+    const rawEmail =
       clerkUser.primaryEmailAddress?.emailAddress ||
       clerkUser.emailAddresses[0]?.emailAddress;
 
-    if (!email) throw new Error("Clerk user has no email address");
+    if (!rawEmail) throw new Error("Clerk user has no email address");
+
+    const email = rawEmail.toLowerCase();
 
     const username =
       clerkUser.username || (email.includes("@") ? email.split("@")[0] : null);
@@ -132,27 +212,29 @@ export const getCurrentUser = cache(async () => {
       .from("users")
       .upsert(upsertPayload, { onConflict: "clerk_id" })
       .select()
-      .single();
+      .maybeSingle();
 
     if (userError?.code === "23505") {
-      const { data: existingUser, error: existingUserError } = await supabase
+      // Conflict on email — find existing row and update with new clerk_id
+      const { data: byEmail, error: emailLookupErr } = await supabase
         .from("users")
         .select("id")
-        .eq("email", email)
-        .single();
+        .ilike("email", email)
+        .maybeSingle();
 
-      if (existingUserError) throw existingUserError;
+      if (emailLookupErr) throw emailLookupErr;
 
-      const { data: mergedUser, error: mergeError } = await supabase
-        .from("users")
-        .update({ ...upsertPayload, clerk_id: userId })
-        .eq("id", existingUser.id)
-        .select()
-        .single();
+      if (byEmail?.id) {
+        const { data: mergedUser, error: mergeError } = await supabase
+          .from("users")
+          .update({ ...upsertPayload, clerk_id: userId })
+          .eq("id", byEmail.id)
+          .select()
+          .single();
 
-      if (mergeError) throw mergeError;
-
-      user = mergedUser;
+        if (mergeError) throw mergeError;
+        user = mergedUser;
+      }
     } else if (userError) {
       throw userError;
     } else {
@@ -160,58 +242,25 @@ export const getCurrentUser = cache(async () => {
     }
 
     if (!user) {
-      throw new Error("User upsert failed");
+      // Final fallback query by clerk_id
+      const { data: finalUser } = await supabase
+        .from("users")
+        .select("*")
+        .eq("clerk_id", userId)
+        .maybeSingle();
+
+      user = finalUser;
     }
 
-    // Attempt to insert a personal workspace directly — the unique partial
-    // index (workspaces_one_personal_per_owner) is the source of truth for
-    // uniqueness, not an application-level pre-check.  If a concurrent request
-    // already created this user's personal workspace, Postgres rejects with
-    // 23505 and we fall back to a SELECT (mirroring the users-table pattern
-    // a few lines above).
-    let workspaceId: string;
-
-    const { data: newWorkspace, error: createWorkspaceError } = await supabase
-      .from("workspaces")
-      .insert({
-        name: `${fullName}'s Workspace`,
-        type: "personal",
-        owner_id: user.id,
-      })
-      .select("id")
-      .single();
-
-    if (createWorkspaceError?.code === "23505") {
-      // Concurrent request already created the personal workspace — select it.
-      // .single() is safe here because the unique index guarantees at most one row.
-      const { data: existingWorkspace, error: existingWsError } = await supabase
-        .from("workspaces")
-        .select("id")
-        .eq("owner_id", user.id)
-        .eq("type", "personal")
-        .single();
-
-      if (existingWsError) throw existingWsError;
-
-      workspaceId = existingWorkspace.id;
-    } else if (createWorkspaceError) {
-      throw createWorkspaceError;
-    } else {
-      workspaceId = newWorkspace.id;
+    if (!user) {
+      throw new Error(`Failed to provision user for clerk_id=${userId}`);
     }
 
-    const { error: membershipError } = await supabase
-      .from("workspace_members")
-      .upsert(
-        {
-          workspace_id: workspaceId,
-          user_id: user.id,
-          role: "owner",
-        },
-        { onConflict: "workspace_id,user_id" },
-      );
-
-    if (membershipError) throw membershipError;
+    const workspaceId = await ensurePersonalWorkspace(
+      supabase,
+      user.id,
+      user.full_name,
+    );
 
     return parseStringify({
       id: user.id,
@@ -224,6 +273,7 @@ export const getCurrentUser = cache(async () => {
       workspaceId,
     });
   } catch (error) {
-    handleError(error, "Failed to get current user");
+    console.error("Failed to get current user", error);
+    return null;
   }
 });

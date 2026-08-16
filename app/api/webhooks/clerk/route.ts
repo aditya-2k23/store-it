@@ -55,7 +55,8 @@ export async function POST(req: Request) {
           username?: string | null;
         };
 
-        const email = data.email_addresses?.[0]?.email_address;
+        // Normalize email to lowercase to prevent case-mismatch unique constraint violations
+        const email = (data.email_addresses?.[0]?.email_address ?? "").toLowerCase();
         const fullName =
           `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim();
         const avatarUrl = data.image_url ?? null;
@@ -78,10 +79,44 @@ export async function POST(req: Request) {
           .single();
 
         if (userError?.code === "23505") {
+          // Conflict on clerk_id or email. Try to find the conflicting row.
+          const { data: byClerkId, error: clerkLookupErr } = await supabase
+            .from("users")
+            .select("id, full_name")
+            .eq("clerk_id", data.id)
+            .maybeSingle();
+
+          if (clerkLookupErr) {
+            console.error("user.created: clerk_id lookup failed", clerkLookupErr);
+            return NextResponse.json({ error: "Database error" }, { status: 500 });
+          }
+
+          let resolvedId: string | undefined = byClerkId?.id;
+
+          if (!resolvedId) {
+            // Conflict on email — use ilike for case-insensitive match
+            const { data: byEmail, error: emailLookupErr } = await supabase
+              .from("users")
+              .select("id, full_name")
+              .ilike("email", email)
+              .maybeSingle();
+
+            if (emailLookupErr) {
+              console.error("user.created: email lookup failed", emailLookupErr);
+              return NextResponse.json({ error: "Database error" }, { status: 500 });
+            }
+            resolvedId = byEmail?.id;
+          }
+
+          if (!resolvedId) {
+            console.error("user.created: 23505 but no row found for clerk_id/email", data.id, email);
+            return NextResponse.json({ error: "Database error" }, { status: 500 });
+          }
+
           const { data: mergedUser, error: mergeError } = await supabase
             .from("users")
             .update(upsertPayload)
-            .eq("email", email)
+            .eq("id", resolvedId)
             .select("id, full_name")
             .single();
 
@@ -192,7 +227,8 @@ export async function POST(req: Request) {
           username?: string | null;
         };
 
-        const email = data.email_addresses?.[0]?.email_address;
+        // Normalize email to lowercase
+        const email = (data.email_addresses?.[0]?.email_address ?? "").toLowerCase();
         const fullName =
           `${data.first_name ?? ""} ${data.last_name ?? ""}`.trim();
         const avatarUrl = data.image_url ?? null;
