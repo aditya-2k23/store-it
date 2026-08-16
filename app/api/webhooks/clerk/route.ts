@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { WebhookEvent } from "@clerk/nextjs/server";
 import { Webhook } from "svix";
 import { createClient } from "@supabase/supabase-js";
+import { escapeLikePattern } from "@/lib/utils";
 
 const mapRole = (clerkRole: string): string => {
   switch (clerkRole) {
@@ -98,7 +99,7 @@ export async function POST(req: Request) {
             const { data: byEmail, error: emailLookupErr } = await supabase
               .from("users")
               .select("id, full_name")
-              .ilike("email", email)
+              .ilike("email", escapeLikePattern(email))
               .maybeSingle();
 
             if (emailLookupErr) {
@@ -172,7 +173,9 @@ export async function POST(req: Request) {
           const { data: workspace, error: workspaceError } = await supabase
             .from("workspaces")
             .insert({
-              name: `${userRecord.full_name ?? "My"}'s Workspace`,
+              name: userRecord.full_name
+                ? `${userRecord.full_name}'s Workspace`
+                : "My Workspace",
               type: "personal",
               owner_id: userRecord.id,
             })

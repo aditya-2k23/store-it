@@ -3,7 +3,7 @@
 import { avatarPlaceholderUrl } from "@/constants";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
-import { parseStringify } from "../utils";
+import { parseStringify, escapeLikePattern } from "../utils";
 import type { Database } from "@/types/database.types";
 import { cookies } from "next/headers";
 import { cache } from "react";
@@ -25,23 +25,30 @@ async function ensurePersonalWorkspace(
 
   if (personalWs?.id) {
     // Ensure membership exists
-    await supabase.from("workspace_members").upsert(
-      {
-        workspace_id: personalWs.id,
-        user_id: userId,
-        role: "owner",
-      },
-      { onConflict: "workspace_id,user_id" },
-    );
+    const { error: membershipError } = await supabase
+      .from("workspace_members")
+      .upsert(
+        {
+          workspace_id: personalWs.id,
+          user_id: userId,
+          role: "owner",
+        },
+        { onConflict: "workspace_id,user_id" },
+      );
+
+    if (membershipError) throw membershipError;
     return personalWs.id;
   }
 
   // 2. Check if user already has any workspace membership (e.g. provisioned concurrently by webhook)
-  const { data: existingMember } = await supabase
+  const { data: existingMember, error: existingMemberError } = await supabase
     .from("workspace_members")
     .select("workspace_id")
     .eq("user_id", userId)
+    .limit(1)
     .maybeSingle();
+
+  if (existingMemberError) throw existingMemberError;
 
   if (existingMember?.workspace_id) {
     return existingMember.workspace_id;
@@ -51,7 +58,7 @@ async function ensurePersonalWorkspace(
   const { data: newWorkspace, error: createError } = await supabase
     .from("workspaces")
     .insert({
-      name: `${userName || "My"}'s Workspace`,
+      name: userName ? `${userName}'s Workspace` : "My Workspace",
       type: "personal",
       owner_id: userId,
     })
@@ -81,6 +88,7 @@ async function ensurePersonalWorkspace(
         .from("workspace_members")
         .select("workspace_id")
         .eq("user_id", userId)
+        .limit(1)
         .maybeSingle();
 
       if (retryMember?.workspace_id) {
@@ -102,14 +110,18 @@ async function ensurePersonalWorkspace(
   }
 
   // 4. Ensure membership
-  await supabase.from("workspace_members").upsert(
-    {
-      workspace_id: workspaceId,
-      user_id: userId,
-      role: "owner",
-    },
-    { onConflict: "workspace_id,user_id" },
-  );
+  const { error: membershipError } = await supabase
+    .from("workspace_members")
+    .upsert(
+      {
+        workspace_id: workspaceId,
+        user_id: userId,
+        role: "owner",
+      },
+      { onConflict: "workspace_id,user_id" },
+    );
+
+  if (membershipError) throw membershipError;
 
   return workspaceId;
 }
@@ -219,7 +231,7 @@ export const getCurrentUser = cache(async () => {
       const { data: byEmail, error: emailLookupErr } = await supabase
         .from("users")
         .select("id")
-        .ilike("email", email)
+        .ilike("email", escapeLikePattern(email))
         .maybeSingle();
 
       if (emailLookupErr) throw emailLookupErr;
