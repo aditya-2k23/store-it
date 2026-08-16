@@ -3,7 +3,7 @@
 import { avatarPlaceholderUrl } from "@/constants";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
-import { parseStringify, escapeLikePattern } from "../utils";
+import { parseStringify } from "../utils";
 import type { Database } from "@/types/database.types";
 import { cookies } from "next/headers";
 import { cache } from "react";
@@ -40,11 +40,12 @@ async function ensurePersonalWorkspace(
     return personalWs.id;
   }
 
-  // 2. Check if user already has any workspace membership (e.g. provisioned concurrently by webhook)
+  // 2. Check if user already has an owned workspace membership (e.g. provisioned concurrently by webhook)
   const { data: existingMember, error: existingMemberError } = await supabase
     .from("workspace_members")
     .select("workspace_id")
     .eq("user_id", userId)
+    .eq("role", "owner")
     .limit(1)
     .maybeSingle();
 
@@ -68,6 +69,10 @@ async function ensurePersonalWorkspace(
   let workspaceId = newWorkspace?.id;
 
   if (!workspaceId) {
+    if (createError && createError.code !== "23505") {
+      throw createError;
+    }
+
     // Retry finding personal workspace or membership with small backoff in case webhook created it concurrently
     for (let attempt = 0; attempt < 3; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 150 * (attempt + 1)));
@@ -84,12 +89,15 @@ async function ensurePersonalWorkspace(
         break;
       }
 
-      const { data: retryMember } = await supabase
+      const { data: retryMember, error: retryMemberError } = await supabase
         .from("workspace_members")
         .select("workspace_id")
         .eq("user_id", userId)
+        .eq("role", "owner")
         .limit(1)
         .maybeSingle();
+
+      if (retryMemberError) throw retryMemberError;
 
       if (retryMember?.workspace_id) {
         workspaceId = retryMember.workspace_id;
@@ -231,7 +239,7 @@ export const getCurrentUser = cache(async () => {
       const { data: byEmail, error: emailLookupErr } = await supabase
         .from("users")
         .select("id")
-        .ilike("email", escapeLikePattern(email))
+        .eq("email", email)
         .maybeSingle();
 
       if (emailLookupErr) throw emailLookupErr;

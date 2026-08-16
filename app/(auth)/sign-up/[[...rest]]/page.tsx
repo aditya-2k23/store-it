@@ -194,7 +194,10 @@ export default function SignUpPage() {
           code: verificationCode,
         });
 
-      if (verifyError) {
+      if (
+        verifyError &&
+        verifyError.code !== "verification_already_verified"
+      ) {
         throw verifyError;
       }
 
@@ -230,6 +233,7 @@ export default function SignUpPage() {
       const errorMessage =
         err?.longMessage ||
         err?.message ||
+        err?.errors?.[0]?.longMessage ||
         err?.errors?.[0]?.message ||
         "Failed to verify code. Please try again.";
       toast({

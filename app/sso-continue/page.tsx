@@ -73,13 +73,13 @@ export default function SSOContinuePage() {
   }, [signUp]);
 
   useEffect(() => {
-    if (needsEmailVerification) {
+    if (needsEmailVerification && !needsUsername && !isLoading) {
       const timer = setTimeout(() => {
         otpInputRef.current?.focus();
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [needsEmailVerification]);
+  }, [needsEmailVerification, needsUsername, isLoading]);
 
   const getRequirementDetails = (resource: RequirementResource) => {
     const missingFields = resource.missingFields ?? [];
@@ -194,7 +194,10 @@ export default function SSOContinuePage() {
       const { error: verifyError } =
         await signUp.verifications.verifyEmailCode({ code: verificationCode });
 
-      if (verifyError) {
+      if (
+        verifyError &&
+        verifyError.code !== "verification_already_verified"
+      ) {
         throw verifyError;
       }
 
@@ -214,6 +217,7 @@ export default function SSOContinuePage() {
       const errorMessage =
         err?.longMessage ||
         err?.message ||
+        err?.errors?.[0]?.longMessage ||
         err?.errors?.[0]?.message ||
         "Failed to verify code.";
       toast({
@@ -258,8 +262,8 @@ export default function SSOContinuePage() {
           description: details,
           variant: "destructive",
         });
+        hasShownRequirementToastRef.current = true;
       }
-      hasShownRequirementToastRef.current = true;
       return;
     }
 

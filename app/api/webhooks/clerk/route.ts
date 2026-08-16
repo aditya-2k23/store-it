@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { WebhookEvent } from "@clerk/nextjs/server";
 import { Webhook } from "svix";
 import { createClient } from "@supabase/supabase-js";
-import { escapeLikePattern } from "@/lib/utils";
 
 const mapRole = (clerkRole: string): string => {
   switch (clerkRole) {
@@ -104,11 +103,11 @@ export async function POST(req: Request) {
           let resolvedId: string | undefined = byClerkId?.id;
 
           if (!resolvedId) {
-            // Conflict on email — use ilike for case-insensitive match
+            // Conflict on email — exact match on normalized email
             const { data: byEmail, error: emailLookupErr } = await supabase
               .from("users")
               .select("id, full_name")
-              .ilike("email", escapeLikePattern(email))
+              .eq("email", email)
               .maybeSingle();
 
             if (emailLookupErr) {
@@ -119,7 +118,7 @@ export async function POST(req: Request) {
           }
 
           if (!resolvedId) {
-            console.error("user.created: 23505 but no row found for clerk_id/email", data.id, email);
+            console.error("user.created: 23505 conflict but could not resolve existing user record");
             return NextResponse.json({ error: "Database error" }, { status: 500 });
           }
 
