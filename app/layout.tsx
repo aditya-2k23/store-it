@@ -4,6 +4,7 @@ import { ui } from "@clerk/ui";
 import { shadcn } from "@clerk/ui/themes";
 import "./globals.css";
 import { Poppins, DynaPuff } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -71,6 +72,7 @@ export default function RootLayout({
         <ClerkProvider appearance={clerkAppearance} afterSignOutUrl="/sign-in" ui={ui}>
           {children}
         </ClerkProvider>
+        <Analytics />
       </body>
     </html>
   );
