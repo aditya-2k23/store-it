@@ -235,27 +235,61 @@ export const getCurrentUser = cache(async () => {
       .maybeSingle();
 
     if (userError?.code === "23505") {
-      // Conflict on email — find existing row and update with new clerk_id
-      const { data: byEmail, error: emailLookupErr } = await supabase
+      // Conflict on clerk_id, email, or username. Resolve existing user record.
+      const { data: byClerkId } = await supabase
         .from("users")
         .select("id")
-        .eq("email", email)
+        .eq("clerk_id", userId)
         .maybeSingle();
 
-      if (emailLookupErr) throw emailLookupErr;
+      let existingId = byClerkId?.id;
 
-      if (byEmail?.id) {
+      if (!existingId) {
+        const { data: byEmail } = await supabase
+          .from("users")
+          .select("id")
+          .eq("email", email)
+          .maybeSingle();
+        existingId = byEmail?.id;
+      }
+
+      if (!existingId) {
+        const { data: byEmailIlike } = await supabase
+          .from("users")
+          .select("id")
+          .ilike("email", email)
+          .maybeSingle();
+        existingId = byEmailIlike?.id;
+      }
+
+      if (existingId) {
         const { data: mergedUser, error: mergeError } = await supabase
           .from("users")
           .update({ ...upsertPayload, clerk_id: userId })
-          .eq("id", byEmail.id)
+          .eq("id", existingId)
           .select()
-          .single();
+          .maybeSingle();
 
         if (mergeError) throw mergeError;
         user = mergedUser;
+      } else if (username) {
+        // If 23505 was caused by username conflict with another user, generate a unique username and insert
+        const uniqueUsername = `${username}_${Math.random().toString(36).substring(2, 6)}`;
+        const fallbackPayload = { ...upsertPayload, username: uniqueUsername };
+        const { data: fallbackUser, error: fallbackErr } = await supabase
+          .from("users")
+          .insert(fallbackPayload)
+          .select()
+          .maybeSingle();
+
+        if (!fallbackErr && fallbackUser) {
+          user = fallbackUser;
+        } else if (fallbackErr) {
+          console.error("getCurrentUser: username conflict fallback insert failed", fallbackErr);
+        }
       }
     } else if (userError) {
+      console.error("getCurrentUser: user upsert error", userError);
       throw userError;
     } else {
       user = upsertedUser;
