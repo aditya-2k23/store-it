@@ -118,26 +118,53 @@ export async function POST(req: Request) {
           }
 
           if (!resolvedId) {
+            // Conflict on email — case-insensitive fallback
+            const { data: byEmailIlike } = await supabase
+              .from("users")
+              .select("id, full_name")
+              .ilike("email", email)
+              .maybeSingle();
+
+            resolvedId = byEmailIlike?.id;
+          }
+
+          if (!resolvedId && username) {
+            // Username conflict with another user — generate unique username
+            const uniqueUsername = `${username}_${Math.random().toString(36).substring(2, 6)}`;
+            const fallbackPayload = { ...upsertPayload, username: uniqueUsername };
+            const { data: fallbackUser, error: fallbackErr } = await supabase
+              .from("users")
+              .insert(fallbackPayload)
+              .select("id, full_name")
+              .maybeSingle();
+
+            if (!fallbackErr && fallbackUser) {
+              userRecord = fallbackUser;
+            }
+          }
+
+          if (!resolvedId && !userRecord) {
             console.error("user.created: 23505 conflict but could not resolve existing user record");
             return NextResponse.json({ error: "Database error" }, { status: 500 });
           }
 
-          const { data: mergedUser, error: mergeError } = await supabase
-            .from("users")
-            .update(upsertPayload)
-            .eq("id", resolvedId)
-            .select("id, full_name")
-            .single();
+          if (resolvedId && !userRecord) {
+            const { data: mergedUser, error: mergeError } = await supabase
+              .from("users")
+              .update(upsertPayload)
+              .eq("id", resolvedId)
+              .select("id, full_name")
+              .single();
 
-          if (mergeError) {
-            console.error("user.created: users merge failed", mergeError);
-            return NextResponse.json(
-              { error: "Database error" },
-              { status: 500 },
-            );
+            if (mergeError) {
+              console.error("user.created: users merge failed", mergeError);
+              return NextResponse.json(
+                { error: "Database error" },
+                { status: 500 },
+              );
+            }
+            userRecord = mergedUser;
           }
-
-          userRecord = mergedUser;
         } else if (userError) {
           console.error("user.created: users upsert failed", userError);
           return NextResponse.json(

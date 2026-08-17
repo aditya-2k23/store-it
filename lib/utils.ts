@@ -57,12 +57,13 @@ export const getAuthRedirectPath = () => {
 
 export const navigateToAuthSuccess = (
   decorateUrl: (url: string) => string,
-  router: { push: (url: string) => void },
+  router?: { push: (url: string) => void },
 ) => {
-  const url = decorateUrl(getAuthRedirectPath());
-  if (url.startsWith("http")) {
+  const target = getAuthRedirectPath();
+  const url = decorateUrl(target);
+  if (typeof window !== "undefined") {
     window.location.href = url;
-  } else {
+  } else if (router) {
     router.push(url);
   }
 };
