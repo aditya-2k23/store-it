@@ -12,7 +12,6 @@ const supabaseHost = (() => {
 })();
 
 const nextConfig: NextConfig = {
-  typescript: { ignoreBuildErrors: true },
   experimental: { serverActions: { bodySizeLimit: "100MB" } },
   images: {
     remotePatterns: [

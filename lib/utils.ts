@@ -38,8 +38,9 @@ export function cn(...inputs: ClassValue[]) {
 export const parseStringify = (value: unknown) =>
   JSON.parse(JSON.stringify(value));
 
+// `*` is PostgREST's alias for `%` in like/ilike filters, so it must be escaped too.
 export const escapeLikePattern = (str: string): string =>
-  str.replace(/[%_\\]/g, "\\$&");
+  str.replace(/[%_\\*]/g, "\\$&");
 
 export const getAuthRedirectPath = () => {
   let redirectPath = "/workspaces";
@@ -57,12 +58,13 @@ export const getAuthRedirectPath = () => {
 
 export const navigateToAuthSuccess = (
   decorateUrl: (url: string) => string,
-  router: { push: (url: string) => void },
+  router?: { push: (url: string) => void },
 ) => {
-  const url = decorateUrl(getAuthRedirectPath());
-  if (url.startsWith("http")) {
+  const target = getAuthRedirectPath();
+  const url = decorateUrl(target);
+  if (typeof window !== "undefined") {
     window.location.href = url;
-  } else {
+  } else if (router) {
     router.push(url);
   }
 };

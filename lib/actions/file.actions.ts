@@ -1,7 +1,7 @@
 "use server";
 
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { getFileType, parseStringify } from "@/lib/utils";
+import { escapeLikePattern, getFileType, parseStringify } from "@/lib/utils";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { getCurrentUser } from "./user.actions";
 import {
@@ -127,7 +127,7 @@ const fetchTagMatchedWorkspaceFiles = async (
     .select("file_id, files!inner(workspace_id, type, is_trashed)")
     .eq("files.workspace_id", workspaceId)
     .eq("files.is_trashed", false)
-    .ilike("tags_search", `%${searchText}%`)
+    .ilike("tags_search", `%${escapeLikePattern(searchText)}%`)
     .limit(100);
 
   if (types.length > 0) {

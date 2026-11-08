@@ -277,6 +277,7 @@ export default function SSOContinuePage() {
     }
   }, [
     isSignedIn,
+    isLoading,
     completeSignIn,
     completeSignUp,
     needsEmailVerification,

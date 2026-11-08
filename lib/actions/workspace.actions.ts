@@ -1,7 +1,7 @@
 "use server";
 
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { parseStringify } from "@/lib/utils";
+import { escapeLikePattern, parseStringify } from "@/lib/utils";
 import { getCurrentUser } from "./user.actions";
 import { cookies } from "next/headers";
 import {
@@ -47,7 +47,6 @@ async function ensureUniqueSlug(
   let slug = baseSlug || "workspace";
   let suffix = 1;
 
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const candidate = suffix === 1 ? slug : `${slug}-${suffix}`;
     let query = supabase
@@ -111,13 +110,16 @@ export const createWorkspace = async (
     if (!currentUser) throw new Error("User not found");
 
     // Check for existing workspace with same name (case-insensitive)
-    const { data: existingWorkspace } = await supabase
+    // Escaped so `_`/`%`/`*` in a name match literally instead of as wildcards.
+    const { data: existingWorkspace, error: nameLookupErr } = await supabase
       .from("workspaces")
       .select("id")
-      .ilike("name", trimmed)
+      .ilike("name", escapeLikePattern(trimmed))
       .eq("owner_id", currentUser.id)
       .eq("type", "team")
       .limit(1);
+
+    if (nameLookupErr) throw nameLookupErr;
 
     if (existingWorkspace && existingWorkspace.length > 0) {
       throw new Error("A workspace with this name already exists in your account");

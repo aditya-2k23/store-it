@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { WebhookEvent } from "@clerk/nextjs/server";
 import { Webhook } from "svix";
 import { createClient } from "@supabase/supabase-js";
+import { escapeLikePattern } from "@/lib/utils";
 
 const mapRole = (clerkRole: string): string => {
   switch (clerkRole) {
@@ -118,26 +119,59 @@ export async function POST(req: Request) {
           }
 
           if (!resolvedId) {
+            // Conflict on email — case-insensitive fallback. Escape so `_`/`%` in the email can't match another user's row.
+            const { data: byEmailIlike, error: ilikeLookupErr } = await supabase
+              .from("users")
+              .select("id, full_name")
+              .ilike("email", escapeLikePattern(email))
+              .maybeSingle();
+
+            if (ilikeLookupErr) {
+              console.error("user.created: case-insensitive email lookup failed", ilikeLookupErr);
+              return NextResponse.json({ error: "Database error" }, { status: 500 });
+            }
+            resolvedId = byEmailIlike?.id;
+          }
+
+          if (!resolvedId && username) {
+            // Username conflict with another user — generate unique username
+            const uniqueUsername = `${username}_${Math.random().toString(36).substring(2, 6)}`;
+            const fallbackPayload = { ...upsertPayload, username: uniqueUsername };
+            const { data: fallbackUser, error: fallbackErr } = await supabase
+              .from("users")
+              .insert(fallbackPayload)
+              .select("id, full_name")
+              .maybeSingle();
+
+            if (!fallbackErr && fallbackUser) {
+              userRecord = fallbackUser;
+            } else if (fallbackErr) {
+              console.error("user.created: username conflict fallback insert failed", fallbackErr);
+            }
+          }
+
+          if (!resolvedId && !userRecord) {
             console.error("user.created: 23505 conflict but could not resolve existing user record");
             return NextResponse.json({ error: "Database error" }, { status: 500 });
           }
 
-          const { data: mergedUser, error: mergeError } = await supabase
-            .from("users")
-            .update(upsertPayload)
-            .eq("id", resolvedId)
-            .select("id, full_name")
-            .single();
+          if (resolvedId && !userRecord) {
+            const { data: mergedUser, error: mergeError } = await supabase
+              .from("users")
+              .update(upsertPayload)
+              .eq("id", resolvedId)
+              .select("id, full_name")
+              .single();
 
-          if (mergeError) {
-            console.error("user.created: users merge failed", mergeError);
-            return NextResponse.json(
-              { error: "Database error" },
-              { status: 500 },
-            );
+            if (mergeError) {
+              console.error("user.created: users merge failed", mergeError);
+              return NextResponse.json(
+                { error: "Database error" },
+                { status: 500 },
+              );
+            }
+            userRecord = mergedUser;
           }
-
-          userRecord = mergedUser;
         } else if (userError) {
           console.error("user.created: users upsert failed", userError);
           return NextResponse.json(

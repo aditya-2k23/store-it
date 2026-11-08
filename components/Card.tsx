@@ -11,25 +11,19 @@ const Card = ({ file }: { file: FileItem }) => {
   const fileHref = file.downloadUrl || file.url || "#";
 
   const isProcessing = file.aiStatus === "pending" || file.aiStatus === "processing";
-  const [isStaleProcessing, setIsStaleProcessing] = useState(false);
+  const [staleTimerFired, setStaleTimerFired] = useState(false);
+  const isStaleProcessing = isProcessing && staleTimerFired;
 
   useEffect(() => {
-    if (!isProcessing) {
-      setIsStaleProcessing(false);
-      return;
-    }
+    if (!isProcessing) return;
 
     const timeSinceCreated = Date.now() - new Date(file.createdAt).getTime();
     const threshold = 2 * 60 * 1000;
 
-    if (timeSinceCreated > threshold) {
-      setIsStaleProcessing(true);
-      return;
-    }
-
+    // Delay 0 when already past the threshold: state is set from the timer callback, never synchronously in the effect.
     const timer = setTimeout(() => {
-      setIsStaleProcessing(true);
-    }, threshold - timeSinceCreated);
+      setStaleTimerFired(true);
+    }, Math.max(0, threshold - timeSinceCreated));
 
     return () => clearTimeout(timer);
   }, [isProcessing, file.createdAt]);

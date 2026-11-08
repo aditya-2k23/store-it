@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import { ui } from "@clerk/ui";
+import { ui, type Appearance } from "@clerk/ui";
 import { shadcn } from "@clerk/ui/themes";
 import "./globals.css";
 import { Poppins, DynaPuff } from "next/font/google";
@@ -25,16 +25,22 @@ export const metadata: Metadata = {
 
 const clerkAppearance = {
   theme: [shadcn],
-  layout: {
+  options: {
     unsafe_disableDevelopmentModeWarnings: true,
   },
+  // The shadcn theme reads shadcn CSS variables (--foreground, --input, ...) this app never defines,
+  // so every color the theme sets must be given a concrete value here or Clerk renders it invalid.
   variables: {
     colorPrimary: "#FA7275",
-    colorText: "#333F4E",
-    colorTextSecondary: "#A3B2C7",
+    colorPrimaryForeground: "#FFFFFF",
+    colorForeground: "#333F4E",
+    colorMutedForeground: "#A3B2C7",
+    colorMuted: "#F2F4F8",
+    colorNeutral: "#333F4E",
     colorBackground: "#FFFFFF",
-    colorInputBackground: "#F2F5F9",
-    colorInputText: "#333F4E",
+    colorInput: "#F2F5F9",
+    colorInputForeground: "#333F4E",
+    colorRing: "#FA7275",
     colorDanger: "#b80000",
     colorSuccess: "#3DD9B3",
     borderRadius: "0.5rem",
@@ -59,7 +65,7 @@ const clerkAppearance = {
     userProfileCard: "shadow-drop-1 border border-light-300 bg-white",
     modalContent: "rounded-[30px] border border-light-300 bg-white overflow-hidden",
   },
-};
+} satisfies Appearance;
 
 export default function RootLayout({
   children,

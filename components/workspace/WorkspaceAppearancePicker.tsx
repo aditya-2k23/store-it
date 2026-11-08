@@ -28,18 +28,35 @@ export function WorkspaceAppearancePicker({
   const colorInputRef = useRef<HTMLInputElement>(null);
   const [customColors, setCustomColors] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
+    let colors: string[] = [];
     try {
       const saved = localStorage.getItem("storey_custom_colors");
       if (saved) {
         const parsed = JSON.parse(saved);
         const array = Array.isArray(parsed) ? parsed : [];
-        return array.filter((c: string) => !WORKSPACE_THEME_COLORS.includes(c));
+        colors = array.filter((c: string) => !WORKSPACE_THEME_COLORS.includes(c));
       }
     } catch (error) {
       console.error("Failed to load custom colors", error);
     }
-    return [];
+    // Show the workspace's current custom color even if this browser never saved it.
+    if (
+      themeColorValue &&
+      !WORKSPACE_THEME_COLORS.includes(themeColorValue) &&
+      !colors.includes(themeColorValue)
+    ) {
+      colors = [...colors, themeColorValue];
+    }
+    return colors;
   });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("storey_custom_colors", JSON.stringify(customColors));
+    } catch (error) {
+      console.error("Failed to save custom colors", error);
+    }
+  }, [customColors]);
 
   const handleCustomColorAdd = (color: string) => {
     onThemeColorChange(color);
@@ -47,39 +64,17 @@ export function WorkspaceAppearancePicker({
       !WORKSPACE_THEME_COLORS.includes(color) &&
       !customColors.includes(color)
     ) {
-      const updated = [...customColors, color];
-      setCustomColors(updated);
-      try {
-        localStorage.setItem("storey_custom_colors", JSON.stringify(updated));
-      } catch (error) {
-        console.error("Failed to save custom colors", error);
-      }
+      setCustomColors([...customColors, color]);
     }
   };
 
   const handleCustomColorRemove = (colorToRemove: string) => {
-    const updated = customColors.filter((c) => c !== colorToRemove);
-    setCustomColors(updated);
-    try {
-      localStorage.setItem("storey_custom_colors", JSON.stringify(updated));
-    } catch (error) {
-      console.error("Failed to save custom colors", error);
-    }
+    setCustomColors(customColors.filter((c) => c !== colorToRemove));
     // If the removed color is currently selected, fallback to the first default
     if (themeColorValue === colorToRemove) {
       onThemeColorChange(WORKSPACE_THEME_COLORS[0]);
     }
   };
-
-  const initialized = useRef(false);
-  useEffect(() => {
-    if (!initialized.current) {
-      initialized.current = true;
-      if (themeColorValue) {
-        handleCustomColorAdd(themeColorValue);
-      }
-    }
-  }, [themeColorValue, handleCustomColorAdd]);
 
   return (
     <div>

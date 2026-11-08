@@ -3,7 +3,7 @@
 import { avatarPlaceholderUrl } from "@/constants";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
-import { parseStringify } from "../utils";
+import { escapeLikePattern, parseStringify } from "../utils";
 import type { Database } from "@/types/database.types";
 import { cookies } from "next/headers";
 import { cache } from "react";
@@ -235,27 +235,66 @@ export const getCurrentUser = cache(async () => {
       .maybeSingle();
 
     if (userError?.code === "23505") {
-      // Conflict on email — find existing row and update with new clerk_id
-      const { data: byEmail, error: emailLookupErr } = await supabase
+      // Conflict on clerk_id, email, or username. Resolve existing user record.
+      // Lookup errors must throw: treating them as "not found" would fall through to inserting a new row.
+      const { data: byClerkId, error: clerkLookupErr } = await supabase
         .from("users")
         .select("id")
-        .eq("email", email)
+        .eq("clerk_id", userId)
         .maybeSingle();
 
-      if (emailLookupErr) throw emailLookupErr;
+      if (clerkLookupErr) throw clerkLookupErr;
+      let existingId = byClerkId?.id;
 
-      if (byEmail?.id) {
+      if (!existingId) {
+        const { data: byEmail, error: emailLookupErr } = await supabase
+          .from("users")
+          .select("id")
+          .eq("email", email)
+          .maybeSingle();
+        if (emailLookupErr) throw emailLookupErr;
+        existingId = byEmail?.id;
+      }
+
+      if (!existingId) {
+        // Escape so `_`/`%` in the email can't match (and then overwrite) another user's row.
+        const { data: byEmailIlike, error: ilikeLookupErr } = await supabase
+          .from("users")
+          .select("id")
+          .ilike("email", escapeLikePattern(email))
+          .maybeSingle();
+        if (ilikeLookupErr) throw ilikeLookupErr;
+        existingId = byEmailIlike?.id;
+      }
+
+      if (existingId) {
         const { data: mergedUser, error: mergeError } = await supabase
           .from("users")
           .update({ ...upsertPayload, clerk_id: userId })
-          .eq("id", byEmail.id)
+          .eq("id", existingId)
           .select()
-          .single();
+          .maybeSingle();
 
         if (mergeError) throw mergeError;
         user = mergedUser;
+      } else if (username) {
+        // If 23505 was caused by username conflict with another user, generate a unique username and insert
+        const uniqueUsername = `${username}_${Math.random().toString(36).substring(2, 6)}`;
+        const fallbackPayload = { ...upsertPayload, username: uniqueUsername };
+        const { data: fallbackUser, error: fallbackErr } = await supabase
+          .from("users")
+          .insert(fallbackPayload)
+          .select()
+          .maybeSingle();
+
+        if (!fallbackErr && fallbackUser) {
+          user = fallbackUser;
+        } else if (fallbackErr) {
+          console.error("getCurrentUser: username conflict fallback insert failed", fallbackErr);
+        }
       }
     } else if (userError) {
+      console.error("getCurrentUser: user upsert error", userError);
       throw userError;
     } else {
       user = upsertedUser;
