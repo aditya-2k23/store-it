@@ -49,7 +49,11 @@ export default function SignInPage() {
   const [verificationStrategy, setVerificationStrategy] =
     useState<string>("mfa_email_code");
   const [showPassword, setShowPassword] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const otpInputRef = useRef<HTMLInputElement>(null);
+  const isTotp = verificationStrategy === "totp";
+  const codeDestination =
+    verificationStrategy === "mfa_phone_code" ? "phone" : "email";
 
   const form = useForm<SignInValues>({
     resolver: zodResolver(signInSchema),
@@ -106,16 +110,14 @@ export default function SignInPage() {
       if (error) throw error;
     } else {
       // Fallback: attempt MFA email code, if not valid try first-factor email code
-      try {
-        setVerificationStrategy("mfa_email_code");
-        const { error: mfaErr } = await signIn.mfa.sendEmailCode();
-        if (mfaErr) {
-          setVerificationStrategy("first_factor_email_code");
-          await signIn.emailCode.sendCode();
-        }
-      } catch {
+      setVerificationStrategy("mfa_email_code");
+      const { error: mfaErr } = await signIn.mfa
+        .sendEmailCode()
+        .catch((error: unknown) => ({ error }));
+      if (mfaErr) {
         setVerificationStrategy("first_factor_email_code");
-        await signIn.emailCode.sendCode();
+        const { error } = await signIn.emailCode.sendCode();
+        if (error) throw error;
       }
     }
   };
@@ -155,25 +157,14 @@ export default function SignInPage() {
         signIn.status === "needs_second_factor" ||
         signIn.status === "needs_first_factor"
       ) {
-        try {
-          await initiateChallenge();
-          setPendingVerification(true);
-          toast({
-            title: "Verification Required",
-            description:
-              "A verification code has been sent to authorize this sign-in.",
-            variant: "default",
-          });
-        } catch (challengeErr: any) {
-          console.warn("Failed to initiate challenge:", challengeErr);
-          setPendingVerification(true);
-          toast({
-            title: "Verification Required",
-            description:
-              "Please enter the verification code sent to your email.",
-            variant: "default",
-          });
-        }
+        // A failed send throws to the outer catch, so the user stays on this form and sees the real error.
+        await initiateChallenge();
+        setPendingVerification(true);
+        toast({
+          title: "Verification Required",
+          description: "Enter your verification code to authorize this sign-in.",
+          variant: "default",
+        });
       } else {
         console.warn("Uncompleted auth status:", signIn.status);
         toast({
@@ -298,7 +289,8 @@ export default function SignInPage() {
   };
 
   const handleResendCode = async () => {
-    if (!signIn || isLoading) return;
+    if (!signIn || isLoading || isResending) return;
+    setIsResending(true);
     try {
       if (verificationStrategy === "first_factor_email_code") {
         const { error } = await signIn.emailCode.sendCode();
@@ -315,7 +307,7 @@ export default function SignInPage() {
       }
       toast({
         title: "Code Resent",
-        description: "A new verification code has been sent to your email.",
+        description: `A new verification code has been sent to your ${codeDestination}.`,
         variant: "default",
       });
     } catch (err: any) {
@@ -326,6 +318,8 @@ export default function SignInPage() {
           err?.longMessage || err?.message || "Failed to resend code.",
         variant: "destructive",
       });
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -468,30 +462,31 @@ export default function SignInPage() {
                       <FormLabel className="text-xs font-semibold text-slate-700">
                         Password
                       </FormLabel>
-                      <FormControl>
-                        <div className="relative">
+                      <div className="relative">
+                        {/* FormControl must wrap the input itself so the label and error ids land on it */}
+                        <FormControl>
                           <Input
                             type={showPassword ? "text" : "password"}
                             placeholder="Enter your password"
+                            autoComplete="current-password"
                             className="w-full h-11 pl-4 pr-11 border border-light-300 rounded-xl bg-white text-slate-800 placeholder:text-slate-400/80 outline-none focus-visible:ring-1 focus-visible:ring-brand focus-visible:border-brand shadow-sm text-sm"
                             disabled={isLoading || ssoLoading !== null}
                             {...field}
                           />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword((prev) => !prev)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none p-1 cursor-pointer transition-colors"
-                            tabIndex={-1}
-                            aria-label={showPassword ? "Hide password" : "Show password"}
-                          >
-                            {showPassword ? (
-                              <EyeOff className="w-4 h-4" />
-                            ) : (
-                              <Eye className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </FormControl>
+                        </FormControl>
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((prev) => !prev)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 outline-none focus-visible:ring-1 focus-visible:ring-brand rounded p-1 cursor-pointer transition-colors"
+                          aria-label={showPassword ? "Hide password" : "Show password"}
+                        >
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
                       <FormMessage className="text-red text-xs pl-1" />
                     </FormItem>
                   )}
@@ -544,7 +539,9 @@ export default function SignInPage() {
                 Verify your device
               </h2>
               <p className="text-lg text-slate-500 mt-2">
-                We&apos;ve sent a 6-digit verification code to your email. Please enter it below to authorize this device.
+                {isTotp
+                  ? "Enter the 6-digit code from your authenticator app to authorize this device."
+                  : `We've sent a 6-digit verification code to your ${codeDestination}. Please enter it below to authorize this device.`}
               </p>
             </div>
 
@@ -605,17 +602,20 @@ export default function SignInPage() {
                 </Button>
               </div>
 
-              <div className="text-center text-sm text-slate-500 pt-2">
-                <span>Didn&apos;t receive the code? </span>
-                <button
-                  type="button"
-                  onClick={handleResendCode}
-                  disabled={isLoading}
-                  className="text-brand hover:text-brand-100 font-semibold cursor-pointer disabled:opacity-50"
-                >
-                  Resend Code
-                </button>
-              </div>
+              {/* TOTP codes come from an authenticator app; there is nothing to resend */}
+              {!isTotp && (
+                <div className="text-center text-sm text-slate-500 pt-2">
+                  <span>Didn&apos;t receive the code? </span>
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    disabled={isLoading || isResending}
+                    className="text-brand hover:text-brand-100 font-semibold cursor-pointer disabled:opacity-50"
+                  >
+                    Resend Code
+                  </button>
+                </div>
+              )}
             </form>
           </motion.div>
         )}

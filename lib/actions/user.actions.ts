@@ -3,7 +3,7 @@
 import { avatarPlaceholderUrl } from "@/constants";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
-import { parseStringify } from "../utils";
+import { escapeLikePattern, parseStringify } from "../utils";
 import type { Database } from "@/types/database.types";
 import { cookies } from "next/headers";
 import { cache } from "react";
@@ -236,29 +236,34 @@ export const getCurrentUser = cache(async () => {
 
     if (userError?.code === "23505") {
       // Conflict on clerk_id, email, or username. Resolve existing user record.
-      const { data: byClerkId } = await supabase
+      // Lookup errors must throw: treating them as "not found" would fall through to inserting a new row.
+      const { data: byClerkId, error: clerkLookupErr } = await supabase
         .from("users")
         .select("id")
         .eq("clerk_id", userId)
         .maybeSingle();
 
+      if (clerkLookupErr) throw clerkLookupErr;
       let existingId = byClerkId?.id;
 
       if (!existingId) {
-        const { data: byEmail } = await supabase
+        const { data: byEmail, error: emailLookupErr } = await supabase
           .from("users")
           .select("id")
           .eq("email", email)
           .maybeSingle();
+        if (emailLookupErr) throw emailLookupErr;
         existingId = byEmail?.id;
       }
 
       if (!existingId) {
-        const { data: byEmailIlike } = await supabase
+        // Escape so `_`/`%` in the email can't match (and then overwrite) another user's row.
+        const { data: byEmailIlike, error: ilikeLookupErr } = await supabase
           .from("users")
           .select("id")
-          .ilike("email", email)
+          .ilike("email", escapeLikePattern(email))
           .maybeSingle();
+        if (ilikeLookupErr) throw ilikeLookupErr;
         existingId = byEmailIlike?.id;
       }
 

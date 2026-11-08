@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { WebhookEvent } from "@clerk/nextjs/server";
 import { Webhook } from "svix";
 import { createClient } from "@supabase/supabase-js";
+import { escapeLikePattern } from "@/lib/utils";
 
 const mapRole = (clerkRole: string): string => {
   switch (clerkRole) {
@@ -118,13 +119,17 @@ export async function POST(req: Request) {
           }
 
           if (!resolvedId) {
-            // Conflict on email — case-insensitive fallback
-            const { data: byEmailIlike } = await supabase
+            // Conflict on email — case-insensitive fallback. Escape so `_`/`%` in the email can't match another user's row.
+            const { data: byEmailIlike, error: ilikeLookupErr } = await supabase
               .from("users")
               .select("id, full_name")
-              .ilike("email", email)
+              .ilike("email", escapeLikePattern(email))
               .maybeSingle();
 
+            if (ilikeLookupErr) {
+              console.error("user.created: case-insensitive email lookup failed", ilikeLookupErr);
+              return NextResponse.json({ error: "Database error" }, { status: 500 });
+            }
             resolvedId = byEmailIlike?.id;
           }
 
@@ -140,6 +145,8 @@ export async function POST(req: Request) {
 
             if (!fallbackErr && fallbackUser) {
               userRecord = fallbackUser;
+            } else if (fallbackErr) {
+              console.error("user.created: username conflict fallback insert failed", fallbackErr);
             }
           }
 
