@@ -47,7 +47,6 @@ async function ensureUniqueSlug(
   let slug = baseSlug || "workspace";
   let suffix = 1;
 
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const candidate = suffix === 1 ? slug : `${slug}-${suffix}`;
     let query = supabase
