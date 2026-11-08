@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -325,9 +326,13 @@ const MembersSection = ({
             >
               {/* Avatar */}
               {member.user.avatarUrl ? (
-                <img
+                <Image
                   src={member.user.avatarUrl}
                   alt={member.user.fullName || "Avatar"}
+                  width={40}
+                  height={40}
+                  // Avatars can come from any host (Clerk, placeholder); unoptimized skips the remotePatterns allow-list.
+                  unoptimized
                   className="size-10 rounded-full object-cover"
                 />
               ) : (
