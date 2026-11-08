@@ -179,7 +179,7 @@ NextApp --> User
 
 ### Prerequisites
 
-- **Node.js** (v18 or higher)
+- **Node.js** (v20.9 or higher, required by Next.js 16)
 - **npm** or **yarn** or **pnpm**
 - Git
 - Accounts for: Clerk, Supabase, and Google Gemini API
@@ -223,6 +223,16 @@ SUPABASE_SERVICE_ROLE_KEY="your_supabase_service_role_key"
 # Google Gemini API (for AI features)
 GEMINI_API_KEY="your_gemini_api_key"
 ```
+
+### Configure Clerk
+
+The sign-in and sign-up pages are custom-built, so set these in the Clerk Dashboard under **Configure → User & authentication → Multi-factor**:
+
+- **Authenticator application**: on, so users can add two-step verification from their account settings.
+- **Backup codes**: off. The sign-in page does not offer a backup-code option yet.
+- **Require multi-factor authentication**: off. The sign-in page does not handle Clerk's forced MFA setup step, so users would get stuck after signing in.
+
+For local testing, turn on **Test mode** for your development instance. Any email containing `+clerk_test` (for example `jane+clerk_test@example.com`) then accepts the verification code `424242` without sending an email.
 
 ### Run the Development Server
 
